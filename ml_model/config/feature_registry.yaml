@@ -1,0 +1,467 @@
+# =============================================================================
+# Feature Registry
+# -----------------------------------------------------------------------------
+# Single source of truth for every feature the pipeline knows about.
+#
+# Fields:
+#   name               : column name as emitted by feature_engineering.build_features
+#   sources            : raw columns this feature derives from
+#   description        : plain-English explanation
+#   type               : numeric | categorical
+#   supervised_allowed : can be used by the supervised model?
+#   leakage_risk       : low | medium | high (why, if not low, see note)
+#   known_at_inference : available when scoring a live company?
+#   physique_only      : reserved for the rule-based physique score?
+#   anomaly            : used by the IsolationForest auxiliary signal?
+# =============================================================================
+
+features:
+
+  # -------- raw columns passed through ----------------------------------------
+  - name: age_ans
+    sources: [age_ans]
+    description: "Company age in years."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+    anomaly: true
+
+  - name: jours_depuis_update
+    sources: [jours_depuis_update]
+    description: "Days since the record was last updated."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: medium      # correlated with observation_date; used for split
+    known_at_inference: true
+
+  - name: nb_etab_secondaires
+    sources: [nb_etab_secondaires]
+    description: "Number of secondary establishments."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: nb_etab_fermes
+    sources: [nb_etab_fermes]
+    description: "Number of closed establishments."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: nb_representants_extraits
+    sources: [nb_representants_extraits]
+    description: "Number of representatives extracted from the registry."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: log_capital
+    sources: [log_capital]
+    description: "Log of declared capital."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+    anomaly: true
+
+  - name: nb_annonces_bodacc
+    sources: [nb_annonces_bodacc]
+    description: "Total BODACC announcements for this company."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+    anomaly: true
+
+  - name: flag_procedure_collective
+    sources: [flag_procedure_collective]
+    description: "1 if a collective procedure was announced."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+    anomaly: true
+
+  - name: flag_creation_bodacc
+    sources: [flag_creation_bodacc]
+    description: "1 if a creation announcement is present."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: flag_depot_comptes
+    sources: [flag_depot_comptes]
+    description: "1 if financial statements were filed."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: flag_modification_bodacc
+    sources: [flag_modification_bodacc]
+    description: "1 if any modification announcement is present."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: nb_observations
+    sources: [nb_observations]
+    description: "Number of observations reported."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: nb_observations_critiques
+    sources: [nb_observations_critiques]
+    description: "Number of critical observations."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+    anomaly: true
+
+  - name: has_alerte_juridique
+    sources: [has_alerte_juridique]
+    description: "1 if any legal alert is active."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+    anomaly: true
+
+  - name: est_ess
+    sources: [est_ess]
+    description: "1 if entity is flagged as social/solidarity economy."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: est_micro
+    sources: [est_micro]
+    description: "1 if micro-enterprise."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: est_eirl
+    sources: [est_eirl]
+    description: "1 if EIRL."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: est_agricole
+    sources: [est_agricole]
+    description: "1 if agricultural activity."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: est_etranger
+    sources: [est_etranger]
+    description: "1 if foreign entity."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: multi_etablissement
+    sources: [multi_etablissement]
+    description: "1 if has multiple establishments."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: diffusion_insee
+    sources: [diffusion_insee]
+    description: "INSEE diffusion flag."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: taux_cessation_sectoriel
+    sources: [taux_cessation_sectoriel]
+    description: "Sector-level cessation rate."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+    anomaly: true
+
+  - name: age_median_sectoriel
+    sources: [age_median_sectoriel]
+    description: "Sector-level median age."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: has_bilan
+    sources: [has_bilan]
+    description: "1 if a balance sheet is available."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: bilan_chiffre_affaires
+    sources: [bilan_chiffre_affaires]
+    description: "Revenue from balance sheet."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: bilan_resultat_net
+    sources: [bilan_resultat_net]
+    description: "Net income from balance sheet."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: bilan_capitaux_propres
+    sources: [bilan_capitaux_propres]
+    description: "Equity from balance sheet."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: bilan_total_actif
+    sources: [bilan_total_actif]
+    description: "Total assets from balance sheet."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: bilan_marge_nette
+    sources: [bilan_marge_nette]
+    description: "Net margin."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: bilan_capitaux_negatifs
+    sources: [bilan_capitaux_propres]
+    description: "1 if equity is negative."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  # -------- derived by build_features -----------------------------------------
+  - name: dirigeant_est_judiciaire
+    sources: [dirigeant_role]
+    description: "1 if director role is judicial (liquidator/administrator/etc)."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: medium       # can be set post-cessation in some data snapshots
+    known_at_inference: true
+    anomaly: true
+
+  - name: dirigeant_est_liquidateur
+    sources: [dirigeant_role]
+    description: "1 if director role = liquidator (73)."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: medium
+    known_at_inference: true
+
+  - name: dirigeant_est_mandataire
+    sources: [dirigeant_role]
+    description: "1 if director role = mandataire (65)."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: medium
+    known_at_inference: true
+
+  - name: dirigeant_age
+    sources: [dirigeant_ddn, reference_date]
+    description: "Director age in years."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: dirigeant_age_risque
+    sources: [dirigeant_age]
+    description: "1 if director age < 25 or > 70."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: capital_symbolique
+    sources: [identite.montantCapital]
+    description: "1 if capital == 1."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: capital_tres_faible
+    sources: [identite.montantCapital]
+    description: "1 if 0 <= capital <= 1000."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: depot_non_respecte
+    sources: [identite.formeJuridique, flag_depot_comptes, age_ans]
+    description: "1 if mandatory filing form, >2y old, no filing."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+    anomaly: true
+
+  - name: frequence_bodacc
+    sources: [nb_annonces_bodacc, age_ans]
+    description: "BODACC announcement frequency (per year)."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+    anomaly: true
+
+  - name: frequence_observations
+    sources: [nb_observations, age_ans]
+    description: "Observations frequency (per year)."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: jeune_secteur_risque
+    sources: [age_ans, taux_cessation_sectoriel]
+    description: "1 if age < 3 and sector rate above mean."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: ancienne_inactive
+    sources: [age_ans, nb_annonces_bodacc, nombreEtablissementsOuverts]
+    description: "1 if >20y old, no announcements, no open establishments."
+    type: numeric
+    supervised_allowed: false   # uses nombreEtablissementsOuverts which is 0 after cessation
+    leakage_risk: high
+    known_at_inference: true
+    physique_only: true
+
+  - name: micro_sans_capital
+    sources: [est_micro, identite.montantCapital]
+    description: "1 if micro-enterprise and capital missing/zero."
+    type: numeric
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  # -------- categorical -------------------------------------------------------
+  - name: forme_juridique_lib
+    sources: [forme_juridique_lib]
+    description: "Human-readable legal form."
+    type: categorical
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: secteur_naf2
+    sources: [secteur_naf2]
+    description: "NAF 2-digit sector."
+    type: categorical
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: stade_vie
+    sources: [stade_vie]
+    description: "Company life stage."
+    type: categorical
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: forme_juridique_risque
+    sources: [forme_juridique_risque]
+    description: "Risk class of legal form."
+    type: categorical
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  - name: departement
+    sources: [departement]
+    description: "French department code."
+    type: categorical
+    supervised_allowed: true
+    leakage_risk: low
+    known_at_inference: true
+
+  # -------- EXCLUDED FROM SUPERVISED (high leakage) ---------------------------
+  - name: pas_representant_actif
+    sources: [nombreRepresentantsActifs]
+    description: "1 if no active representative."
+    type: numeric
+    supervised_allowed: false
+    leakage_risk: high
+    known_at_inference: true
+    physique_only: true
+
+  - name: capital_absent
+    sources: [identite.montantCapital]
+    description: "1 if capital is missing. Often wiped AFTER cessation."
+    type: numeric
+    supervised_allowed: false
+    leakage_risk: high
+    known_at_inference: true
+    physique_only: true
+
+  - name: nombreRepresentantsActifs
+    sources: [nombreRepresentantsActifs]
+    description: "Raw count of active representatives (drops to 0 post-cessation)."
+    type: numeric
+    supervised_allowed: false
+    leakage_risk: high
+    known_at_inference: true
+
+  - name: nombreEtablissementsOuverts
+    sources: [nombreEtablissementsOuverts]
+    description: "Raw count of open establishments (drops to 0 at cessation)."
+    type: numeric
+    supervised_allowed: false
+    leakage_risk: high
+    known_at_inference: true
+
+  - name: jours_depuis_bodacc
+    sources: [jours_depuis_bodacc]
+    description: "Days since the last BODACC announcement — often the dissolution event itself."
+    type: numeric
+    supervised_allowed: false
+    leakage_risk: high
+    known_at_inference: true
+
+  - name: flag_cession_bodacc
+    sources: [flag_cession_bodacc]
+    description: "1 if a cession announcement exists — effectively the event."
+    type: numeric
+    supervised_allowed: false
+    leakage_risk: high
+    known_at_inference: true

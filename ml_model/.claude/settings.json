@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/MSI/Desktop/Pfein/**)",
+      "Read(//c/Users/MSI/Desktop/Pfein/back_end/**)",
+      "Read(//c/Users/MSI/Desktop/Pfein/test/**)",
+      "Bash(grep -E \"\\\\.py$\")",
+      "Bash(xargs ls *)"
+    ]
+  }
+}

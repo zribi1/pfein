@@ -1,0 +1,441 @@
+@startuml DiagrammeClassesBackend
+
+' ============================================================
+'  Plateforme d'Intelligence Strategique - Backend (FastAPI)
+'  Architecture Clean / DDD - 4 couches + Users
+' ============================================================
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam linetype ortho
+skinparam shadowing false
+hide circle
+
+' ============================================================
+' COUCHE DOMAINE
+' ============================================================
+package "Domain" <<Layer>> #E8F4FD {
+
+    enum TendanceEnum {
+        CROISSANCE
+        STABILITE
+        DECLIN
+    }
+
+    enum FormatEnum {
+        PDF
+        EXCEL
+    }
+
+    class Entreprise {
+        - id: str
+        - siren: str
+        - nom: str
+        - secteur: str
+        - localisation: str
+        - dateCreation: datetime
+        - effectif: int
+        - siteWeb: str
+        - description: str
+        - statut: str
+        + getDernierScore(): Score
+        + getHistorique(): List<HistoriqueEntreprise>
+        + ajouterIndicateur(i: Indicateurs): void
+        + mettreAJour(data: dict): void
+    }
+
+    abstract class Indicateurs {
+        # id: str
+        # entrepriseId: str
+        # dateCalcul: datetime
+        # source: str
+        + valider(): bool
+        + serialiser(): dict
+    }
+
+    class IndicateursFinanciers {
+        - chiffreAffaires: float
+        - resultatNet: float
+        - endettement: float
+        - tresorerie: float
+        - croissanceCA: float
+    }
+
+    class IndicateursJuridiques {
+        - procedureCollective: bool
+        - nombreLitiges: int
+        - changementsDirigeants: int
+        - modificationsStatuts: int
+    }
+
+    class IndicateursMediatiques {
+        - volumeMentions: int
+        - sentimentMoyen: float
+        - nombreActualites: int
+        - signauxFaibles: List<str>
+    }
+
+    class HistoriqueEntreprise {
+        - id: str
+        - entrepriseId: str
+        - date: datetime
+        - snapshot: dict
+        - evenements: List<str>
+        + ajouterEvenement(e: str): void
+        + getSnapshotAt(date: datetime): dict
+    }
+
+    class Prediction {
+        - id: str
+        - entrepriseId: str
+        - horizonMois: int
+        - tendance: TendanceEnum
+        - probabilites: Dict<str,float>
+        - dateGeneration: datetime
+        - modeleVersion: str
+        - explication: str
+        + getTendance(): TendanceEnum
+        + expliquer(): str
+        + estFiable(): bool
+    }
+
+    class Score {
+        - id: str
+        - entrepriseId: str
+        - scoreRisque: float
+        - scoreSante: float
+        - scoreConfiance: float
+        - dateCalcul: datetime
+        - details: dict
+        + calculerGlobal(): float
+        + comparer(autre: Score): int
+    }
+
+    class Rapport {
+        - id: str
+        - entrepriseId: str
+        - userId: str
+        - dateGeneration: datetime
+        - format: FormatEnum
+        - contenu: dict
+        - cheminFichier: str
+        + genererPDF(): bytes
+        + genererExcel(): bytes
+        + exporter(): str
+    }
+}
+
+' ============================================================
+' COUCHE APPLICATION (SERVICES)
+' ============================================================
+package "Application" <<Layer>> #FFF4E0 {
+
+    class ETLService {
+        + extraire(source: str): dict
+        + transformer(donnees: dict): dict
+        + charger(donnees: dict): bool
+        + nettoyer(): void
+        + dedupliquer(): void
+        + normaliser(): void
+    }
+
+    class DataCollectorService {
+        - sources: List<str>
+        + collecterDonnees(entrepriseId: str): dict
+        + planifierCollecte(): void
+        + detecterMisesAJour(): List<str>
+    }
+
+    class FeatureEngineeringService {
+        + extraireFeatures(e: Entreprise): List<Feature>
+        + calculerIndicateurs(): void
+        + agregerHistorique(): dict
+        + genererDataset(): Dataset
+    }
+
+    class PredictionService {
+        - modele: ModeleML
+        + predire(entrepriseId: str): Prediction
+        + predireBatch(ids: List<str>): List<Prediction>
+        + chargerModele(version: str): void
+    }
+
+    class ScoringService {
+        + calculerScoreRisque(e: Entreprise): float
+        + calculerScoreSante(e: Entreprise): float
+        + calculerScoreConfiance(p: Prediction): float
+        + genererScore(e: Entreprise): Score
+    }
+
+    class ExplainabilityService {
+        + expliquerPrediction(p: Prediction): str
+        + featureImportance(p: Prediction): dict
+        + genererInterpretation(): str
+    }
+
+    class ChatbotService {
+        - vectorStore: VectorDB
+        - llmClient: LLMClient
+        + repondre(question: str, contexte: dict): str
+        + rechercherContexte(query: str): List<dict>
+        + formulerReponse(): str
+    }
+
+    class RapportService {
+        + genererRapport(id: str, format: FormatEnum): Rapport
+        + exporterPDF(): bytes
+        + exporterExcel(): bytes
+    }
+}
+
+' ============================================================
+' COUCHE MACHINE LEARNING
+' ============================================================
+package "MachineLearning" <<Layer>> #E8F8E8 {
+
+    class ModeleML {
+        - id: str
+        - version: str
+        - algorithme: str
+        - dateEntrainement: datetime
+        - metriques: dict
+        - cheminArtefact: str
+        + entrainer(d: Dataset): void
+        + predire(features: List<Feature>): ResultatPrediction
+        + evaluer(): dict
+        + sauvegarder(): void
+        + charger(): void
+    }
+
+    class Dataset {
+        - id: str
+        - nom: str
+        - features: List<Feature>
+        - labels: List
+        - tailleTrain: int
+        - tailleTest: int
+        + split(): tuple
+        + normaliser(): void
+        + enrichir(): void
+    }
+
+    class Feature {
+        - nom: str
+        - type: str
+        - valeur: Any
+        - importance: float
+        + transformer(): Any
+        + valider(): bool
+    }
+
+    class ResultatPrediction {
+        - classePredite: str
+        - probabilites: Dict<str,float>
+        - featureContributions: Dict<str,float>
+        + versPrediction(): Prediction
+    }
+}
+
+' ============================================================
+' COUCHE INFRASTRUCTURE
+' ============================================================
+package "Infrastructure" <<Layer>> #FCE8F4 {
+
+    class Database {
+        - client: MongoClient
+        - dbName: str
+        + connect(): void
+        + disconnect(): void
+        + getCollection(nom: str): Collection
+        + executeQuery(q: dict): List
+    }
+
+    abstract class Repository<T> {
+        # db: Database
+        + findById(id: str): T
+        + findAll(): List<T>
+        + save(entity: T): T
+        + delete(id: str): bool
+        + update(id: str, data: dict): T
+    }
+
+    class EntrepriseRepository {
+        + findBySiren(siren: str): Entreprise
+        + searchByFiltre(filtres: dict): List<Entreprise>
+    }
+
+    class PredictionRepository {
+        + findByEntreprise(id: str): List<Prediction>
+        + findLatest(entrepriseId: str): Prediction
+    }
+
+    abstract class APIClient {
+        # baseUrl: str
+        # apiKey: str
+        # timeout: int
+        + request(endpoint: str): dict
+        + authentifier(): bool
+    }
+
+    class INSEEClient {
+        + getEntrepriseSiren(siren: str): dict
+        + getEffectifs(): dict
+    }
+
+    class BODACCClient {
+        + getAnnoncesLegales(siren: str): List<dict>
+        + getProceduresCollectives(): List<dict>
+    }
+
+    class ScraperService {
+        - userAgent: str
+        - delay: int
+        + scraperSite(url: str): dict
+        + extraireAPropos(): str
+        + extraireActualites(): List<dict>
+        + detecterChangements(): bool
+    }
+
+    class LLMClient {
+        - modele: str
+        - apiKey: str
+        + genererReponse(prompt: str): str
+        + embed(text: str): List<float>
+    }
+
+    class VectorDB {
+        + indexer(docs: List<dict>): void
+        + rechercher(query: str, k: int): List<dict>
+        + supprimer(id: str): bool
+    }
+}
+
+' ============================================================
+' GESTION UTILISATEURS
+' ============================================================
+package "Users" <<Layer>> #F0E8FC {
+
+    enum RoleEnum {
+        USER
+        ADMIN
+    }
+
+    class User {
+        - id: str
+        - email: str
+        - motDePasseHash: str
+        - nom: str
+        - role: RoleEnum
+        - dateCreation: datetime
+        - actif: bool
+        + authentifier(mdp: str): bool
+        + consulterEntreprise(id: str): Entreprise
+        + genererRapport(id: str): Rapport
+        + interrogerChatbot(q: str): str
+    }
+
+    class Admin {
+        + gererSources(): void
+        + gererUtilisateurs(): void
+        + superviserPipeline(): void
+        + configurerSysteme(): void
+    }
+}
+
+' ============================================================
+' RELATIONS - DOMAINE
+' ============================================================
+
+' Heritage Indicateurs
+Indicateurs <|-- IndicateursFinanciers
+Indicateurs <|-- IndicateursJuridiques
+Indicateurs <|-- IndicateursMediatiques
+
+' Compositions (cycle de vie lie a Entreprise)
+Entreprise "1" *-- "*" HistoriqueEntreprise : possede >
+Entreprise "1" *-- "*" Indicateurs : decrit par >
+Entreprise "1" *-- "*" Score : evalue par >
+
+' Associations
+Entreprise "1" o-- "*" Prediction : concerne >
+Entreprise "1" o-- "*" Rapport : concerne >
+Prediction "1" --> "1" Score : associe a >
+Rapport "*" --> "1" User : genere par >
+
+' Enums
+Prediction --> TendanceEnum
+Rapport --> FormatEnum
+
+' ============================================================
+' RELATIONS - SERVICES (DEPENDANCES)
+' ============================================================
+
+ETLService ..> DataCollectorService
+ETLService ..> Entreprise
+DataCollectorService ..> ScraperService
+DataCollectorService ..> APIClient
+
+FeatureEngineeringService ..> Entreprise
+FeatureEngineeringService ..> Indicateurs
+FeatureEngineeringService ..> Dataset
+FeatureEngineeringService ..> Feature
+
+PredictionService ..> ModeleML
+PredictionService ..> ResultatPrediction
+PredictionService ..> Prediction
+PredictionService ..> FeatureEngineeringService
+PredictionService ..> ExplainabilityService
+
+ScoringService ..> Score
+ScoringService ..> Entreprise
+ScoringService ..> Prediction
+
+ExplainabilityService ..> Prediction
+ExplainabilityService ..> ModeleML
+
+ChatbotService ..> LLMClient
+ChatbotService ..> VectorDB
+ChatbotService ..> PredictionService
+
+RapportService ..> Rapport
+RapportService ..> Entreprise
+RapportService ..> Prediction
+
+' ============================================================
+' RELATIONS - ML
+' ============================================================
+
+Dataset "1" *-- "*" Feature
+ModeleML ..> Dataset : entraine sur >
+ModeleML ..> ResultatPrediction : produit >
+
+' ============================================================
+' RELATIONS - INFRASTRUCTURE
+' ============================================================
+
+Repository --> Database
+Repository <|-- EntrepriseRepository
+Repository <|-- PredictionRepository
+EntrepriseRepository ..> Entreprise
+PredictionRepository ..> Prediction
+
+APIClient <|-- INSEEClient
+APIClient <|-- BODACCClient
+
+' Services -> Repositories
+PredictionService ..> PredictionRepository
+ScoringService ..> EntrepriseRepository
+RapportService ..> EntrepriseRepository
+
+' ============================================================
+' RELATIONS - USERS
+' ============================================================
+
+User <|-- Admin
+User --> RoleEnum
+User ..> ChatbotService
+User ..> RapportService
+Admin ..> DataCollectorService
+Admin ..> ETLService
+
+@enduml

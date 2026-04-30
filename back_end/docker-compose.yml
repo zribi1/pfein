@@ -1,0 +1,95 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pfein-api
+    env_file:
+      - .env
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB: ${MONGO_DB:-pfein}
+    ports:
+      - "8000:8000"
+    volumes:
+      # Live code reload (dev) — local app/ directory
+      - ./app:/app/app
+      # Host bind mounts under D:/PFE_volumes:
+      # - ml-artifacts stores persisted model files
+      # - ingestion-data stores downloaded parquet files during ingestion
+      - D:/PFE_volumes/ml-artifacts:/app/app/ml/artifacts
+      - D:/PFE_volumes/ingestion-data:/app/data
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - pfein-net
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pfein-worker
+    command: ["python", "-m", "app.worker"]
+    env_file:
+      - .env
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB: ${MONGO_DB:-pfein}
+      INGESTION_DATA_DIR: /app/data
+      INPI_LOCAL_DATA_DIR: /app/data/inpi
+    volumes:
+      # Live code reload (dev) — local app/ directory
+      - ./app:/app/app
+      # Host bind mounts under D:/PFE_volumes:
+      - D:/PFE_volumes/ml-artifacts:/app/app/ml/artifacts
+      - D:/PFE_volumes/ingestion-data:/app/data
+      - D:/PFE_volumes/inpi-data:/app/data/inpi
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - pfein-net
+
+  mongo:
+    image: mongo:7
+    container_name: pfein-mongo
+    command: ["mongod", "--bind_ip_all", "--setParameter", "diagnosticDataCollectionEnabled=false"]
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-pfein}
+    ports:
+      - "27017:27017"
+    volumes:
+      # Persist MongoDB data on the Windows host.
+      - D:/PFE_volumes/mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - pfein-net
+
+  mongo-express:
+    image: mongo-express:1.0
+    container_name: pfein-mongo-express
+    profiles: ["dev"]
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongo
+      ME_CONFIG_MONGODB_PORT: "27017"
+      ME_CONFIG_BASICAUTH: "false"
+    ports:
+      - "8081:8081"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - pfein-net
+
+networks:
+  pfein-net:
+    driver: bridge

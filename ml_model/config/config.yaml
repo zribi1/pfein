@@ -1,0 +1,109 @@
+# =============================================================================
+# PFEFM - ML training configuration
+# -----------------------------------------------------------------------------
+# All paths are relative to the repository root unless absolute.
+# =============================================================================
+
+paths:
+  input_parquet: "../back_end/app/data/enterprises_clean.parquet"
+  artifacts_root: "artifacts"                            # versioned output under ml_model/
+  backend_artifacts_dir: "../back_end/app/ml/artifacts"  # where model.joblib is picked up
+  backend_model_filename: "model.joblib"
+
+# Reference date used for derived features (e.g. age of the director).
+# Use "today" to resolve at runtime, or an ISO date "YYYY-MM-DD" for reproducibility.
+reference_date: "2026-04-22"
+
+# Temporal splits on observation_date.
+# For cessees: observation_date = cessation.dateRadiation
+# For actives: observation_date = reference_date - jours_depuis_update (days)
+split:
+  test_cutoff: "2024-01-01"            # observation_date >= cutoff -> held-out test set
+  rolling_folds: 3                     # expanding folds inside train for CV
+  fold_gap_years: 1                    # width of each validation window
+
+# Supervised target. y = 1 means "ceased" (event of interest).
+target:
+  source_column: "est_active"
+  event_value: 0                       # est_active == 0 => y = 1 (cessation)
+
+# Model hyperparameters. Early-stopping is honored for the boosters.
+hyperparameters:
+  xgboost:
+    n_estimators: 1500
+    max_depth: 6
+    learning_rate: 0.05
+    subsample: 0.8
+    colsample_bytree: 0.8
+    early_stopping_rounds: 50
+    eval_metric: "aucpr"
+  lightgbm:
+    n_estimators: 1500
+    max_depth: 6
+    num_leaves: 63
+    learning_rate: 0.05
+    subsample: 0.8
+    colsample_bytree: 0.8
+    early_stopping_rounds: 50
+  catboost:
+    iterations: 1500
+    depth: 6
+    learning_rate: 0.05
+    early_stopping_rounds: 50
+  random_forest:
+    n_estimators: 400
+    max_depth: 14
+    min_samples_leaf: 5
+    max_features: "sqrt"
+  logistic_regression:
+    C: 1.0
+    max_iter: 2000
+  decision_tree:
+    max_depth: 6
+    min_samples_leaf: 20
+
+# Candidates to train & compare. Baselines are always included.
+candidates:
+  - dummy
+  - logistic_regression
+  - decision_tree
+  - random_forest
+  - xgboost
+  - lightgbm
+  - catboost
+
+# Model selection: which CV metric decides the winner.
+# Allowed: roc_auc, pr_auc, recall, f1, recall_at_min_precision
+selection_metric: "recall_at_min_precision"
+
+# Threshold selection on the validation fold.
+threshold:
+  strategy: "recall_at_min_precision"  # or "max_f1" / "cost_weighted"
+  min_precision: 0.60
+  cost_false_negative: 5.0
+  cost_false_positive: 1.0
+
+# Risk bands applied to P(cessation) for the morale segment.
+risk_bands_morale:
+  - {label: "Risque très élevé", min: 0.75}
+  - {label: "Risque élevé",      min: 0.50}
+  - {label: "Risque modéré",     min: 0.30}
+  - {label: "Faible risque",     min: 0.00}
+
+# Calibration: "none" | "isotonic" | "sigmoid". Wraps the winner model.
+calibration:
+  method: "isotonic"
+
+# Anomaly detection (auxiliary only).
+anomaly:
+  contamination: 0.05
+  n_estimators: 200
+
+# Top-K evaluation for the business-facing alert list.
+top_k_grid: [50, 100, 250, 500, 1000]
+
+# Reproducibility.
+random_state: 42
+
+# Console verbosity.
+verbose: true

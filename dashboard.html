@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tableau de bord — Plateforme Pfein</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: #f1f5f9; }
+  .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; }
+  .badge { display:inline-flex; align-items:center; gap:4px; padding:2px 10px; font-size:12px; font-weight:600; border-radius:999px; }
+  .dot { width:6px; height:6px; border-radius:999px; display:inline-block; }
+  .section-title { font-size:11px; text-transform:uppercase; letter-spacing:.08em; font-weight:700; color:#64748b; }
+  tbody tr { transition: background .15s; }
+  tbody tr:hover { background: #f8fafc; cursor: pointer; }
+  .chip { font-size:11px; padding:2px 8px; border-radius:6px; background:#f1f5f9; color:#475569; font-weight:500; }
+</style>
+</head>
+<body class="text-slate-800">
+
+<!-- ============ TOP NAV ============ -->
+<header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+  <div class="max-w-[1400px] mx-auto px-6 h-16 flex items-center justify-between">
+    <div class="flex items-center gap-8">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white font-bold">P</div>
+        <span class="font-bold text-lg">Pfein</span>
+        <span class="text-xs text-slate-400 ml-1">Intelligence entreprises</span>
+      </div>
+      <nav class="hidden md:flex items-center gap-1 text-sm text-slate-600">
+        <a class="px-3 py-2 rounded-lg bg-slate-100 text-slate-900 font-medium">Tableau de bord</a>
+        <a class="px-3 py-2 rounded-lg hover:bg-slate-100">Recherche</a>
+        <a class="px-3 py-2 rounded-lg hover:bg-slate-100">Favoris</a>
+        <a class="px-3 py-2 rounded-lg hover:bg-slate-100">Rapports</a>
+      </nav>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="relative hidden md:block">
+        <input type="text" placeholder="Rechercher SIREN, nom, ville…" class="w-80 pl-10 pr-4 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-500" />
+        <svg class="absolute left-3 top-2.5 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      </div>
+      <button class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-sm font-semibold">MZ</button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-[1400px] mx-auto px-6 py-6">
+
+  <!-- ============ PAGE HEADER ============ -->
+  <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900">Tableau de bord</h1>
+      <p class="text-sm text-slate-500 mt-1">Entreprises analysées — 6 résultats</p>
+    </div>
+    <div class="flex gap-2">
+      <button class="px-4 py-2 rounded-lg border border-slate-200 bg-white text-sm hover:bg-slate-50 flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        Exporter CSV
+      </button>
+      <button class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        Ajouter une entreprise
+      </button>
+    </div>
+  </div>
+
+  <!-- ============ KPI STATS ============ -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="card p-5">
+      <div class="flex items-center justify-between mb-2">
+        <span class="section-title">Total entreprises</span>
+        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5"/></svg>
+      </div>
+      <p class="text-3xl font-bold">6</p>
+      <p class="text-xs text-slate-500 mt-1">Dans votre portefeuille</p>
+    </div>
+    <div class="card p-5">
+      <div class="flex items-center justify-between mb-2">
+        <span class="section-title">Actives</span>
+        <span class="dot bg-green-500"></span>
+      </div>
+      <p class="text-3xl font-bold text-green-600">5</p>
+      <p class="text-xs text-slate-500 mt-1">83 % du portefeuille</p>
+    </div>
+    <div class="card p-5">
+      <div class="flex items-center justify-between mb-2">
+        <span class="section-title">Cessées</span>
+        <span class="dot bg-red-500"></span>
+      </div>
+      <p class="text-3xl font-bold text-red-600">1</p>
+      <p class="text-xs text-slate-500 mt-1">17 % du portefeuille</p>
+    </div>
+    <div class="card p-5">
+      <div class="flex items-center justify-between mb-2">
+        <span class="section-title">Avec signaux de risque</span>
+        <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+      </div>
+      <p class="text-3xl font-bold text-amber-600">1</p>
+      <p class="text-xs text-slate-500 mt-1">Alerte active</p>
+    </div>
+  </div>
+
+  <!-- ============ FILTERS ============ -->
+  <div class="card p-4 mb-5">
+    <div class="flex items-center gap-3 flex-wrap">
+      <span class="text-sm font-medium text-slate-700 mr-2">Filtrer :</span>
+
+      <select class="px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white focus:outline-none focus:border-blue-500">
+        <option>Statut : tous</option>
+        <option>Actives</option>
+        <option>Cessées</option>
+      </select>
+
+      <select class="px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white focus:outline-none focus:border-blue-500">
+        <option>Forme juridique : toutes</option>
+        <option>SARL</option>
+        <option>SAS</option>
+        <option>SA</option>
+      </select>
+
+      <select class="px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white focus:outline-none focus:border-blue-500">
+        <option>Région : toutes</option>
+        <option>Hauts-de-France</option>
+        <option>Île-de-France</option>
+        <option>Normandie</option>
+      </select>
+
+      <select class="px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white focus:outline-none focus:border-blue-500">
+        <option>Type d'événement BODACC : tous</option>
+        <option>Dépôt des comptes</option>
+        <option>Procédure collective</option>
+        <option>Radiation</option>
+      </select>
+
+      <div class="ml-auto flex items-center gap-2">
+        <span class="text-xs text-slate-500">Trier par :</span>
+        <select class="px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white focus:outline-none focus:border-blue-500">
+          <option>Dernier événement</option>
+          <option>Nom (A-Z)</option>
+          <option>Statut</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ TABLE ============ -->
+  <div class="card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 border-b border-slate-200">
+          <tr class="text-slate-500 text-xs uppercase tracking-wider">
+            <th class="px-5 py-3 text-left font-semibold">
+              <input type="checkbox" class="rounded border-slate-300" />
+            </th>
+            <th class="px-5 py-3 text-left font-semibold">Entreprise</th>
+            <th class="px-5 py-3 text-left font-semibold">Statut</th>
+            <th class="px-5 py-3 text-left font-semibold">Forme juridique</th>
+            <th class="px-5 py-3 text-left font-semibold">Ville</th>
+            <th class="px-5 py-3 text-left font-semibold">Dernier événement</th>
+            <th class="px-5 py-3 text-left font-semibold">Sources</th>
+            <th class="px-5 py-3 text-right font-semibold">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+
+          <!-- PEUGEOT SA -->
+          <tr>
+            <td class="px-5 py-4"><input type="checkbox" class="rounded border-slate-300" /></td>
+            <td class="px-5 py-4">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">P</div>
+                <div>
+                  <p class="font-semibold text-slate-900">PEUGEOT SA</p>
+                  <p class="text-xs text-slate-500 font-mono">552 100 554</p>
+                </div>
+              </div>
+            </td>
+            <td class="px-5 py-4">
+              <span class="badge bg-red-100 text-red-700"><span class="dot bg-red-500"></span>Cessée</span>
+              <p class="text-xs text-slate-500 mt-1">Depuis le 16/01/2021</p>
+            </td>
+            <td class="px-5 py-4">
+              <span class="chip">SA</span>
+              <p class="text-xs text-slate-500 mt-1">APE 70.10Z</p>
+            </td>
+            <td class="px-5 py-4">
+              <p class="text-slate-700">Vélizy-Villacoublay</p>
+              <p class="text-xs text-slate-500">78140 · Île-de-France</p>
+            </td>
+            <td class="px-5 py-4">
+              <p class="text-slate-700">Cessation d'activité</p>
+              <p class="text-xs text-slate-500">16/01/2021 · INSEE</p>
+            </td>
+            <td class="px-5 py-4">
+              <div class="flex gap-1">
+                <span class="chip bg-blue-50 text-blue-700">INSEE</span>
+                <span class="chip bg-orange-50 text-orange-700">INPI</span>
+              </div>
+            </td>
+            <td class="px-5 py-4 text-right">
+              <button class="text-blue-600 hover:text-blue-700 font-medium text-sm">Voir la fiche →</button>
+            </td>
+          </tr>
+
+          <!-- Le Fournil des Bocages -->
+          <tr>
+            <td class="px-5 py-4"><input type="checkbox" class="rounded border-slate-300" /></td>
+            <td class="px-5 py-4">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">F</div>
+                <div>
+                  <p class="font-semibold text-slate-900">Le Fournil des Bocages</p>
+                  <p class="text-xs text-slate-500 font-mono">752 461 681</p>
+                </div>
+              </div>
+            </td>
+            <td class="px-5 py-4">
+              <span class="badge bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Active</span>
+            </td>
+            <td class="px-5 py-4">
+              <span class="chip">SARL</span>
+            </td>
+            <td class="px-5 py-4">
+              <p class="text-slate-700">Thiescourt</p>
+              <p class="text-xs text-slate-500">60310 · Hauts-de-France</p>
+            </td>
+            <td class="px-5 py-4">
+              <p class="text-slate-700">Dépôt des comptes</p>
+              <p class="text-xs text-slate-500">26/01/2025 · clôture 31/08/2024</p>
+            </td>
+            <td class="px-5 py-4">
+              <div class="flex gap-1">
+                <span class="chip bg-green-50 text-green-700">BODACC</span>
+              </div>
+            </td>
+            <td class="px-5 py-4 text-right">
+              <button class="text-blue-600 hover:text-blue-700 font-medium text-sm">Voir la fiche →</button>
+            </td>
+          </tr>
+
+          <!-- ISB ENERGY -->
+          <tr>
+            <td class="px-5 py-4"><input type="checkbox" class="rounded border-slate-300" /></td>
+            <td class="px-5 py-4">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">I</div>
+                <div>
+                  <p class="font-semibold text-slate-900">ISB ENERGY</p>
+                  <p class="text-xs text-slate-500 font-mono">820 770 295</p>
+                </div>
+              </div>
+            </td>
+            <td class="px-5 py-4">
+              <span class="badge bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Active</span>
+            </td>
+            <td class="px-5 py-4">
+              <span class="chip">SAS</span>
+            </td>
+            <td class="px-5 py-4">
+              <p class="text-slate-700">Saint-Sauveur</p>
+              <p class="text-xs text-slate-500">60320 · Hauts-de-France</p>
+            </td>
+            <td class="px-5 py-4">
+              <p class="text-slate-700">Dépôt des comptes</p>
+              <p class="text-xs text-slate-500">26/01/2025 · clôture 30/04/2024</p>
+            </td>
+            <td class="px-5 py-4">
+              <div class="flex gap-1">
+                <span class="chip bg-green-50 text-green-700">BODACC</span>
+              </div>
+            </td>
+            <td class="px-5 py-4 text-right">
+              <button class="text-blue-600 hover:text-blue-700 font-medium text-sm">Voir la fiche →</button>
+            </td>
+          </tr>
+
+          <!-- RYTHMIK EVENTS -->
+          <tr>
+            <td class="px-5 py-4"><input type="checkbox" class="rounded border-slate-300" /></td>
+            <td class="px-5 py-4">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">R</div>
+                <div>
+                  <p class="font-semibold text-slate-900">RYTHMIK EVENTS</p>
+                  <p class="text-xs text-slate-500 font-mono">912 601 606</p>
+                </div>
+              </div>
+            </td>
+            <td class="px-5 py-4">
+              <span class="badge bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Active</span>
+            </td>
+            <td class="px-5 py-4">
+              <span class="chip">SAS</span>
+            </td>
+            <td class="px-5 py-4">
+              <p class="text-slate-700">Le Mesnil-en-Thelle</p>
+              <p class="text-xs text-slate-500">60530 · Hauts-de-France</p>
+            </td>
+            <td class="px-5 py-4">
+              <p class="text-slate-700">Dépôt des comptes</p>
+              <p class="text-xs text-slate-500">26/01/2025 · clôture 31/08/2024</p>
+            </td>
+            <td class="px-5 py-4">
+              <div class="flex gap-1">
+                <span class="chip bg-green-50 text-green-700">BODACC</span>
+              </div>
+            </td>
+            <td class="px-5 py-4 text-right">
+              <button class="text-blue-600 hover:text-blue-700 font-medium text-sm">Voir la fiche →</button>
+            </td>
+          </tr>
+
+          <!-- SARL LEVASSEUR -->
+          <tr>
+            <td class="px-5 py-4"><input type="checkbox" class="rounded border-slate-300" /></td>
+            <td class="px-5 py-4">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">L</div>
+                <div>
+                  <p class="font-semibold text-slate-900">SARL LEVASSEUR</p>
+                  <p class="text-xs text-slate-500 font-mono">950 825 000</p>
+                </div>
+              </div>
+            </td>
+            <td class="px-5 py-4">
+              <span class="badge bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Active</span>
+            </td>
+            <td class="px-5 py-4">
+              <span class="chip">SARL</span>
+            </td>
+            <td class="px-5 py-4">
+              <p class="text-slate-700">Margny-lès-Compiègne</p>
+              <p class="text-xs text-slate-500">60280 · Hauts-de-France</p>
+            </td>
+            <td class="px-5 py-4">
+              <p class="text-slate-700">Dépôt des comptes</p>
+              <p class="text-xs text-slate-500">26/01/2025 · clôture 30/06/2024</p>
+            </td>
+            <td class="px-5 py-4">
+              <div class="flex gap-1">
+                <span class="chip bg-green-50 text-green-700">BODACC</span>
+              </div>
+            </td>
+            <td class="px-5 py-4 text-right">
+              <button class="text-blue-600 hover:text-blue-700 font-medium text-sm">Voir la fiche →</button>
+            </td>
+          </tr>
+
+          <!-- JB MENUISERIE 61 -->
+          <tr>
+            <td class="px-5 py-4"><input type="checkbox" class="rounded border-slate-300" /></td>
+            <td class="px-5 py-4">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-rose-500 to-red-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">J</div>
+                <div>
+                  <p class="font-semibold text-slate-900">JB MENUISERIE 61</p>
+                  <p class="text-xs text-slate-500 font-mono">834 689 390</p>
+                </div>
+              </div>
+            </td>
+            <td class="px-5 py-4">
+              <span class="badge bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Active</span>
+            </td>
+            <td class="px-5 py-4">
+              <span class="chip">SARL</span>
+            </td>
+            <td class="px-5 py-4">
+              <p class="text-slate-700">Magny-le-Désert</p>
+              <p class="text-xs text-slate-500">61600 · Normandie</p>
+            </td>
+            <td class="px-5 py-4">
+              <p class="text-slate-700">Dépôt des comptes</p>
+              <p class="text-xs text-slate-500">26/01/2025 · clôture 30/09/2024</p>
+            </td>
+            <td class="px-5 py-4">
+              <div class="flex gap-1">
+                <span class="chip bg-green-50 text-green-700">BODACC</span>
+              </div>
+            </td>
+            <td class="px-5 py-4 text-right">
+              <button class="text-blue-600 hover:text-blue-700 font-medium text-sm">Voir la fiche →</button>
+            </td>
+          </tr>
+
+        </tbody>
+      </table>
+    </div>
+
+    <!-- PAGINATION -->
+    <div class="px-5 py-4 border-t border-slate-100 flex items-center justify-between text-sm">
+      <p class="text-slate-500">Affichage <span class="font-semibold text-slate-700">1 – 6</span> sur <span class="font-semibold text-slate-700">6</span> entreprises</p>
+      <div class="flex items-center gap-2">
+        <button class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-400 cursor-not-allowed">← Précédent</button>
+        <span class="px-3 py-1.5 rounded-lg bg-blue-600 text-white font-medium">1</span>
+        <button class="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-400 cursor-not-allowed">Suivant →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="mt-10 py-6 text-center text-xs text-slate-400">
+    <p>Données agrégées depuis les sources officielles INSEE · INPI · BODACC</p>
+    <p class="mt-1">© 2026 Pfein — Plateforme d'analyse d'entreprises</p>
+  </footer>
+
+</main>
+
+</body>
+</html>

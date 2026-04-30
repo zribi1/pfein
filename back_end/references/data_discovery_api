@@ -1,0 +1,496 @@
+import argparse
+import json
+import os
+import time
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
+from urllib.parse import urlencode
+
+import requests
+
+
+DEFAULT_TIMEOUT = 30
+
+
+@dataclass(frozen=True)
+class BodaccConfig:
+    base_url: str = "https://bodacc-datadila.opendatasoft.com"
+    dataset: str = "annonces-commerciales"
+    api_version: str = "v2.1"
+    output_dir: Path = Path("DATA BODACC")
+    state_file_name: str = "state.json"
+    timeout: int = DEFAULT_TIMEOUT
+    sleep_seconds: float = 0.25
+    limit: int = 100
+    start_offset: int = 0
+    max_pages: int = 5
+    where: str = ""
+
+
+@dataclass(frozen=True)
+class InpiConfig:
+    base_url: str = "https://registre-national-entreprises.inpi.fr"
+    endpoint: str = "/api/companies"
+    output_dir: Path = Path("DATA RNCS")
+    timeout: int = DEFAULT_TIMEOUT
+    sleep_seconds: float = 0.35
+    per_page: int = 100
+    start_page: int = 1
+    max_pages: int = 0
+
+
+@dataclass(frozen=True)
+class InseeConfig:
+    base_url: str = "https://api.insee.fr/api-sirene/3.11/siren"
+    output_dir: Path = Path("data_json")
+    timeout: int = DEFAULT_TIMEOUT
+    sleep_seconds: float = 0.35
+    page_size: int = 1000
+    max_pages: int = 1000
+    query: str = ""
+    api_key_env: str = "INSEE_API_KEY"
+
+
+def timestamp() -> str:
+    return datetime.now().strftime("%Y%m%d_%H%M%S")
+
+
+def ensure_dir(path: Path) -> None:
+    path.mkdir(parents=True, exist_ok=True)
+
+
+def save_json(data: Any, output_dir: Path, filename: str) -> Path:
+    ensure_dir(output_dir)
+    path = output_dir / filename
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    return path
+
+
+def request_json(
+    method: str,
+    url: str,
+    *,
+    timeout: int,
+    headers: Optional[Dict[str, str]] = None,
+    params: Optional[Dict[str, Any]] = None,
+    json_body: Optional[Dict[str, Any]] = None,
+) -> Tuple[Optional[Union[Dict[str, Any], List[Any]]], int, str]:
+    try:
+        response = requests.request(
+            method,
+            url,
+            headers=headers,
+            params=params,
+            json=json_body,
+            timeout=timeout,
+        )
+    except requests.RequestException as exc:
+        return None, 0, str(exc)
+
+    preview = response.text[:300].replace("\n", " ")
+    if response.status_code != 200:
+        return None, response.status_code, preview
+
+    try:
+        return response.json(), response.status_code, preview
+    except ValueError:
+        return None, response.status_code, preview
+
+
+def extract_list(payload: Union[Dict[str, Any], List[Any]], keys: Tuple[str, ...]) -> List[Any]:
+    if isinstance(payload, list):
+        return payload
+
+    for key in keys:
+        value = payload.get(key)
+        if isinstance(value, list):
+            return value
+
+    list_keys = [key for key, value in payload.items() if isinstance(value, list)]
+    if len(list_keys) == 1:
+        return payload[list_keys[0]]
+
+    return []
+
+
+def get_nested_value(payload: Dict[str, Any], path: Tuple[str, ...]) -> Any:
+    current: Any = payload
+    for key in path:
+        if not isinstance(current, dict):
+            return None
+        current = current.get(key)
+    return current
+
+
+def coerce_non_negative_int(value: Any) -> Optional[int]:
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, int):
+        return value if value >= 0 else None
+    if isinstance(value, str) and value.isdigit():
+        return int(value)
+    return None
+
+
+def extract_total_count(payload: Union[Dict[str, Any], List[Any]]) -> Optional[int]:
+    if not isinstance(payload, dict):
+        return None
+
+    for path in (
+        ("header", "total"),
+        ("pagination", "total"),
+        ("pagination", "total_count"),
+        ("pagination", "totalCount"),
+        ("meta", "total"),
+        ("meta", "total_count"),
+        ("metadata", "total"),
+        ("metadata", "total_count"),
+        ("total",),
+        ("total_count",),
+        ("totalCount",),
+        ("nbResults",),
+        ("numberOfElements",),
+    ):
+        total = coerce_non_negative_int(get_nested_value(payload, path))
+        if total is not None:
+            return total
+
+    return None
+
+
+def extract_insee_next_cursor(payload: Union[Dict[str, Any], List[Any]]) -> Optional[str]:
+    if not isinstance(payload, dict):
+        return None
+
+    for path in (
+        ("header", "curseurSuivant"),
+        ("header", "curseursuivant"),
+        ("header", "nextCursor"),
+        ("header", "next_cursor"),
+        ("curseurSuivant",),
+        ("curseursuivant",),
+        ("nextCursor",),
+        ("next_cursor",),
+    ):
+        value = get_nested_value(payload, path)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+
+    return None
+
+
+def load_bodacc_state(state_file: Path, start_offset: int) -> Dict[str, Any]:
+    if state_file.exists():
+        try:
+            return json.loads(state_file.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            print(f"State file is invalid JSON, restarting from offset {start_offset}: {state_file}")
+    return {"offset": start_offset}
+
+
+def save_bodacc_state(state_file: Path, offset: int) -> None:
+    state_file.write_text(
+        json.dumps({"offset": offset}, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+
+def collect_bodacc(config: BodaccConfig) -> None:
+    ensure_dir(config.output_dir)
+    state_file = config.output_dir / config.state_file_name
+    state = load_bodacc_state(state_file, config.start_offset)
+    offset = int(state.get("offset", config.start_offset))
+
+    print("\n=== BODACC collection ===")
+    print("Dataset :", config.dataset)
+    print("Output  :", config.output_dir)
+    print("Limit   :", config.limit)
+    print("Where   :", config.where if config.where.strip() else "(none)")
+    print("=========================\n")
+
+    page = 0
+    total = 0
+    total_available: Optional[int] = None
+    url = f"{config.base_url}/api/explore/{config.api_version}/catalog/datasets/{config.dataset}/records"
+
+    while True:
+        if total_available is not None:
+            remaining = total_available - offset
+            if remaining <= 0:
+                print("Completed: fetched all records reported by the API.")
+                break
+            request_limit = min(config.limit, remaining)
+        else:
+            request_limit = config.limit
+
+        page += 1
+        params: Dict[str, Any] = {"limit": request_limit, "offset": offset}
+        if config.where.strip():
+            params["where"] = config.where.strip()
+
+        payload, status, preview = request_json("GET", url, timeout=config.timeout, params=params)
+        if not isinstance(payload, dict):
+            print(f"Request failed for offset={offset} status={status or 'network error'}")
+            print("Preview:", preview)
+            break
+
+        total_available = extract_total_count(payload) or total_available
+        results = extract_list(payload, ("results",))
+        count = len(results)
+        total += count
+
+        out_path = save_json(
+            payload,
+            config.output_dir,
+            f"bodacc_{config.dataset}_offset{offset}_limit{request_limit}_{timestamp()}.json",
+        )
+        print(f"Saved page {page}: {out_path} | records={count} | total={total}")
+
+        if count == 0:
+            print("Completed: no more results.")
+            break
+
+        offset += request_limit
+        save_bodacc_state(state_file, offset)
+        time.sleep(config.sleep_seconds)
+
+        if config.max_pages and page >= config.max_pages:
+            print(f"Stopped after {config.max_pages} page(s) because max_pages is set.")
+            break
+
+
+def inpi_headers(token: Optional[str] = None) -> Dict[str, str]:
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0",
+        "Origin": "https://data.inpi.fr",
+        "Referer": "https://data.inpi.fr/",
+    }
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
+
+
+def login_inpi(config: InpiConfig) -> str:
+    username = os.getenv("INPI_USERNAME", "")
+    password = os.getenv("INPI_PASSWORD", "")
+    if not username or not password:
+        raise RuntimeError("Set INPI_USERNAME and INPI_PASSWORD in the environment before running INPI collection.")
+
+    payload, status, preview = request_json(
+        "POST",
+        f"{config.base_url}/api/sso/login",
+        timeout=config.timeout,
+        headers=inpi_headers(),
+        json_body={"username": username, "password": password},
+    )
+    if not isinstance(payload, dict) or "token" not in payload:
+        raise RuntimeError(f"INPI login failed (status={status or 'network error'}): {preview}")
+    return str(payload["token"])
+
+
+def collect_inpi(config: InpiConfig) -> None:
+    ensure_dir(config.output_dir)
+    token = login_inpi(config)
+
+    print("\n=== INPI collection ===")
+    print("Base URL :", config.base_url)
+    print("Endpoint :", config.endpoint)
+    print("Output   :", config.output_dir)
+    print("Per page :", config.per_page)
+    print("=======================\n")
+
+    page = config.start_page
+    total = 0
+    total_available: Optional[int] = None
+
+    while True:
+        if total_available is not None:
+            remaining = total_available - total
+            if remaining <= 0:
+                print("Completed: fetched all records reported by the API.")
+                break
+            per_page = min(config.per_page, remaining)
+        else:
+            per_page = config.per_page
+
+        params = {"page": page, "per_page": per_page}
+        payload, status, preview = request_json(
+            "GET",
+            f"{config.base_url}{config.endpoint}",
+            timeout=config.timeout,
+            headers=inpi_headers(token),
+            params=params,
+        )
+        if payload is None:
+            print(f"Request failed for page={page} status={status or 'network error'}")
+            print("Preview:", preview)
+            break
+
+        total_available = extract_total_count(payload) or total_available
+        items = extract_list(payload, ("items", "results", "content", "companies", "data"))
+        count = len(items)
+        total += count
+
+        out_path = save_json(payload, config.output_dir, f"inpi_companies_page{page}_{timestamp()}.json")
+        print(f"Saved page {page}: {out_path} | items={count} | total={total}")
+
+        if count == 0:
+            print("Completed: no more results.")
+            break
+
+        if count < per_page:
+            print("Completed: final partial page received.")
+            break
+
+        page += 1
+        time.sleep(config.sleep_seconds)
+
+        if config.max_pages and (page - config.start_page) >= config.max_pages:
+            print(f"Stopped after {config.max_pages} page(s) because max_pages is set.")
+            break
+
+
+def insee_headers(api_key: str) -> Dict[str, str]:
+    return {
+        "X-INSEE-Api-Key-Integration": api_key,
+        "Accept": "application/json",
+    }
+
+
+def collect_insee(config: InseeConfig) -> None:
+    api_key = os.getenv(config.api_key_env, "").strip()
+    if not api_key:
+        raise RuntimeError(f"Set {config.api_key_env} in the environment before running INSEE collection.")
+
+    ensure_dir(config.output_dir)
+
+    print("\n=== INSEE collection ===")
+    print("Base URL   :", config.base_url)
+    print("Query      :", config.query if config.query.strip() else "(empty)")
+    print("Page size  :", config.page_size)
+    print("Max pages  :", config.max_pages)
+    print("Output dir :", config.output_dir)
+    print("========================\n")
+
+    total = 0
+    cursor = "*"
+
+    for page in range(1, config.max_pages + 1):
+        params: Dict[str, Any] = {"nombre": config.page_size, "curseur": cursor}
+        if config.query.strip():
+            params["q"] = config.query.strip()
+
+        debug_url = config.base_url + "?" + urlencode(params, safe=':"(),* ')
+        print(f"Requesting page {page}/{config.max_pages}: {debug_url}")
+
+        payload, status, preview = request_json(
+            "GET",
+            config.base_url,
+            timeout=config.timeout,
+            headers=insee_headers(api_key),
+            params=params,
+        )
+        if not isinstance(payload, dict):
+            print(f"Request failed for cursor={cursor} status={status or 'network error'}")
+            print("Preview:", preview)
+            if status == 400 and config.query.strip():
+                print('Hint: try running with an empty query, for example `--insee-query ""`.')
+            break
+
+        out_path = save_json(payload, config.output_dir, f"insee_siren_page{page}_{timestamp()}.json")
+        items = extract_list(payload, ("unitesLegales",))
+        count = len(items)
+        total += count
+
+        print(f"Saved page {page}: {out_path}")
+        print(f"Results in this page: {count}")
+
+        if count == 0:
+            print("Completed: no more results.")
+            break
+
+        next_cursor = extract_insee_next_cursor(payload)
+        if not next_cursor or next_cursor == cursor:
+            print("Completed: no further INSEE cursor returned.")
+            break
+
+        cursor = next_cursor
+        time.sleep(config.sleep_seconds)
+
+    print(f"\nCollection finished. Total records fetched: {total}")
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Collect records from BODACC, INPI, or INSEE.")
+    parser.add_argument(
+        "source",
+        choices=("bodacc", "inpi", "insee"),
+        help="Select which collector to run.",
+    )
+
+    parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT, help="HTTP timeout in seconds.")
+
+    parser.add_argument("--bodacc-limit", type=int, default=100, help="BODACC page size.")
+    parser.add_argument("--bodacc-offset", type=int, default=0, help="BODACC starting offset.")
+    parser.add_argument("--bodacc-max-pages", type=int, default=5, help="BODACC max pages, 0 for all.")
+    parser.add_argument("--bodacc-where", default="", help="Optional BODACC where clause.")
+
+    parser.add_argument("--inpi-per-page", type=int, default=100, help="INPI page size.")
+    parser.add_argument("--inpi-start-page", type=int, default=1, help="INPI starting page.")
+    parser.add_argument("--inpi-max-pages", type=int, default=0, help="INPI max pages, 0 for all.")
+
+    parser.add_argument("--insee-page-size", type=int, default=1000, help="INSEE page size.")
+    parser.add_argument("--insee-max-pages", type=int, default=1000, help="INSEE max pages.")
+    parser.add_argument("--insee-query", default="", help="Optional INSEE q parameter.")
+    parser.add_argument(
+        "--insee-api-key-env",
+        default="INSEE_API_KEY",
+        help="Environment variable containing the INSEE API key.",
+    )
+
+    return parser
+
+
+def main() -> None:
+    args = build_parser().parse_args()
+
+    if args.source == "bodacc":
+        collect_bodacc(
+            BodaccConfig(
+                timeout=args.timeout,
+                limit=args.bodacc_limit,
+                start_offset=args.bodacc_offset,
+                max_pages=args.bodacc_max_pages,
+                where=args.bodacc_where,
+            )
+        )
+        return
+
+    if args.source == "inpi":
+        collect_inpi(
+            InpiConfig(
+                timeout=args.timeout,
+                per_page=args.inpi_per_page,
+                start_page=args.inpi_start_page,
+                max_pages=args.inpi_max_pages,
+            )
+        )
+        return
+
+    collect_insee(
+        InseeConfig(
+            timeout=args.timeout,
+            page_size=args.insee_page_size,
+            max_pages=args.insee_max_pages,
+            query=args.insee_query,
+            api_key_env=args.insee_api_key_env,
+        )
+    )
+
+
+if __name__ == "__main__":
+    main()

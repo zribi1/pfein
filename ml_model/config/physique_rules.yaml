@@ -1,0 +1,46 @@
+# =============================================================================
+# Physique segment - rule-based risk score
+# -----------------------------------------------------------------------------
+# Score starts at `base_score` and is decremented by weighted signals.
+# Final score is clipped to [0, 100]. A lower score means higher risk.
+# =============================================================================
+
+base_score: 60.0
+
+# Binary-flag deductions. Each rule subtracts `weight` points when `feature == 1`.
+flag_weights:
+  flag_procedure_collective: 40
+  has_alerte_juridique:      30
+  dirigeant_est_judiciaire:  25
+  dirigeant_est_liquidateur: 15
+  depot_non_respecte:        10
+  pas_representant_actif:    10
+  capital_absent:             5
+  capital_tres_faible:        3
+
+# Counted deductions: `min(feature * weight, cap)`.
+counted_weights:
+  nb_annonces_bodacc:        {weight: 2, cap: 10}
+  nb_observations_critiques: {weight: 5, cap: 20}
+
+# Sector-rate deduction:
+#   excess = max(0, (taux_cessation_sectoriel / baseline - 1) * weight)
+#   deduction = min(excess, cap)
+sector_weight:
+  baseline: 0.068
+  weight: 5
+  cap: 10
+
+# Risk band thresholds (applied to the final 0-100 score).
+bands:
+  - {label: "Faible",   min: 65}
+  - {label: "Modéré",   min: 45}
+  - {label: "Élevé",    min: 25}
+  - {label: "Critique", min: 0}
+
+# Mapping from physique band to the unified `categorie_prediction` label.
+band_to_category:
+  Critique: "Risque très élevé"
+  Élevé:    "Risque élevé"
+  Modéré:   "Risque modéré"
+  Faible:   "Faible risque"

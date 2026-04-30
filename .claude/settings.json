@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import json; json.load\\(open\\('c:/Users/MSI/Desktop/Pfein/PFEFM_ML_Leakage_Audit_CatBoost_Colab.ipynb', encoding='utf-8'\\)\\); print\\('Notebook JSON is valid'\\)\")",
+      "Bash(python -c ' *)"
+    ]
+  }
+}
