@@ -9,16 +9,25 @@ services:
     environment:
       MONGO_URI: mongodb://mongo:27017
       MONGO_DB: ${MONGO_DB:-pfein}
+      INGESTION_DATA_DIR: /source-archives
+      BODACC_INIT_DATA_DIR: /source-archives/bodacc
+      BODACC_CURRENT_DATA_DIR: /source-archives/bodacc/current
+      INPI_LOCAL_DATA_DIR: /source-archives/inpi
+      DATA_LAKE_DIR: /data-lake
     ports:
       - "8000:8000"
     volumes:
       # Live code reload (dev) — local app/ directory
       - ./app:/app/app
+      # Local operational scripts; final image also copies them.
+      - ./scripts:/app/scripts
       # Host bind mounts under D:/PFE_volumes:
       # - ml-artifacts stores persisted model files
-      # - ingestion-data stores downloaded parquet files during ingestion
+      # - source-archives stores official downloaded provider source files
+      # - data-lake stores durable raw/clean/features parquet datasets
       - D:/PFE_volumes/ml-artifacts:/app/app/ml/artifacts
-      - D:/PFE_volumes/ingestion-data:/app/data
+      - D:/PFE_volumes/source-archives:/source-archives
+      - D:/PFE_volumes/data-lake:/data-lake
     depends_on:
       mongo:
         condition: service_healthy
@@ -37,18 +46,25 @@ services:
     environment:
       MONGO_URI: mongodb://mongo:27017
       MONGO_DB: ${MONGO_DB:-pfein}
-      INGESTION_DATA_DIR: /app/data
-      INPI_LOCAL_DATA_DIR: /app/data/inpi
+      INGESTION_DATA_DIR: /source-archives
+      BODACC_INIT_DATA_DIR: /source-archives/bodacc
+      BODACC_CURRENT_DATA_DIR: /source-archives/bodacc/current
+      INPI_LOCAL_DATA_DIR: /source-archives/inpi
+      DATA_LAKE_DIR: /data-lake
     volumes:
       # Live code reload (dev) — local app/ directory
       - ./app:/app/app
+      # Local operational scripts; final image also copies them.
+      - ./scripts:/app/scripts
       # Host bind mounts under D:/PFE_volumes:
       - D:/PFE_volumes/ml-artifacts:/app/app/ml/artifacts
-      - D:/PFE_volumes/ingestion-data:/app/data
-      - D:/PFE_volumes/inpi-data:/app/data/inpi
+      - D:/PFE_volumes/source-archives:/source-archives
+      - D:/PFE_volumes/data-lake:/data-lake
     depends_on:
       mongo:
         condition: service_healthy
+    healthcheck:
+      disable: true
     restart: unless-stopped
     networks:
       - pfein-net

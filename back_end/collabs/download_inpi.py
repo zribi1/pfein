@@ -1,0 +1,306 @@
+from __future__ import annotations
+
+import argparse
+import ftplib
+import os
+import stat
+import sys
+import time
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path, PurePosixPath
+from typing import Iterator
+
+from common import DEFAULT_DRIVE_ROOT, install_deps, paths, write_json
+
+
+VALID_CATEGORIES = {"comptes_annuels", "formalites"}
+VALID_NIVEAUX = {"standard", "niveau1"}
+
+
+@dataclass(frozen=True)
+class RemoteArchive:
+    path: str
+    size: int
+    mtime: datetime | None
+    category: str
+    niveau: str
+
+
+class InpiConnector:
+    def __init__(self, args: argparse.Namespace) -> None:
+        self.protocol = args.protocol.lower()
+        self.host = args.host or os.getenv("INPI_FTP_HOST", "")
+        self.port = int(args.port or os.getenv("INPI_FTP_PORT") or (22 if self.protocol == "sftp" else 21))
+        self.user = args.user or os.getenv("INPI_FTP_USER", "")
+        self.password = args.password or os.getenv("INPI_FTP_PASSWORD", "")
+        self.timeout = int(args.timeout)
+        self.ftp: ftplib.FTP | None = None
+        self.sftp = None
+        self.transport = None
+        if not self.host or not self.user or not self.password:
+            raise RuntimeError("INPI credentials missing. Set INPI_FTP_HOST, INPI_FTP_USER, and INPI_FTP_PASSWORD.")
+
+    def __enter__(self) -> "InpiConnector":
+        if self.protocol == "sftp":
+            import paramiko
+
+            self.transport = paramiko.Transport((self.host, self.port))
+            self.transport.banner_timeout = self.timeout
+            self.transport.connect(username=self.user, password=self.password)
+            self.sftp = paramiko.SFTPClient.from_transport(self.transport)
+            self.sftp.get_channel().settimeout(self.timeout)
+        else:
+            self.ftp = ftplib.FTP(timeout=self.timeout)
+            self.ftp.connect(self.host, self.port, timeout=self.timeout)
+            self.ftp.login(self.user, self.password)
+            self.ftp.set_pasv(True)
+        print(f"[inpi] connected protocol={self.protocol} host={self.host} port={self.port}")
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        try:
+            if self.sftp is not None:
+                self.sftp.close()
+        finally:
+            if self.transport is not None:
+                self.transport.close()
+            if self.ftp is not None:
+                try:
+                    self.ftp.quit()
+                except Exception:
+                    self.ftp.close()
+
+    def walk(self, base: str) -> Iterator[tuple[str, int, datetime | None]]:
+        if self.protocol == "sftp":
+            yield from self._walk_sftp(base)
+        else:
+            yield from self._walk_ftp(base)
+
+    def _walk_sftp(self, base: str) -> Iterator[tuple[str, int, datetime | None]]:
+        stack = [base or "/"]
+        while stack:
+            current = stack.pop()
+            for entry in self.sftp.listdir_attr(current):
+                if entry.filename in (".", ".."):
+                    continue
+                child = _join_posix(current, entry.filename)
+                if stat.S_ISDIR(entry.st_mode or 0):
+                    stack.append(child)
+                    continue
+                mtime = datetime.fromtimestamp(entry.st_mtime, tz=timezone.utc) if entry.st_mtime else None
+                yield child, int(entry.st_size or 0), mtime
+
+    def _walk_ftp(self, base: str) -> Iterator[tuple[str, int, datetime | None]]:
+        assert self.ftp is not None
+        stack = [base or "/"]
+        seen = set()
+        while stack:
+            current = stack.pop()
+            if current in seen:
+                continue
+            seen.add(current)
+            try:
+                entries = list(self.ftp.mlsd(current))
+                use_mlsd = True
+            except Exception:
+                entries = [(name, {}) for name in self.ftp.nlst(current)]
+                use_mlsd = False
+            for name, facts in entries:
+                if name in (".", ".."):
+                    continue
+                child = name if name.startswith("/") else _join_posix(current, name)
+                if _ftp_is_dir(self.ftp, child, facts, use_mlsd):
+                    stack.append(child)
+                    continue
+                size = int(facts.get("size") or 0) if use_mlsd else _ftp_size(self.ftp, child)
+                mtime = _parse_mlsd_modify(facts.get("modify")) if use_mlsd else _ftp_mdtm(self.ftp, child)
+                yield child, size, mtime
+
+    def download(self, remote_path: str, local_path: Path, *, size: int, overwrite: bool) -> None:
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+        if local_path.exists() and not overwrite and (not size or local_path.stat().st_size == size):
+            print(f"[inpi] skip existing {local_path}")
+            return
+        tmp = local_path.with_suffix(local_path.suffix + ".part")
+        if tmp.exists():
+            tmp.unlink()
+        written = 0
+        started = time.monotonic()
+        with tmp.open("wb") as handle:
+            def write_chunk(chunk: bytes) -> None:
+                nonlocal written
+                handle.write(chunk)
+                written += len(chunk)
+                if written and written % (100 * 1024 * 1024) < len(chunk):
+                    _print_progress(local_path.name, written, size, started)
+
+            if self.protocol == "sftp":
+                with self.sftp.open(remote_path, "rb") as remote:
+                    remote.prefetch()
+                    while True:
+                        chunk = remote.read(1024 * 1024)
+                        if not chunk:
+                            break
+                        write_chunk(chunk)
+            else:
+                assert self.ftp is not None
+                self.ftp.voidcmd("TYPE I")
+                self.ftp.retrbinary(f"RETR {remote_path}", write_chunk, blocksize=1024 * 1024)
+        if size and written != size:
+            raise RuntimeError(f"size mismatch for {remote_path}: wrote {written}, expected {size}")
+        tmp.replace(local_path)
+        _print_progress(local_path.name, written, size, started)
+
+
+def main() -> None:
+    args = parse_args()
+    repo_dir = Path(args.repo_dir).resolve()
+    if args.install_deps:
+        install_deps(repo_dir)
+    p = paths(args.drive_root)
+    categories = _split_filter(args.categories)
+    niveaux = _split_filter(args.niveaux)
+    with InpiConnector(args) as conn:
+        archives = discover(conn, args.remote_base_dir, categories=categories, niveaux=niveaux)
+        print(f"[inpi] discovered {len(archives)} matching archive(s)")
+        for archive in archives[: args.max_files or len(archives)]:
+            local_path = local_path_for(p["source_archives"] / "inpi", archive.path)
+            conn.download(archive.path, local_path, size=archive.size, overwrite=args.overwrite)
+            write_json(
+                local_path.with_suffix(local_path.suffix + ".manifest.json"),
+                {
+                    "source": "inpi_ftp_colab_download",
+                    "remote_path": archive.path,
+                    "remote_size": archive.size,
+                    "remote_mtime": archive.mtime.isoformat() if archive.mtime else None,
+                    "local_path": str(local_path),
+                    "local_size": local_path.stat().st_size,
+                    "category": archive.category,
+                    "niveau": archive.niveau,
+                    "downloaded_at": datetime.now(timezone.utc).isoformat(),
+                },
+            )
+
+
+def discover(conn: InpiConnector, base: str, *, categories: set[str], niveaux: set[str]) -> list[RemoteArchive]:
+    archives = []
+    for remote_path, size, mtime in conn.walk(base or "/"):
+        target = detect_target(remote_path)
+        if target is None:
+            continue
+        category, niveau = target
+        if categories and category not in categories:
+            continue
+        if niveaux and niveau not in niveaux:
+            continue
+        archives.append(RemoteArchive(remote_path, size, mtime, category, niveau))
+    return sorted(archives, key=lambda item: item.path)
+
+
+def detect_target(path: str) -> tuple[str, str] | None:
+    lower = path.lower()
+    if not lower.endswith(".zip"):
+        return None
+    normalized = lower.replace("-", "_").replace(" ", "_")
+    category = None
+    if "formalites" in normalized or "formalite" in normalized:
+        category = "formalites"
+    if "comptes_annuels" in normalized or "compte_annuel" in normalized or "comptesannuels" in normalized:
+        category = "comptes_annuels"
+    if category is None:
+        return None
+    niveau = "niveau1" if any(token in normalized for token in ("niveau_1", "niveau1", "niv_1", "niv1")) else "standard"
+    return category, niveau
+
+
+def local_path_for(base: Path, remote_path: str) -> Path:
+    rel = PurePosixPath(remote_path.lstrip("/"))
+    return base / Path(*rel.parts)
+
+
+def _split_filter(value: str | None) -> set[str]:
+    if not value:
+        return set()
+    return {part.strip().lower() for part in value.split(",") if part.strip()}
+
+
+def _join_posix(base: str, name: str) -> str:
+    return f"{base.rstrip('/')}/{name}"
+
+
+def _ftp_is_dir(ftp: ftplib.FTP, path: str, facts: dict, use_mlsd: bool) -> bool:
+    if use_mlsd:
+        ftype = (facts.get("type") or "").lower()
+        if ftype in ("dir", "cdir", "pdir"):
+            return True
+        if ftype == "file":
+            return False
+    cwd = ftp.pwd()
+    try:
+        ftp.cwd(path)
+        ftp.cwd(cwd)
+        return True
+    except ftplib.error_perm:
+        return False
+
+
+def _ftp_size(ftp: ftplib.FTP, path: str) -> int:
+    try:
+        ftp.voidcmd("TYPE I")
+        return int(ftp.size(path) or 0)
+    except Exception:
+        return 0
+
+
+def _ftp_mdtm(ftp: ftplib.FTP, path: str) -> datetime | None:
+    try:
+        response = ftp.sendcmd(f"MDTM {path}")
+    except Exception:
+        return None
+    parts = response.split()
+    if len(parts) >= 2:
+        return _parse_mlsd_modify(parts[1])
+    return None
+
+
+def _parse_mlsd_modify(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value[:14], "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
+def _print_progress(name: str, written: int, total: int, started: float) -> None:
+    elapsed = max(time.monotonic() - started, 1.0)
+    mb = written / 1024 / 1024
+    speed = mb / elapsed
+    if total:
+        print(f"[inpi] {name}: {mb:,.1f} MB / {total / 1024 / 1024:,.1f} MB ({written / total * 100:.2f}%), {speed:.1f} MB/s")
+    else:
+        print(f"[inpi] {name}: {mb:,.1f} MB, {speed:.1f} MB/s")
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Download INPI source ZIP archives in Colab.")
+    parser.add_argument("--drive-root", default=DEFAULT_DRIVE_ROOT)
+    parser.add_argument("--repo-dir", default=".")
+    parser.add_argument("--install-deps", action="store_true")
+    parser.add_argument("--protocol", default=os.getenv("INPI_FTP_PROTOCOL", "ftp"), choices=("ftp", "sftp"))
+    parser.add_argument("--host", default=os.getenv("INPI_FTP_HOST", ""))
+    parser.add_argument("--port", type=int, default=None)
+    parser.add_argument("--user", default=os.getenv("INPI_FTP_USER", ""))
+    parser.add_argument("--password", default=os.getenv("INPI_FTP_PASSWORD", ""))
+    parser.add_argument("--remote-base-dir", default=os.getenv("INPI_REMOTE_BASE_DIR", "/"))
+    parser.add_argument("--timeout", type=int, default=int(os.getenv("INPI_FTP_TIMEOUT", "600")))
+    parser.add_argument("--categories", help="Comma-separated: comptes_annuels,formalites")
+    parser.add_argument("--niveaux", help="Comma-separated: standard,niveau1")
+    parser.add_argument("--max-files", type=int)
+    parser.add_argument("--overwrite", action="store_true")
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    main()

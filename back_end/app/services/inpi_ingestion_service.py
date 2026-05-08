@@ -6,7 +6,7 @@ Mongo collections:
 
   - `ingestion_state` : run-level state (single doc keyed by `dataset_slug`),
     same shape as the parquet ingestion — so the same admin views keep working.
-  - `inpi_rne_files`  : per-file state (one doc per remote path) tracking
+  - `inpi_rne_source_files` : per-file state (one doc per remote path) tracking
     pending → downloading → downloaded → processing → done / failed.
 
 Heavy IO (FTP/SFTP, gzip/zip parsing, bulk_write) runs in `asyncio.to_thread`
@@ -18,11 +18,13 @@ from __future__ import annotations
 import asyncio
 import ftplib
 import gzip
+import hashlib
 import io
 import json
 import logging
 import os
 import time
+import unicodedata
 import zipfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -35,14 +37,16 @@ from pymongo import ASCENDING, MongoClient, ReturnDocument, UpdateOne
 from pymongo.errors import OperationFailure
 
 from app.core.config import settings
-from app.services.company_sync_service import (
+from app.services.company_identity_helpers import (
     extract_denomination,
     extract_siren,
+    extract_siren_with_detail,
 )
+from app.services.rejected_record_writer import SyncRejectedRecordWriter
 
 logger = logging.getLogger(__name__)
 
-UPSERT_KEY = "siren"
+UPSERT_KEY = "record_key"
 ACTIVE_STATUSES = {"starting", "listing", "downloading", "processing", "resuming", "cancelling"}
 FILE_STATUS_PENDING = "pending"
 FILE_STATUS_DOWNLOADING = "downloading"
@@ -69,6 +73,13 @@ class RemoteFile:
     path: str          # absolute remote path, posix
     size: int
     mtime: datetime | None
+
+
+@dataclass(frozen=True)
+class InpiFileTarget:
+    category: str
+    niveau: str
+    collection: str
 
 
 # ---------------------------------------------------------------------------
@@ -107,8 +118,8 @@ class _FtpConnector:
             self._open_ftp()
         # Never put credentials in any log line.
         logger.info(
-            "[inpi-ftp] connected protocol=%s host=%s port=%s user=%s",
-            self.protocol, self.host, self.port, self.user,
+            "[inpi-ftp] connected protocol=%s host=%s port=%s",
+            self.protocol, self.host, self.port,
         )
         return self
 
@@ -365,7 +376,6 @@ class InpiIngestionService:
         self.db = db
         self.state_coll = db[settings.INGESTION_STATE_COLLECTION]
         self.files_coll = db[settings.INPI_RNE_FILES_COLLECTION]
-        self.companies_coll = db[settings.INPI_RNE_COLLECTION]
         self.data_dir = Path(settings.INPI_LOCAL_DATA_DIR)
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.dataset_slug = settings.INPI_RNE_DATASET_SLUG
@@ -376,16 +386,18 @@ class InpiIngestionService:
         await self.state_coll.create_index([("dataset_slug", ASCENDING)], unique=True)
         await self.files_coll.create_index([("remote_path", ASCENDING)], unique=True)
         await self.files_coll.create_index([("status", ASCENDING)])
-        try:
-            await self.companies_coll.create_index([(UPSERT_KEY, ASCENDING)], unique=True)
-        except OperationFailure as exc:
-            if exc.code != 86:  # IndexOptionsConflict — already exists with different options
-                raise
+        for collection_name in self._target_collection_names():
+            try:
+                await self.db[collection_name].create_index([(UPSERT_KEY, ASCENDING)], unique=True)
+                await self.db[collection_name].create_index([("siren", ASCENDING)])
+            except OperationFailure as exc:
+                if exc.code != 86:
+                    raise
 
-    async def run(self, force: bool = False) -> None:
+    async def run(self, force: bool = False, max_files: int | None = None) -> None:
         await self.ensure_indexes()
         run_id = str(uuid4())
-        await self._acquire_run(run_id, force)
+        await self._acquire_run(run_id, force, max_files=max_files)
 
         try:
             # 1) Resume: replay any file left "downloading" or "processing".
@@ -397,7 +409,10 @@ class InpiIngestionService:
             # 2) List remote tree, then keep only ingestable files.
             await self._update_state_owned(run_id, {"status": "listing", "last_check_at": _utcnow()})
             remote_files_all = await asyncio.to_thread(self._list_remote_files_sync)
-            remote_files = [f for f in remote_files_all if self._should_ingest(f.path)]
+            remote_files = sorted(
+                (f for f in remote_files_all if self._target_for_path(f.path) is not None),
+                key=lambda f: (f.size, f.path),
+            )
             logger.info(
                 "[inpi] discovered=%d ingestable=%d filter=%r",
                 len(remote_files_all), len(remote_files),
@@ -425,9 +440,15 @@ class InpiIngestionService:
                 "[inpi] new=%d to_process=%d (force=%s)",
                 new_files, len(to_process), force,
             )
+            if to_process:
+                logger.info(
+                    "[inpi] pending processing queue: %d file(s); first=%s",
+                    len(to_process),
+                    to_process[0].get("remote_path"),
+                )
 
             # 4) Download + ingest each pending file.
-            limit = settings.INPI_RNE_MAX_FILES_PER_RUN
+            limit = max_files if max_files is not None else settings.INPI_RNE_MAX_FILES_PER_RUN
             processed = 0
             ingested_total = 0
             for entry in to_process:
@@ -438,6 +459,24 @@ class InpiIngestionService:
                 rows = await self._handle_file(run_id, entry)
                 ingested_total += rows
                 processed += 1
+            remaining = max(0, len(to_process) - processed)
+            if remaining:
+                next_paths = [str(item.get("remote_path")) for item in to_process[processed:processed + 5]]
+                logger.info(
+                    "[inpi] run summary: processed=%d/%d files, rows=%d, remaining_pending=%d%s",
+                    processed,
+                    len(to_process),
+                    ingested_total,
+                    remaining,
+                    f", next={next_paths}" if next_paths else "",
+                )
+            else:
+                logger.info(
+                    "[inpi] run summary: processed=%d/%d files, rows=%d, remaining_pending=0",
+                    processed,
+                    len(to_process),
+                    ingested_total,
+                )
 
             # 5) Done.
             await self._update_state_owned(
@@ -448,6 +487,9 @@ class InpiIngestionService:
                     "last_check_at": _utcnow(),
                     "rows_ingested_last_run": ingested_total,
                     "files_processed_last_run": processed,
+                    "download_status": None,
+                    "download_total_bytes": None,
+                    "download_progress_percent": None,
                     "last_error": None,
                 },
             )
@@ -500,15 +542,25 @@ class InpiIngestionService:
             "base": target,
             "count": len(files),
             "filter": settings.INPI_REMOTE_INCLUDE_GLOB or "<default extensions>",
-            "files": [
+            "files": [self._remote_file_summary(f) for f in files],
+        }
+
+    def _remote_file_summary(self, remote_file: RemoteFile) -> dict[str, Any]:
+        target = self._target_for_path(remote_file.path)
+        return {
+            "path": remote_file.path,
+            "size": remote_file.size,
+            "mtime": remote_file.mtime.isoformat() if remote_file.mtime else None,
+            "ingestable": target is not None,
+            "target": (
                 {
-                    "path": f.path,
-                    "size": f.size,
-                    "mtime": f.mtime.isoformat() if f.mtime else None,
-                    "ingestable": self._should_ingest(f.path),
+                    "category": target.category,
+                    "niveau": target.niveau,
+                    "collection": target.collection,
                 }
-                for f in files
-            ],
+                if target is not None
+                else None
+            ),
         }
 
     @staticmethod
@@ -535,6 +587,57 @@ class InpiIngestionService:
             )
         )
 
+    @classmethod
+    def _target_for_path(cls, path: str) -> InpiFileTarget | None:
+        if not cls._should_ingest(path):
+            return None
+
+        normalized = _normalize_path_for_match(path)
+        is_formalites = "formalites" in normalized or "formalite" in normalized
+        is_comptes_annuels = (
+            "comptes_annuels" in normalized
+            or "compte_annuel" in normalized
+            or "comptesannuels" in normalized
+            or "compteannuel" in normalized
+        )
+        is_niveau1 = (
+            "niveau_1" in normalized
+            or "niveau1" in normalized
+            or "niv_1" in normalized
+            or "niv1" in normalized
+        )
+
+        if is_formalites:
+            return InpiFileTarget(
+                category="formalites",
+                niveau="niveau1" if is_niveau1 else "standard",
+                collection=(
+                    settings.INPI_RNE_FORMALITES_NIVEAU1_COLLECTION
+                    if is_niveau1
+                    else settings.INPI_RNE_FORMALITES_COLLECTION
+                ),
+            )
+        if is_comptes_annuels:
+            return InpiFileTarget(
+                category="comptes_annuels",
+                niveau="niveau1" if is_niveau1 else "standard",
+                collection=(
+                    settings.INPI_RNE_COMPTES_ANNUELS_NIVEAU1_COLLECTION
+                    if is_niveau1
+                    else settings.INPI_RNE_COMPTES_ANNUELS_COLLECTION
+                ),
+            )
+        return None
+
+    @staticmethod
+    def _target_collection_names() -> tuple[str, ...]:
+        return (
+            settings.INPI_RNE_FORMALITES_COLLECTION,
+            settings.INPI_RNE_FORMALITES_NIVEAU1_COLLECTION,
+            settings.INPI_RNE_COMPTES_ANNUELS_COLLECTION,
+            settings.INPI_RNE_COMPTES_ANNUELS_NIVEAU1_COLLECTION,
+        )
+
     # -- file lifecycle ------------------------------------------------------
 
     async def _resume_pending_files(self, run_id: str) -> None:
@@ -558,12 +661,18 @@ class InpiIngestionService:
         new_count = 0
         to_process: list[dict[str, Any]] = []
         for rf in remote_files:
+            target = self._target_for_path(rf.path)
+            if target is None:
+                continue
             existing = await self.files_coll.find_one({"remote_path": rf.path})
             if existing is None:
                 doc = {
                     "remote_path": rf.path,
                     "remote_size": rf.size,
                     "remote_mtime": rf.mtime,
+                    "category": target.category,
+                    "niveau": target.niveau,
+                    "target_collection": target.collection,
                     "status": FILE_STATUS_PENDING,
                     "attempts": 0,
                     "discovered_at": _utcnow(),
@@ -588,13 +697,23 @@ class InpiIngestionService:
                     "$set": {
                         "remote_size": rf.size,
                         "remote_mtime": rf.mtime,
+                        "category": target.category,
+                        "niveau": target.niveau,
+                        "target_collection": target.collection,
                         "status": FILE_STATUS_PENDING,
                         "last_error": None,
                     }
                 },
             )
             existing.update(
-                {"remote_size": rf.size, "remote_mtime": rf.mtime, "status": FILE_STATUS_PENDING}
+                {
+                    "remote_size": rf.size,
+                    "remote_mtime": rf.mtime,
+                    "category": target.category,
+                    "niveau": target.niveau,
+                    "target_collection": target.collection,
+                    "status": FILE_STATUS_PENDING,
+                }
             )
             to_process.append(existing)
         return new_count, to_process
@@ -603,6 +722,9 @@ class InpiIngestionService:
         remote_path = file_doc["remote_path"]
         remote_size = int(file_doc.get("remote_size") or 0)
         local_path = self._local_path_for(remote_path)
+        target = self._target_for_path(remote_path)
+        if target is None:
+            raise InpiFtpError(f"unsupported INPI file category for {remote_path}")
 
         await self._update_state_owned(
             run_id,
@@ -610,7 +732,11 @@ class InpiIngestionService:
                 "status": "downloading",
                 "current_remote_path": remote_path,
                 "current_local_path": str(local_path),
+                "current_target_collection": target.collection,
                 "downloaded_bytes": 0,
+                "download_total_bytes": remote_size or None,
+                "download_progress_percent": 0.0 if remote_size else None,
+                "download_status": "downloading",
                 "last_check_at": _utcnow(),
             },
         )
@@ -620,6 +746,12 @@ class InpiIngestionService:
                 "$set": {
                     "status": FILE_STATUS_DOWNLOADING,
                     "local_path": str(local_path),
+                    "category": target.category,
+                    "niveau": target.niveau,
+                    "target_collection": target.collection,
+                    "download_total_bytes": remote_size or None,
+                    "download_progress_percent": 0.0 if remote_size else None,
+                    "download_status": "downloading",
                     "last_error": None,
                 },
                 "$inc": {"attempts": 1},
@@ -653,6 +785,9 @@ class InpiIngestionService:
                 "$set": {
                     "status": FILE_STATUS_DOWNLOADED,
                     "local_size": written,
+                    "downloaded_bytes": written,
+                    "download_progress_percent": 100.0 if written else None,
+                    "download_status": "downloaded",
                     "downloaded_at": _utcnow(),
                 }
             },
@@ -662,13 +797,13 @@ class InpiIngestionService:
 
         # Process.
         await self._update_state_owned(
-            run_id, {"status": "processing", "last_check_at": _utcnow()}
+            run_id, {"status": "processing", "download_status": "downloaded", "last_check_at": _utcnow()}
         )
         await self.files_coll.update_one(
             {"remote_path": remote_path}, {"$set": {"status": FILE_STATUS_PROCESSING}}
         )
         try:
-            rows = await asyncio.to_thread(self._process_file_sync, local_path)
+            rows = await asyncio.to_thread(self._process_file_sync, local_path, target)
         except Exception as exc:
             await self.files_coll.update_one(
                 {"remote_path": remote_path},
@@ -711,6 +846,8 @@ class InpiIngestionService:
         try:
             state_coll = sync_client[settings.MONGO_DB][settings.INGESTION_STATE_COLLECTION]
             files_coll = sync_client[settings.MONGO_DB][settings.INPI_RNE_FILES_COLLECTION]
+            remote_doc = files_coll.find_one({"remote_path": remote_path}, {"remote_size": 1}) or {}
+            total_bytes = int(remote_doc.get("remote_size") or 0) or None
 
             log_step = 50 * 1024 * 1024     # log every 50 MiB
             state_step = 10 * 1024 * 1024   # candidate state flush every 10 MiB
@@ -734,11 +871,25 @@ class InpiIngestionService:
                 ):
                     state_coll.update_one(
                         {"dataset_slug": settings.INPI_RNE_DATASET_SLUG},
-                        {"$set": {"downloaded_bytes": written, "last_check_at": _utcnow()}},
+                        {
+                            "$set": {
+                                "downloaded_bytes": written,
+                                "download_total_bytes": total_bytes,
+                                "download_progress_percent": _progress_percent(written, total_bytes),
+                                "download_status": "downloading",
+                                "last_check_at": _utcnow(),
+                            }
+                        },
                     )
                     files_coll.update_one(
                         {"remote_path": remote_path},
-                        {"$set": {"downloaded_bytes": written}},
+                        {
+                            "$set": {
+                                "downloaded_bytes": written,
+                                "download_progress_percent": _progress_percent(written, total_bytes),
+                                "download_status": "downloading",
+                            }
+                        },
                     )
                     last_state_bytes = written
                     last_state_at = now
@@ -753,11 +904,25 @@ class InpiIngestionService:
             # Final flush so Mongo reflects the real total bytes.
             state_coll.update_one(
                 {"dataset_slug": settings.INPI_RNE_DATASET_SLUG},
-                {"$set": {"downloaded_bytes": written, "last_check_at": _utcnow()}},
+                {
+                    "$set": {
+                        "downloaded_bytes": written,
+                        "download_total_bytes": total_bytes,
+                        "download_progress_percent": _progress_percent(written, total_bytes),
+                        "download_status": "downloaded",
+                        "last_check_at": _utcnow(),
+                    }
+                },
             )
             files_coll.update_one(
                 {"remote_path": remote_path},
-                {"$set": {"downloaded_bytes": written}},
+                {
+                    "$set": {
+                        "downloaded_bytes": written,
+                        "download_progress_percent": _progress_percent(written, total_bytes),
+                        "download_status": "downloaded",
+                    }
+                },
             )
             logger.info(
                 "[inpi] download done remote=%s bytes=%d (%d MiB)",
@@ -767,15 +932,18 @@ class InpiIngestionService:
         finally:
             sync_client.close()
 
-    def _process_file_sync(self, path: Path) -> int:
+    def _process_file_sync(self, path: Path, target: InpiFileTarget) -> int:
         sync_client = MongoClient(settings.MONGO_URI)
         try:
-            sync_coll = sync_client[settings.MONGO_DB][settings.INPI_RNE_COLLECTION]
+            sync_db = sync_client[settings.MONGO_DB]
+            sync_coll = sync_db[target.collection]
+            rejected = SyncRejectedRecordWriter(sync_db[settings.REJECTED_RECORDS_COLLECTION])
             total = 0
             buf: list[UpdateOne] = []
             batch_size = settings.INPI_RNE_BATCH_SIZE
-            for record in self._iter_records(path):
-                doc = self._normalize_record(record)
+            file_hint = str(path)
+            for record in self._iter_records(path, rejected=rejected, file_hint=file_hint):
+                doc = self._normalize_record(record, target, rejected=rejected, file_hint=file_hint)
                 if doc is None:
                     continue
                 buf.append(UpdateOne({UPSERT_KEY: doc[UPSERT_KEY]}, {"$set": doc}, upsert=True))
@@ -786,34 +954,76 @@ class InpiIngestionService:
             if buf:
                 sync_coll.bulk_write(buf, ordered=False)
                 total += len(buf)
+            rejected.flush()
             return total
         finally:
             sync_client.close()
 
-    def _iter_records(self, path: Path) -> Iterable[dict[str, Any]]:
+    def _iter_records(
+        self,
+        path: Path,
+        *,
+        rejected: SyncRejectedRecordWriter | None = None,
+        file_hint: str | None = None,
+    ) -> Iterable[dict[str, Any]]:
         name = path.name.lower()
         if name.endswith(".zip"):
-            yield from _iter_records_zip(path)
+            yield from _iter_records_zip(path, rejected=rejected)
         elif name.endswith(".json.gz") or name.endswith(".jsonl.gz") or name.endswith(".ndjson.gz"):
             with gzip.open(path, "rb") as f:
-                yield from _iter_records_stream(f, name)
+                yield from _iter_records_stream(f, name, rejected=rejected, file_hint=file_hint or name)
         elif name.endswith(".gz"):
             with gzip.open(path, "rb") as f:
-                yield from _iter_records_stream(f, name[:-3])
+                yield from _iter_records_stream(f, name[:-3], rejected=rejected, file_hint=file_hint or name[:-3])
         else:
             with path.open("rb") as f:
-                yield from _iter_records_stream(f, name)
+                yield from _iter_records_stream(f, name, rejected=rejected, file_hint=file_hint or name)
 
-    def _normalize_record(self, raw: dict[str, Any]) -> dict[str, Any] | None:
-        siren = extract_siren("inpi", raw)
+    def _normalize_record(
+        self,
+        raw: dict[str, Any],
+        target: InpiFileTarget,
+        *,
+        rejected: SyncRejectedRecordWriter | None = None,
+        file_hint: str | None = None,
+    ) -> dict[str, Any] | None:
+        siren, detail = extract_siren_with_detail("inpi", raw)
         if not siren:
+            if rejected is not None:
+                # Try to find what was attempted as siren
+                from app.services.company_identity_helpers import get_nested_value
+                siren_attempt = None
+                for p in (
+                    ("siren",),
+                    ("company", "siren"),
+                    ("entreprise", "siren"),
+                    ("formality", "content", "personneMorale", "identite", "entreprise", "siren"),
+                    ("formality", "content", "personnePhysique", "identite", "entreprise", "siren"),
+                ):
+                    v = get_nested_value(raw, p)
+                    if v is not None:
+                        siren_attempt = str(v)
+                        break
+                rejected.write(
+                    source="inpi",
+                    pipeline="inpi_rne_bulk",
+                    reason="missing_siren",
+                    error_detail=detail,
+                    raw_snippet=raw,
+                    file_path=file_hint,
+                    siren_attempt=siren_attempt,
+                )
             return None
+        record_key = _record_key(target, raw)
         return {
-            UPSERT_KEY: siren,
+            UPSERT_KEY: record_key,
+            "siren": siren,
             "denomination": extract_denomination("inpi", raw),
             "rne_raw": raw,
             "rne_updated_at": _utcnow(),
             "source": "inpi_rne_bulk",
+            "category": target.category,
+            "niveau": target.niveau,
         }
 
     # -- run lifecycle (single-flight) --------------------------------------
@@ -841,7 +1051,13 @@ class InpiIngestionService:
         if result.matched_count == 0:
             raise InpiIngestionAlreadyRunning("inpi ingestion ownership lost")
 
-    async def _acquire_run(self, run_id: str, force: bool) -> dict[str, Any]:
+    async def _acquire_run(
+        self,
+        run_id: str,
+        force: bool,
+        *,
+        max_files: int | None = None,
+    ) -> dict[str, Any]:
         await self._get_state()
         state = await self.state_coll.find_one_and_update(
             {
@@ -854,6 +1070,7 @@ class InpiIngestionService:
                     "status": "starting",
                     "cancel_requested": False,
                     "force_requested": force,
+                    "max_files_requested": max_files,
                     "last_error": None,
                     "last_started_at": _utcnow(),
                     "last_check_at": _utcnow(),
@@ -871,7 +1088,7 @@ class InpiIngestionService:
     async def _release_run(self, run_id: str) -> None:
         await self.state_coll.update_one(
             {"dataset_slug": self.dataset_slug, "run_id": run_id},
-            {"$set": {"run_id": None}, "$unset": {"force_requested": ""}},
+            {"$set": {"run_id": None}, "$unset": {"force_requested": "", "max_files_requested": ""}},
         )
 
     async def _check_cancel(self, run_id: str | None = None) -> None:
@@ -929,6 +1146,26 @@ def _join_posix(parent: str, child: str) -> str:
     return str(PurePosixPath(parent.rstrip("/") or "/") / child)
 
 
+def _normalize_path_for_match(path: str) -> str:
+    ascii_path = unicodedata.normalize("NFKD", path).encode("ascii", "ignore").decode("ascii")
+    normalized = ascii_path.lower()
+    for char in ("-", " ", ".", "/"):
+        normalized = normalized.replace(char, "_")
+    while "__" in normalized:
+        normalized = normalized.replace("__", "_")
+    return normalized
+
+
+def _record_key(target: InpiFileTarget, raw: dict[str, Any]) -> str:
+    payload = {
+        "category": target.category,
+        "niveau": target.niveau,
+        "record": raw,
+    }
+    encoded = json.dumps(payload, sort_keys=True, default=str, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
 def _parse_mlsd_modify(value: str | None) -> datetime | None:
     if not value or len(value) < 14:
         return None
@@ -943,7 +1180,17 @@ def _utcnow() -> datetime:
     return datetime.now(tz=timezone.utc)
 
 
-def _iter_records_zip(path: Path) -> Iterable[dict[str, Any]]:
+def _progress_percent(bytes_written: int, total_bytes: int | None) -> float | None:
+    if not total_bytes:
+        return None
+    return round(min(100.0, (bytes_written / total_bytes) * 100), 2)
+
+
+def _iter_records_zip(
+    path: Path,
+    *,
+    rejected: SyncRejectedRecordWriter | None = None,
+) -> Iterable[dict[str, Any]]:
     with zipfile.ZipFile(path) as zf:
         infos = [i for i in zf.infolist() if not i.is_dir()]
         logger.info("[inpi] zip open %s entries=%d", path.name, len(infos))
@@ -954,15 +1201,22 @@ def _iter_records_zip(path: Path) -> Iterable[dict[str, Any]]:
                     path.name, idx, len(infos), info.filename,
                 )
             inner = info.filename.lower()
+            entry_hint = f"{path.name}:{info.filename}"
             with zf.open(info) as fh:
                 if inner.endswith(".gz"):
                     with gzip.open(fh, "rb") as gz:
-                        yield from _iter_records_stream(gz, inner[:-3])
+                        yield from _iter_records_stream(gz, inner[:-3], rejected=rejected, file_hint=entry_hint)
                 else:
-                    yield from _iter_records_stream(fh, inner)
+                    yield from _iter_records_stream(fh, inner, rejected=rejected, file_hint=entry_hint)
 
 
-def _iter_records_stream(fh: Any, hint_name: str) -> Iterable[dict[str, Any]]:
+def _iter_records_stream(
+    fh: Any,
+    hint_name: str,
+    *,
+    rejected: SyncRejectedRecordWriter | None = None,
+    file_hint: str | None = None,
+) -> Iterable[dict[str, Any]]:
     """Yield records from a binary file-like.
 
     Supports:
@@ -973,7 +1227,7 @@ def _iter_records_stream(fh: Any, hint_name: str) -> Iterable[dict[str, Any]]:
     """
     name = hint_name.lower()
     if name.endswith(".jsonl") or name.endswith(".ndjson"):
-        yield from _iter_jsonl(fh)
+        yield from _iter_jsonl(fh, rejected=rejected, file_hint=file_hint or hint_name)
         return
 
     # Peek first non-whitespace byte to decide between array/object/jsonl.
@@ -986,14 +1240,14 @@ def _iter_records_stream(fh: Any, hint_name: str) -> Iterable[dict[str, Any]]:
         except json.JSONDecodeError:
             # Could be JSONL with a leading object on first line; restart as jsonl.
             fh.seek(0)
-            yield from _iter_jsonl(fh)
+            yield from _iter_jsonl(fh, rejected=rejected, file_hint=file_hint or hint_name)
             return
         yield from _flatten_json(data)
         return
 
     # Default: try JSONL.
     fh.seek(0)
-    yield from _iter_jsonl(fh)
+    yield from _iter_jsonl(fh, rejected=rejected, file_hint=file_hint or hint_name)
 
 
 def _peek_nonspace(fh: Any) -> bytes:
@@ -1014,16 +1268,31 @@ def _peek_nonspace(fh: Any) -> bytes:
             return ch
 
 
-def _iter_jsonl(fh: Any) -> Iterable[dict[str, Any]]:
+def _iter_jsonl(
+    fh: Any,
+    *,
+    rejected: SyncRejectedRecordWriter | None = None,
+    file_hint: str | None = None,
+) -> Iterable[dict[str, Any]]:
     text = io.TextIOWrapper(fh, encoding="utf-8")
-    for line in text:
+    for line_no, line in enumerate(text, start=1):
         line = line.strip()
         if not line:
             continue
         try:
             obj = json.loads(line)
-        except json.JSONDecodeError:
-            logger.warning("[inpi] skipping malformed JSONL line")
+        except json.JSONDecodeError as exc:
+            logger.warning("[inpi] skipping malformed JSONL line %d in %s: %s", line_no, file_hint or "<unknown>", exc)
+            if rejected is not None:
+                rejected.write(
+                    source="inpi",
+                    pipeline="inpi_rne_bulk",
+                    reason="malformed_json",
+                    error_detail=str(exc),
+                    raw_snippet=line,
+                    file_path=file_hint,
+                    line_number=line_no,
+                )
             continue
         if isinstance(obj, dict):
             yield obj

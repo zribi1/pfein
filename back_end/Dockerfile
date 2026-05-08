@@ -36,8 +36,9 @@ RUN apt-get update \
 
 COPY --from=builder /opt/venv /opt/venv
 COPY --chown=app:app app /app/app
+COPY --chown=app:app scripts /app/scripts
 
-RUN mkdir -p /app/data && chown app:app /app/data
+RUN mkdir -p /source-archives /data-lake/logs && chown app:app /source-archives /data-lake /data-lake/logs
 
 USER app
 

@@ -25,6 +25,14 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     openapi_url=f"{settings.API_V1_PREFIX}/openapi.json",
+    openapi_tags=[
+        {"name": "Health", "description": "Runtime health checks for the API and MongoDB."},
+        {"name": "Predictions", "description": "Continuity-risk prediction lookup endpoints."},
+        {"name": "INPI", "description": "INPI/RNE source discovery, ingestion, and data-lake Parquet exports."},
+        {"name": "INSEE", "description": "INSEE Sirene identity exports for the company identity backbone."},
+        {"name": "BODACC", "description": "BODACC legal-event and label-source data-lake operations."},
+        {"name": "Financials", "description": "Financial Parquet source discovery and data-lake downloads."},
+    ],
     lifespan=lifespan,
 )
 

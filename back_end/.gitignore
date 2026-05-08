@@ -18,3 +18,12 @@ env/
 
 app/ml/artifacts/*
 !app/ml/artifacts/.gitkeep
+
+# Local generated data and debug/reference dumps.
+data/
+lake/
+references/*.log
+references/*.json
+references/*.xml
+references/*.taz
+references/*.zip
