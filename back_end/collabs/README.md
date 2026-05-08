@@ -12,8 +12,12 @@ Clone the repo and install dependencies:
 ```bash
 git clone <your-repo-url> /content/pfein
 cd /content/pfein/back_end
-python collabs/build_ml_data.py --install-deps --no-clean-core --no-clean-financials
+pip install -q -r collabs/requirements-colab.txt
 ```
+
+Do not install the backend `requirements.txt` in Colab unless you want to run
+the API there. The Colab file avoids conflicts with packages preinstalled by
+Google Colab.
 
 The default Drive storage root is:
 

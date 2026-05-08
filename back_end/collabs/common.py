@@ -57,7 +57,10 @@ def pipeline_env(drive_root: str | Path) -> dict[str, str]:
 
 
 def install_deps(repo_dir: str | Path) -> None:
-    run([sys.executable, "-m", "pip", "install", "-q", "-r", str(Path(repo_dir) / "requirements.txt")], repo_dir)
+    repo_path = Path(repo_dir)
+    colab_requirements = repo_path / "collabs" / "requirements-colab.txt"
+    requirements = colab_requirements if colab_requirements.exists() else repo_path / "requirements.txt"
+    run([sys.executable, "-m", "pip", "install", "-q", "-r", str(requirements)], repo_dir)
 
 
 def run(command: list[str], cwd: str | Path, env: dict[str, str] | None = None) -> None:
