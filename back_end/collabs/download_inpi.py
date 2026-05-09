@@ -12,7 +12,14 @@ from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Iterator
 
-from common import DEFAULT_DRIVE_ROOT, install_deps, paths, write_json
+from common import (
+    DEFAULT_DRIVE_ROOT,
+    install_deps,
+    seed_file_from_drive,
+    storage_paths,
+    sync_file_to_drive,
+    write_json,
+)
 
 
 VALID_CATEGORIES = {"comptes_annuels", "formalites"}
@@ -206,7 +213,8 @@ def main() -> None:
     repo_dir = Path(args.repo_dir).resolve()
     if args.install_deps:
         install_deps(repo_dir)
-    p = paths(args.drive_root)
+    drive_p, work_p = storage_paths(args.drive_root, args.work_dir)
+    p = work_p
     categories = _split_filter(args.categories)
     niveaux = _split_filter(args.niveaux)
     with InpiConnector(args) as conn:
@@ -222,9 +230,12 @@ def main() -> None:
         for index, archive in enumerate(selected, start=1):
             local_path = local_path_for(p["source_archives"] / "inpi", archive.path)
             print(f"[inpi] download {index}/{len(selected)} {archive.path}")
+            if args.work_dir and seed_file_from_drive(local_path, p["drive_root"], drive_p["drive_root"]):
+                print(f"[inpi] seeded local work file from Drive: {local_path.name}")
             conn.download(archive.path, local_path, size=archive.size, overwrite=args.overwrite)
+            manifest_path = local_path.with_suffix(local_path.suffix + ".manifest.json")
             write_json(
-                local_path.with_suffix(local_path.suffix + ".manifest.json"),
+                manifest_path,
                 {
                     "source": "inpi_ftp_colab_download",
                     "remote_path": archive.path,
@@ -237,6 +248,10 @@ def main() -> None:
                     "downloaded_at": datetime.now(timezone.utc).isoformat(),
                 },
             )
+            if args.work_dir:
+                sync_file_to_drive(local_path, p["drive_root"], drive_p["drive_root"])
+                sync_file_to_drive(manifest_path, p["drive_root"], drive_p["drive_root"])
+                print(f"[inpi] synced archive to Drive: {local_path.name}")
         print("[inpi] download phase done")
 
 
@@ -350,6 +365,7 @@ def _print_progress(name: str, written: int, total: int, started: float) -> None
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Download INPI source ZIP archives in Colab.")
     parser.add_argument("--drive-root", default=DEFAULT_DRIVE_ROOT)
+    parser.add_argument("--work-dir", help="Optional fast local staging root, for example /content/pfe_work.")
     parser.add_argument("--repo-dir", default=".")
     parser.add_argument("--install-deps", action="store_true")
     parser.add_argument("--protocol", default=os.getenv("INPI_FTP_PROTOCOL", "ftp"), choices=("ftp", "sftp"))

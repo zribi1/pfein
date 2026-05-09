@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
 import logging
 import tarfile
@@ -90,28 +91,19 @@ def export_bodacc_archive_to_parquet(
             if extracted is None:
                 continue
             content = extracted.read()
-            member_key = hashlib.sha256(
-                source.encode("utf-8") + b"\0" + member.name.encode("utf-8") + b"\0" + content
-            ).hexdigest()
-            try:
-                parsed = parse_bodacc_xml_content(content)
-            except Exception as exc:
-                parse_errors += 1
-                logger.warning("parse failed member=%s error=%s", member.name, exc)
-                continue
-
-            for index, annonce in enumerate(parsed.annonces, start=1):
-                row = _row_from_annonce(
-                    annonce,
-                    archive_name=archive_name,
-                    member_name=member.name,
-                    member_key=member_key,
-                    annonce_index=index,
-                    mode=mode,
-                    year=year,
-                    source_url=source_url,
-                    include_raw_json=include_raw_json,
-                )
+            parsed_rows, parsed_members, errors = _rows_from_member_content(
+                content=content,
+                source=source,
+                archive_name=archive_name,
+                member_name=member.name,
+                mode=mode,
+                year=year,
+                source_url=source_url,
+                include_raw_json=include_raw_json,
+            )
+            members += parsed_members
+            parse_errors += errors
+            for row in parsed_rows:
                 batch.append(row)
                 if len(batch) >= batch_size:
                     part += 1
@@ -150,6 +142,87 @@ def export_bodacc_archive_to_parquet(
     )
     _write_progress(output_dir, input_path, mode, year, total, part, members, parse_errors, done=True)
     return total
+
+
+def _rows_from_member_content(
+    *,
+    content: bytes,
+    source: str,
+    archive_name: str,
+    member_name: str,
+    mode: str,
+    year: int | None,
+    source_url: str | None,
+    include_raw_json: bool,
+) -> tuple[list[dict[str, Any]], int, int]:
+    if _is_archive_member(member_name):
+        rows: list[dict[str, Any]] = []
+        nested_members = 0
+        parse_errors = 0
+        try:
+            with tarfile.open(fileobj=io.BytesIO(content), mode="r:*") as nested:
+                for nested_member in nested:
+                    if not nested_member.isfile():
+                        continue
+                    extracted = nested.extractfile(nested_member)
+                    if extracted is None:
+                        continue
+                    nested_members += 1
+                    nested_content = extracted.read()
+                    child_rows, child_members, child_errors = _rows_from_member_content(
+                        content=nested_content,
+                        source=source,
+                        archive_name=archive_name,
+                        member_name=f"{member_name}!{nested_member.name}",
+                        mode=mode,
+                        year=year,
+                        source_url=source_url,
+                        include_raw_json=include_raw_json,
+                    )
+                    rows.extend(child_rows)
+                    nested_members += child_members
+                    parse_errors += child_errors
+        except tarfile.TarError as exc:
+            logger.warning("nested archive parse failed member=%s error=%s", member_name, exc)
+            return [], nested_members, parse_errors + 1
+        return rows, nested_members, parse_errors
+
+    if not _is_xml_member(member_name):
+        return [], 0, 0
+
+    member_key = hashlib.sha256(
+        source.encode("utf-8") + b"\0" + member_name.encode("utf-8") + b"\0" + content
+    ).hexdigest()
+    try:
+        parsed = parse_bodacc_xml_content(content)
+    except Exception as exc:
+        logger.warning("parse failed member=%s error=%s", member_name, exc)
+        return [], 0, 1
+
+    rows = [
+        _row_from_annonce(
+            annonce,
+            archive_name=archive_name,
+            member_name=member_name,
+            member_key=member_key,
+            annonce_index=index,
+            mode=mode,
+            year=year,
+            source_url=source_url,
+            include_raw_json=include_raw_json,
+        )
+        for index, annonce in enumerate(parsed.annonces, start=1)
+    ]
+    return rows, 0, 0
+
+
+def _is_archive_member(name: str) -> bool:
+    lower = name.lower()
+    return lower.endswith((".taz", ".tar", ".tar.gz"))
+
+
+def _is_xml_member(name: str) -> bool:
+    return name.lower().endswith(".xml")
 
 
 def _row_from_annonce(

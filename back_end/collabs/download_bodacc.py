@@ -7,7 +7,17 @@ from urllib.parse import unquote, urljoin, urlparse
 import sys
 from pathlib import Path
 
-from common import DEFAULT_DRIVE_ROOT, download_resumable, install_deps, paths, pipeline_env, run
+from common import (
+    DEFAULT_DRIVE_ROOT,
+    download_resumable,
+    install_deps,
+    pipeline_env,
+    seed_file_from_drive,
+    storage_paths,
+    sync_file_to_drive,
+    sync_tree_to_drive,
+    run,
+)
 
 
 CURRENT_BASE_URL = "https://echanges.dila.gouv.fr/OPENDATA/BODACC/FluxAnneeCourante/"
@@ -39,11 +49,13 @@ class HrefParser(HTMLParser):
 def main() -> None:
     args = parse_args()
     repo_dir = Path(args.repo_dir).resolve()
-    p = paths(args.drive_root)
+    drive_p, work_p = storage_paths(args.drive_root, args.work_dir)
+    p = work_p
     if args.install_deps:
         install_deps(repo_dir)
 
     bodacc_dir = p["source_archives"] / "bodacc"
+    drive_bodacc_dir = drive_p["source_archives"] / "bodacc"
     if args.download:
         print(
             "[bodacc] download phase start "
@@ -57,6 +69,7 @@ def main() -> None:
             end_year=args.end_year,
             max_files=args.max_files,
             overwrite=args.overwrite_download,
+            drive_root=drive_bodacc_dir if args.work_dir else None,
         )
         print("[bodacc] download phase done")
     else:
@@ -78,14 +91,14 @@ def main() -> None:
 
     cmd = [
         sys.executable,
-        "-m",
-        "app.tools.bodacc_archives_to_parquet",
-        "--input-dir",
-        str(bodacc_dir),
-        "--output-dir",
-        str(p["data_lake"]),
-        "--progress-file",
-        str(p["data_lake"] / "raw" / "bodacc" / "_batch_progress.json"),
+            "-m",
+            "app.tools.bodacc_archives_to_parquet",
+            "--input-dir",
+            str(bodacc_dir),
+            "--output-dir",
+            str(p["data_lake"]),
+            "--progress-file",
+            str(p["data_lake"] / "raw" / "bodacc" / "_batch_progress.json"),
         "--mode",
         args.mode,
         "--families",
@@ -94,7 +107,13 @@ def main() -> None:
     if args.year:
         cmd.extend(["--year", str(args.year)])
     cmd.append("--no-skip-existing" if args.overwrite_raw else "--skip-existing")
-    run(cmd, repo_dir, env=pipeline_env(args.drive_root))
+    run(cmd, repo_dir, env=pipeline_env(p["drive_root"]))
+    if args.work_dir:
+        print("[bodacc] syncing raw Parquet output to Drive")
+        raw_bodacc = p["data_lake"] / "raw" / "bodacc"
+        if raw_bodacc.exists():
+            sync_tree_to_drive(raw_bodacc, p["drive_root"], drive_p["drive_root"])
+        print("[bodacc] raw Parquet sync done")
 
 
 def download_archives(
@@ -106,6 +125,7 @@ def download_archives(
     end_year: int | None,
     max_files: int | None,
     overwrite: bool,
+    drive_root: Path | None = None,
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     base_url = CURRENT_BASE_URL if mode == "current" else HISTORICAL_BASE_URL
@@ -128,7 +148,12 @@ def download_archives(
     )
     for archive in selected:
         local_path = local_path_for(output_dir, archive, mode)
+        if drive_root is not None and seed_file_from_drive(local_path, output_dir, drive_root):
+            print(f"[bodacc] seeded local work file from Drive: {local_path.name}")
         download_resumable(archive.url, local_path, overwrite=overwrite)
+        if drive_root is not None:
+            synced = sync_file_to_drive(local_path, output_dir, drive_root)
+            print(f"[bodacc] synced archive to Drive: {synced}")
 
 
 def discover_archives(base_url: str, *, recursive: bool) -> list[BodaccRemoteArchive]:
@@ -250,6 +275,7 @@ def _split_csv(value: str) -> list[str]:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Download and export BODACC archives in Colab.")
     parser.add_argument("--drive-root", default=DEFAULT_DRIVE_ROOT)
+    parser.add_argument("--work-dir", help="Optional fast local staging root, for example /content/pfe_work.")
     parser.add_argument("--repo-dir", default=".")
     parser.add_argument("--install-deps", action="store_true")
     parser.add_argument("--mode", choices=("current", "historical"), default="current")

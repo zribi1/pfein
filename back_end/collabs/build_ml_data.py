@@ -1,19 +1,30 @@
 from __future__ import annotations
 
 import argparse
+import shutil
 import sys
 from pathlib import Path
 
-from common import DEFAULT_DRIVE_ROOT, install_deps, paths, pipeline_env, print_outputs, run
+from common import DEFAULT_DRIVE_ROOT, install_deps, pipeline_env, print_outputs, storage_paths, sync_tree_to_drive, run
 
 
 def main() -> None:
     args = parse_args()
     repo_dir = Path(args.repo_dir).resolve()
-    p = paths(args.drive_root)
-    env = pipeline_env(args.drive_root)
+    drive_p, work_p = storage_paths(args.drive_root, args.work_dir)
+    p = work_p
+    env = pipeline_env(p["drive_root"])
     if args.install_deps:
         install_deps(repo_dir)
+    if args.work_dir and not (p["data_lake"] / "raw").exists() and (drive_p["data_lake"] / "raw").exists():
+        print("[build] seeding raw data lake from Drive to local work dir")
+        shutil.copytree(drive_p["data_lake"] / "raw", p["data_lake"] / "raw")
+    if args.work_dir and not (p["data_lake"] / "clean").exists() and (drive_p["data_lake"] / "clean").exists():
+        print("[build] seeding clean data lake from Drive to local work dir")
+        shutil.copytree(drive_p["data_lake"] / "clean", p["data_lake"] / "clean")
+    if args.work_dir and not (p["data_lake"] / "features").exists() and (drive_p["data_lake"] / "features").exists():
+        print("[build] seeding feature data lake from Drive to local work dir")
+        shutil.copytree(drive_p["data_lake"] / "features", p["data_lake"] / "features")
 
     if args.clean_core:
         run(
@@ -28,6 +39,12 @@ def main() -> None:
             repo_dir,
             env=env,
         )
+        if args.work_dir and (p["data_lake"] / "clean" / "company_identity").exists():
+            print("[build] syncing clean core outputs to Drive")
+            for name in ("company_identity", "legal_events", "formalities_events", "annual_accounts"):
+                output = p["data_lake"] / "clean" / name
+                if output.exists():
+                    sync_tree_to_drive(output, p["drive_root"], drive_p["drive_root"])
 
     if args.clean_financials:
         run(
@@ -42,6 +59,9 @@ def main() -> None:
             repo_dir,
             env=env,
         )
+        if args.work_dir and (p["data_lake"] / "clean" / "financials").exists():
+            print("[build] syncing clean financials output to Drive")
+            sync_tree_to_drive(p["data_lake"] / "clean" / "financials", p["drive_root"], drive_p["drive_root"])
 
     feature_command = [
         sys.executable,
@@ -58,6 +78,12 @@ def main() -> None:
     if args.max_companies:
         feature_command.extend(["--max-companies", str(args.max_companies)])
     run(feature_command, repo_dir, env=env)
+    if args.work_dir:
+        print("[build] syncing feature outputs to Drive")
+        for name in ("company_year_features", "risk_labels", "company_features"):
+            output = p["data_lake"] / "features" / name
+            if output.exists():
+                sync_tree_to_drive(output, p["drive_root"], drive_p["drive_root"])
 
     if args.train:
         run(
@@ -75,13 +101,16 @@ def main() -> None:
             repo_dir,
             env=env,
         )
+        if args.work_dir and p["artifacts"].exists():
+            print("[build] syncing ML artifacts to Drive")
+            sync_tree_to_drive(p["artifacts"], p["drive_root"], drive_p["drive_root"])
 
     if args.audit:
         audit_command = [
             sys.executable,
             "collabs/audit_data_lake.py",
             "--drive-root",
-            str(args.drive_root),
+            str(drive_p["drive_root"] if args.work_dir else args.drive_root),
             "--max-columns",
             str(args.audit_max_columns),
             "--sample-rows",
@@ -93,12 +122,13 @@ def main() -> None:
             audit_command.extend(["--output-json", args.audit_output_json])
         run(audit_command, repo_dir, env=env)
 
-    print_outputs(args.drive_root)
+    print_outputs(drive_p["drive_root"] if args.work_dir else args.drive_root)
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build ML feature/label tables in Colab.")
     parser.add_argument("--drive-root", default=DEFAULT_DRIVE_ROOT)
+    parser.add_argument("--work-dir", help="Optional fast local staging root, for example /content/pfe_work.")
     parser.add_argument("--repo-dir", default=".")
     parser.add_argument("--install-deps", action="store_true")
     parser.add_argument("--start-year", type=int, default=2017)

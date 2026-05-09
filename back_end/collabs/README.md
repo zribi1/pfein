@@ -37,6 +37,15 @@ The default Drive storage root is:
 /content/drive/MyDrive/pfe_data
 ```
 
+For faster Colab runs, use local staging plus Drive persistence:
+
+```bash
+--work-dir /content/pfe_work
+```
+
+When `--work-dir` is set, downloads and raw Parquet exports run on Colab's
+local disk, then completed archives and outputs are synced back to Drive.
+
 ## Separate Blocks
 
 Download/export INSEE:
@@ -75,7 +84,7 @@ Download and export BODACC historical label archives:
 ```
 
 ```bash
-python collabs/download_bodacc.py --mode=historical --families=PCL,RCS-B --start-year 2010 --end-year 2025
+python collabs/download_bodacc.py --work-dir /content/pfe_work --mode=historical --families=PCL,RCS-B --start-year 2010 --end-year 2025
 ```
 
 This discovers DILA BODACC archives, downloads selected `PCL` and `RCS-B`
@@ -87,13 +96,13 @@ BODACC families inside one archive.
 Build ML-ready tables:
 
 ```bash
-python collabs/build_ml_data.py --start-year 2017 --end-year 2025
+python collabs/build_ml_data.py --work-dir /content/pfe_work --start-year 2017 --end-year 2025
 ```
 
 Build ML-ready tables and generate the audit report in one run:
 
 ```bash
-python collabs/build_ml_data.py --start-year 2017 --end-year 2025 --audit
+python collabs/build_ml_data.py --work-dir /content/pfe_work --start-year 2017 --end-year 2025 --audit
 ```
 
 Audit raw, clean, and feature datasets:
@@ -121,7 +130,7 @@ python collabs/build_ml_data.py --start-year 2017 --end-year 2025 --train
 Run the public-source pipeline in one command:
 
 ```bash
-python collabs/full_pipeline.py --install-deps --no-inpi --no-bodacc --start-year 2017 --end-year 2025
+python collabs/full_pipeline.py --work-dir /content/pfe_work --install-deps --no-inpi --no-bodacc --start-year 2017 --end-year 2025
 ```
 
 Run the public-source pipeline plus historical BODACC labels:

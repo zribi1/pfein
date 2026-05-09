@@ -10,8 +10,11 @@ from common import (
     FINANCIAL_DATASET_SLUG,
     download_resumable,
     install_deps,
-    paths,
     read_json_url,
+    seed_file_from_drive,
+    storage_paths,
+    sync_file_to_drive,
+    sync_tree_to_drive,
     write_json,
 )
 
@@ -19,7 +22,8 @@ from common import (
 def main() -> None:
     args = parse_args()
     repo_dir = Path(args.repo_dir).resolve()
-    p = paths(args.drive_root)
+    drive_p, work_p = storage_paths(args.drive_root, args.work_dir)
+    p = work_p
     if args.install_deps:
         install_deps(repo_dir)
 
@@ -32,9 +36,12 @@ def main() -> None:
         f"id={resource.get('id')} size={resource.get('filesize')} "
         f"modified={resource.get('last_modified') or resource.get('published')}"
     )
+    if args.work_dir and seed_file_from_drive(source_file, p["drive_root"], drive_p["drive_root"]):
+        print(f"[bilan] seeded local work file from Drive: {source_file.name}")
     download_resumable(url, source_file, overwrite=args.overwrite)
+    manifest_path = source_file.with_suffix(source_file.suffix + ".manifest.json")
     write_json(
-        source_file.with_suffix(source_file.suffix + ".manifest.json"),
+        manifest_path,
         {
             "source": "data.gouv.fr",
             "dataset_slug": FINANCIAL_DATASET_SLUG,
@@ -46,6 +53,10 @@ def main() -> None:
             "size_bytes": source_file.stat().st_size,
         },
     )
+    if args.work_dir:
+        print(f"[bilan] syncing source archive to Drive")
+        sync_file_to_drive(source_file, p["drive_root"], drive_p["drive_root"])
+        sync_file_to_drive(manifest_path, p["drive_root"], drive_p["drive_root"])
 
     if args.copy_to_raw:
         print("[bilan] copy-to-raw phase start")
@@ -65,6 +76,9 @@ def main() -> None:
             },
         )
         print(f"[bilan] raw ready: {raw_file}")
+        if args.work_dir:
+            sync_tree_to_drive(raw_dir, p["drive_root"], drive_p["drive_root"])
+            print("[bilan] raw sync to Drive done")
     else:
         print("[bilan] copy-to-raw phase skipped")
 
@@ -90,6 +104,7 @@ def latest_financial_resource() -> dict:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Download financial/bilan Parquet data in Colab.")
     parser.add_argument("--drive-root", default=DEFAULT_DRIVE_ROOT)
+    parser.add_argument("--work-dir", help="Optional fast local staging root, for example /content/pfe_work.")
     parser.add_argument("--repo-dir", default=".")
     parser.add_argument("--install-deps", action="store_true")
     parser.add_argument("--overwrite", action="store_true")

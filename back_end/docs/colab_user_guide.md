@@ -118,6 +118,18 @@ DRIVE_ROOT = "/content/drive/MyDrive/PFE ML Data/pfe_data"
 !ls "$DRIVE_ROOT"
 ```
 
+Optional fast staging root:
+
+```python
+WORK_DIR = "/content/pfe_work"
+!mkdir -p "$WORK_DIR"
+```
+
+Use `--work-dir "$WORK_DIR"` on pipeline commands when you want Colab to do
+downloads, extraction, and Parquet writes on local disk, then sync completed
+archives and outputs back to Drive. Drive remains the durable copy; `/content`
+can disappear when the runtime resets.
+
 ## Step 5: Download INSEE And Financial Data
 
 Run this when starting from zero or when you want to refresh public INSEE and
@@ -128,6 +140,7 @@ financial source files.
 
 !python collabs/full_pipeline.py \
   --drive-root "/content/drive/MyDrive/PFE ML Data/pfe_data" \
+  --work-dir "/content/pfe_work" \
   --install-deps \
   --no-inpi \
   --no-bodacc \
@@ -165,6 +178,7 @@ tables only:
 
 !python collabs/build_ml_data.py \
   --drive-root "/content/drive/MyDrive/PFE ML Data/pfe_data" \
+  --work-dir "/content/pfe_work" \
   --start-year 2017 \
   --end-year 2025 \
   --max-companies 100000
@@ -177,6 +191,7 @@ If you also want the audit report from the same command, add `--audit`:
 ```python
 !python collabs/build_ml_data.py \
   --drive-root "/content/drive/MyDrive/PFE ML Data/pfe_data" \
+  --work-dir "/content/pfe_work" \
   --start-year 2017 \
   --end-year 2025 \
   --max-companies 100000 \
@@ -240,6 +255,7 @@ does not export/process them.
 
 !python collabs/download_bodacc.py \
   --drive-root "/content/drive/MyDrive/PFE ML Data/pfe_data" \
+  --work-dir "/content/pfe_work" \
   --repo-dir "/content/pfein/back_end" \
   --mode historical \
   --families PCL,RCS-B \
@@ -267,6 +283,7 @@ For a small smoke test:
 ```python
 !python collabs/download_bodacc.py \
   --drive-root "/content/drive/MyDrive/PFE ML Data/pfe_data" \
+  --work-dir "/content/pfe_work" \
   --repo-dir "/content/pfein/back_end" \
   --mode historical \
   --families PCL,RCS-B \
@@ -287,6 +304,7 @@ feature building hits memory pressure.
 
 !python collabs/download_bodacc.py \
   --drive-root "/content/drive/MyDrive/PFE ML Data/pfe_data" \
+  --work-dir "/content/pfe_work" \
   --repo-dir "/content/pfein/back_end" \
   --mode historical \
   --families PCL,RCS-B \

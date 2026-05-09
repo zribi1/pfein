@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -14,6 +15,7 @@ from urllib.request import Request, urlopen
 
 
 DEFAULT_DRIVE_ROOT = "/content/drive/MyDrive/pfe_data"
+DEFAULT_WORK_ROOT = "/content/pfe_work"
 DATAGOUV_API_BASE = "https://www.data.gouv.fr/api/1"
 FINANCIAL_DATASET_SLUG = "donnees-financieres-detaillees-des-entreprises-format-parquet"
 
@@ -37,6 +39,36 @@ def paths(drive_root: str | Path) -> dict[str, Path]:
     for path in result.values():
         path.mkdir(parents=True, exist_ok=True)
     return result
+
+
+def sync_file_to_drive(local_path: Path, local_root: Path, drive_root: Path) -> Path:
+    target = drive_root / local_path.relative_to(local_root)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(local_path, target)
+    return target
+
+
+def sync_tree_to_drive(local_path: Path, local_root: Path, drive_root: Path) -> Path:
+    target = drive_root / local_path.relative_to(local_root)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(local_path, target, dirs_exist_ok=True)
+    return target
+
+
+def seed_file_from_drive(local_path: Path, local_root: Path, drive_root: Path) -> bool:
+    source = drive_root / local_path.relative_to(local_root)
+    if not source.exists() or local_path.exists():
+        return False
+    local_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, local_path)
+    return True
+
+
+def storage_paths(drive_root: str | Path, work_dir: str | Path | None) -> tuple[dict[str, Path], dict[str, Path]]:
+    drive_paths = paths(drive_root)
+    if not work_dir:
+        return drive_paths, drive_paths
+    return drive_paths, paths(work_dir)
 
 
 def pipeline_env(drive_root: str | Path) -> dict[str, str]:

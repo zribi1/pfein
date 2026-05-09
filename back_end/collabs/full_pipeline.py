@@ -14,6 +14,8 @@ def main() -> None:
         install_deps(repo_dir)
 
     base = [f"--drive-root={args.drive_root}", f"--repo-dir={repo_dir}"]
+    if args.work_dir:
+        base.append(f"--work-dir={args.work_dir}")
     if args.insee:
         run([sys.executable, "collabs/download_insee.py", *base, "--export-raw"], repo_dir)
     if args.bilan:
@@ -78,6 +80,7 @@ def main() -> None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run Colab preparation blocks in order.")
     parser.add_argument("--drive-root", default=DEFAULT_DRIVE_ROOT)
+    parser.add_argument("--work-dir", help="Optional fast local staging root, for example /content/pfe_work.")
     parser.add_argument("--repo-dir", default=".")
     parser.add_argument("--install-deps", action="store_true")
     parser.add_argument("--insee", action=argparse.BooleanOptionalAction, default=True)
