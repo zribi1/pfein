@@ -75,6 +75,7 @@ def main() -> None:
     report_dir = p["drive_root"] / "reports"
     report_dir.mkdir(parents=True, exist_ok=True)
 
+    print(f"[audit] start data_lake={data_lake}", flush=True)
     profile = audit_data_lake(
         data_lake,
         sample_rows=args.sample_rows,
@@ -103,8 +104,10 @@ def audit_data_lake(
     con = duckdb.connect()
     try:
         datasets = {}
-        for name, rel in DATASETS.items():
+        total = len(DATASETS)
+        for index, (name, rel) in enumerate(DATASETS.items(), start=1):
             root = data_lake / rel
+            print(f"[audit] dataset {index}/{total} {name}: scanning {root}", flush=True)
             datasets[name] = profile_dataset(
                 con,
                 name=name,
@@ -113,8 +116,17 @@ def audit_data_lake(
                 max_columns=max_columns,
                 max_categories=max_categories,
             )
+            status = "available" if datasets[name]["exists"] else "missing"
+            print(
+                f"[audit] dataset {index}/{total} {name}: {status}, "
+                f"files={datasets[name]['parquet_files']}, rows={datasets[name]['rows']:,}",
+                flush=True,
+            )
+        print("[audit] building quality checks", flush=True)
         quality_checks = build_quality_checks(con, datasets)
+        print("[audit] building readiness gate", flush=True)
         readiness = build_readiness(datasets)
+        print("[audit] building insights", flush=True)
         insights = build_insights(datasets)
         return {
             "generated_at": datetime.now(tz=timezone.utc).isoformat(),
@@ -152,14 +164,26 @@ def profile_dataset(
         }
 
     sql = read_parquet_sql(root)
+    print(f"[audit] {name}: counting rows", flush=True)
     rows = int(con.execute(f"SELECT COUNT(*) FROM {sql}").fetchone()[0] or 0)
+    print(f"[audit] {name}: reading schema", flush=True)
     describe_rows = con.execute(f"DESCRIBE SELECT * FROM {sql}").fetchall()
     columns = [{"name": str(row[0]), "type": str(row[1])} for row in describe_rows]
     selected = select_profile_columns(columns, max_columns=max_columns)
-    column_profile = {
-        column["name"]: profile_column(con, sql, column["name"], column["type"], rows, max_categories=max_categories)
-        for column in selected
-    }
+    print(f"[audit] {name}: profiling {len(selected)} of {len(columns)} columns", flush=True)
+    column_profile = {}
+    for index, column in enumerate(selected, start=1):
+        column_name = column["name"]
+        print(f"[audit] {name}: column {index}/{len(selected)} {column_name}", flush=True)
+        column_profile[column_name] = profile_column(
+            con,
+            sql,
+            column_name,
+            column["type"],
+            rows,
+            max_categories=max_categories,
+        )
+    print(f"[audit] {name}: sampling rows", flush=True)
     sample = sample_rows_for_report(con, sql, selected, sample_rows)
     return {
         "exists": True,
@@ -636,7 +660,9 @@ def recommendations(profile: dict[str, Any]) -> list[str]:
     if datasets["clean_company_identity"]["exists"] is False and datasets["raw_insee"]["exists"]:
         items.append("- Rebuild clean core sources so raw INSEE bulk data becomes `clean/company_identity`.")
     if datasets["raw_bodacc"]["exists"] is False:
-        items.append("- Add BODACC historical `PCL` and `RCS-B` archives to improve legal distress and radiation labels.")
+        items.append(
+            "- Add BODACC historical `PCL` and `RCS-B` archives, including full-year bundles when DILA does not expose per-family files, to improve legal distress and radiation labels."
+        )
     if datasets["raw_inpi"]["exists"] is False:
         items.append("- Add INPI formalities and annual accounts to improve registry activity and filing-behavior features.")
     if datasets["features_company_year"]["exists"]:

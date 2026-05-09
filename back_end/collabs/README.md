@@ -79,7 +79,10 @@ python collabs/download_bodacc.py --mode=historical --families=PCL,RCS-B --start
 ```
 
 This discovers DILA BODACC archives, downloads selected `PCL` and `RCS-B`
-archives into Drive, and exports them to `/data-lake/raw/bodacc`.
+archives into Drive, and exports them to `/data-lake/raw/bodacc`. For years
+where DILA publishes only a full-year bundle such as `BODACC_2016.tar` or
+`2022.tar.gz`, the bundle is included automatically because it contains several
+BODACC families inside one archive.
 
 Build ML-ready tables:
 

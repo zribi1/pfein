@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 ACTIVE_STATUSES = {"starting", "listing", "downloading", "exporting", "cancelling"}
 DEFAULT_FAMILIES = ("PCL", "RCS-B")
+FULL_YEAR_FAMILY = "FULL"
 BODACC_FILENAME_YEAR_RE = re.compile(r"(?:B[IX][ABC]|BODACC)[_-]?((?:19|20)[0-9]{2})[0-9]{3}", re.IGNORECASE)
 YEAR_RE = re.compile(r"(?:19|20)[0-9]{2}")
 
@@ -268,10 +269,10 @@ class BodaccLabelExportService:
             if not _is_under_base(base_url, url):
                 continue
             name = Path(unquote(urlparse(url).path)).name
-            if not name.lower().endswith(".taz"):
+            if not _is_archive_name(name):
                 continue
             family = _family_from_name(name)
-            if family not in family_set:
+            if family not in family_set and family != FULL_YEAR_FAMILY:
                 continue
             found[url] = BodaccLabelArchive(
                 url=url,
@@ -522,7 +523,7 @@ def _normalize_families(families: list[str] | None) -> list[str]:
         value = family.strip().upper().replace("_", "-")
         if value == "RCSB":
             value = "RCS-B"
-        if value in {"PCL", "RCS-B", "RCS-A", "BILAN"} and value not in normalized:
+        if value in {"PCL", "RCS-B", "RCS-A", "BILAN", FULL_YEAR_FAMILY} and value not in normalized:
             normalized.append(value)
     return normalized or list(DEFAULT_FAMILIES)
 
@@ -537,7 +538,21 @@ def _family_from_name(name: str) -> str:
         return "RCS-A"
     if value.startswith("BILAN-BXC"):
         return "BILAN"
+    if value.startswith("BODACC-") or value.startswith("BODACC."):
+        return FULL_YEAR_FAMILY
+    stem = value
+    for suffix in (".TAR.GZ", ".TAZ", ".TAR"):
+        if stem.endswith(suffix):
+            stem = stem[: -len(suffix)]
+            break
+    if stem.isdigit() and len(stem) == 4:
+        return FULL_YEAR_FAMILY
     return "other"
+
+
+def _is_archive_name(name: str) -> bool:
+    lower = name.lower()
+    return lower.endswith((".taz", ".tar", ".tar.gz"))
 
 
 def _year_from_name(name: str) -> int | None:

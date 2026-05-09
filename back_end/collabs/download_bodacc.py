@@ -13,6 +13,7 @@ from common import DEFAULT_DRIVE_ROOT, download_resumable, install_deps, paths, 
 CURRENT_BASE_URL = "https://echanges.dila.gouv.fr/OPENDATA/BODACC/FluxAnneeCourante/"
 HISTORICAL_BASE_URL = "https://echanges.dila.gouv.fr/OPENDATA/BODACC/FluxHistorique/"
 ARCHIVE_EXTENSIONS = (".taz", ".tar", ".tar.gz")
+FULL_YEAR_FAMILY = "FULL"
 
 
 @dataclass(frozen=True)
@@ -113,7 +114,7 @@ def download_archives(
     selected = [
         archive
         for archive in archives
-        if archive.family in family_set
+        if archive.family in family_set or archive.family == FULL_YEAR_FAMILY
         and (start_year is None or (archive.year is not None and archive.year >= start_year))
         and (end_year is None or (archive.year is not None and archive.year <= end_year))
     ]
@@ -203,6 +204,15 @@ def family_from_name(name: str) -> str:
         return "RCS-A"
     if value.startswith("BILAN-BXC") or value.startswith("BILAN-"):
         return "BILAN"
+    if value.startswith("BODACC-") or value.startswith("BODACC."):
+        return FULL_YEAR_FAMILY
+    stem = value
+    for suffix in (".TAR.GZ", ".TAZ", ".TAR"):
+        if stem.endswith(suffix):
+            stem = stem[: -len(suffix)]
+            break
+    if stem.isdigit() and len(stem) == 4:
+        return FULL_YEAR_FAMILY
     return "other"
 
 

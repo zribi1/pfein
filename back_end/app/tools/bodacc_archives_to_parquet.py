@@ -13,6 +13,7 @@ from app.core.config import settings
 from app.tools.bodacc_to_parquet import export_bodacc_archive_to_parquet
 
 logger = logging.getLogger("bodacc_archives_to_parquet")
+FULL_YEAR_FAMILY = "FULL"
 
 
 def main() -> None:
@@ -103,7 +104,7 @@ def _discover_archives(input_dir: Path, families: set[str]) -> list[Path]:
     ]
     for path in candidates:
         family = _family_from_name(path.name)
-        if family in families:
+        if family in families or family == FULL_YEAR_FAMILY:
             archives.append(path)
     return sorted(archives)
 
@@ -118,6 +119,15 @@ def _family_from_name(name: str) -> str:
         return "RCS-A"
     if value.startswith("BILAN-BXC"):
         return "BILAN"
+    if value.startswith("BODACC-") or value.startswith("BODACC."):
+        return FULL_YEAR_FAMILY
+    stem = value
+    for suffix in (".TAR.GZ", ".TAZ", ".TAR"):
+        if stem.endswith(suffix):
+            stem = stem[: -len(suffix)]
+            break
+    if stem.isdigit() and len(stem) == 4:
+        return FULL_YEAR_FAMILY
     return "other"
 
 

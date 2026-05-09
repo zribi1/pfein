@@ -302,6 +302,12 @@ This writes BODACC raw Parquet under:
 data-lake/raw/bodacc
 ```
 
+The historical DILA folder has mixed archive layouts. Years `2017` to `2021`
+are exposed as folders with per-family archives, while older years and recent
+years may be exposed as root-level full-year bundles such as `BODACC_2016.tar`
+or `2022.tar.gz`. The Colab downloader includes those full-year bundles
+automatically when they fall inside the requested year range.
+
 Then rebuild clean and features:
 
 ```python

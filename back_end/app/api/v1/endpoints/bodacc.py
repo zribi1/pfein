@@ -67,7 +67,8 @@ class BodaccLabelExportStatusResponse(BaseModel):
     summary="Initialize BODACC label archives",
     description=(
         "Starts the portable BODACC label-source initialization flow. The job lists the DILA current-year feed, "
-        "downloads missing or unreadable `PCL` and `RCS-B` `.taz` archives into the configured data volume, "
+        "downloads missing or unreadable `PCL` and `RCS-B` archives into the configured data volume, "
+        "and also accepts full bundled archives when the DILA feed exposes a whole-year bundle instead of per-family files. "
         "validates each tar archive, and exports event rows to `/data-lake/raw/bodacc/current/...`. "
         "Use this endpoint instead of local PowerShell scripts when setting up another PC."
     ),
@@ -90,7 +91,10 @@ async def trigger_bodacc_label_export(
     ),
     families: list[str] | None = Query(
         default=None,
-        description="BODACC archive families to process. Repeat or comma-separate values. Defaults to `PCL,RCS-B`.",
+        description=(
+            "BODACC archive families to process. Repeat or comma-separate values. Defaults to `PCL,RCS-B`. "
+            "Full bundled archives are included automatically when present because they contain multiple families."
+        ),
     ),
     background: bool = Query(
         default=True,
@@ -250,7 +254,8 @@ class BodaccInitStatusResponse(BaseModel):
     summary="Initialize historical BODACC archives",
     description=(
         "Starts the historical BODACC initialization flow. It discovers all archives from the `FluxHistorique` DILA endpoint, "
-        "reconciles them against the database, downloads missing/unprocessed ones, and imports them."
+        "including year folders and root-level full-year `.tar`/`.tar.gz` bundles, reconciles them against the database, "
+        "downloads missing/unprocessed ones, and imports them."
     ),
     response_description="Accepted run information.",
 )
