@@ -54,6 +54,9 @@ def main() -> None:
             overwrite=args.overwrite_download,
         )
 
+    if not args.export:
+        return
+
     archives = sorted(
         [*bodacc_dir.rglob("*.taz"), *bodacc_dir.rglob("*.tar"), *bodacc_dir.rglob("*.tar.gz")]
     )
@@ -230,6 +233,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--end-year", type=int)
     parser.add_argument("--families", default="PCL,RCS-B")
     parser.add_argument("--download", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--export", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--max-files", type=int)
     parser.add_argument("--overwrite-download", action="store_true")
     parser.add_argument("--overwrite-raw", action="store_true")
