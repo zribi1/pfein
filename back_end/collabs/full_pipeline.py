@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import subprocess
 import sys
 from pathlib import Path
 
-from common import DEFAULT_DRIVE_ROOT, install_deps, run
+from common import DEFAULT_DRIVE_ROOT, append_status, install_deps, run
 
 
 def main() -> None:
@@ -16,22 +17,37 @@ def main() -> None:
     base = [f"--drive-root={args.drive_root}", f"--repo-dir={repo_dir}"]
     if args.work_dir:
         base.append(f"--work-dir={args.work_dir}")
+    failures: list[str] = []
     if args.insee:
-        run([sys.executable, "collabs/download_insee.py", *base, "--export-raw"], repo_dir)
+        run_pipeline_step(args, failures, "download_insee", [sys.executable, "collabs/download_insee.py", *base, "--export-raw"], repo_dir)
     if args.bilan:
-        run([sys.executable, "collabs/download_bilan.py", *base, "--copy-to-raw"], repo_dir)
+        run_pipeline_step(args, failures, "download_bilan", [sys.executable, "collabs/download_bilan.py", *base, "--copy-to-raw"], repo_dir)
+    inpi_ok = True
     if args.inpi:
-        run(
+        inpi_ok = run_pipeline_step(
+            args,
+            failures,
+            "download_inpi",
             [
                 sys.executable,
                 "collabs/download_inpi.py",
                 *base,
                 f"--categories={args.inpi_categories}",
                 f"--niveaux={args.inpi_niveaux}",
+                f"--retries={args.inpi_retries}",
             ],
             repo_dir,
         )
-        run([sys.executable, "collabs/export_raw_sources.py", *base, "--no-insee", "--inpi", "--no-bodacc"], repo_dir)
+        if inpi_ok:
+            run_pipeline_step(
+                args,
+                failures,
+                "export_raw_inpi",
+                [sys.executable, "collabs/export_raw_sources.py", *base, "--no-insee", "--inpi", "--no-bodacc"],
+                repo_dir,
+            )
+        else:
+            append_status(args.drive_root, step="export_raw_inpi", status="skipped", details={"reason": "download_inpi failed"})
     if args.bodacc:
         bodacc_families = ",".join(args.bodacc_families)
         cmd = [
@@ -51,8 +67,9 @@ def main() -> None:
             cmd.append("--overwrite-download")
         if args.bodacc_overwrite_raw:
             cmd.append("--overwrite-raw")
-        run(cmd, repo_dir)
-    if args.build:
+        run_pipeline_step(args, failures, "download_bodacc", cmd, repo_dir)
+    can_build = not failures or args.build_after_failures
+    if args.build and can_build:
         cmd = [
             sys.executable,
             "collabs/build_ml_data.py",
@@ -74,7 +91,39 @@ def main() -> None:
                 cmd.extend(["--audit-output-md", args.audit_output_md])
             if args.audit_output_json:
                 cmd.extend(["--audit-output-json", args.audit_output_json])
-        run(cmd, repo_dir)
+        run_pipeline_step(args, failures, "build_ml_data", cmd, repo_dir)
+    elif args.build:
+        append_status(
+            args.drive_root,
+            step="build_ml_data",
+            status="skipped",
+            details={"reason": "previous step failed", "failures": failures},
+        )
+    if failures:
+        print("\n[pipeline] completed with failures. Inspect:")
+        print(f"- {Path(args.drive_root) / 'reports' / 'pipeline_status.md'}")
+        print(f"- {Path(args.drive_root) / 'reports' / 'pipeline_status.json'}")
+
+
+def run_pipeline_step(
+    args: argparse.Namespace,
+    failures: list[str],
+    step: str,
+    command: list[str],
+    repo_dir: Path,
+) -> bool:
+    append_status(args.drive_root, step=step, status="started", command=command)
+    try:
+        run(command, repo_dir)
+    except (subprocess.CalledProcessError, RuntimeError, OSError) as exc:
+        failures.append(step)
+        append_status(args.drive_root, step=step, status="failed", command=command, error=exc)
+        print(f"[pipeline] step failed: {step}. Status report written under {Path(args.drive_root) / 'reports'}")
+        if not args.continue_on_error:
+            raise
+        return False
+    append_status(args.drive_root, step=step, status="succeeded", command=command)
+    return True
 
 
 def parse_args() -> argparse.Namespace:
@@ -106,6 +155,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--audit-output-json", help="Optional JSON report path. Defaults to <drive-root>/reports/data_lake_audit.json.")
     parser.add_argument("--inpi-categories", default="comptes_annuels,formalites")
     parser.add_argument("--inpi-niveaux", default="standard,niveau1")
+    parser.add_argument("--inpi-retries", type=int, default=6)
+    parser.add_argument("--continue-on-error", action="store_true", help="Write status reports and continue independent steps after a source failure.")
+    parser.add_argument("--build-after-failures", action="store_true", help="Build features even if a previous source step failed.")
     return parser.parse_args()
 
 

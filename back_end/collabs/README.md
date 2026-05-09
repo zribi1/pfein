@@ -121,6 +121,21 @@ The audit writes:
 Use this before training to inspect column coverage, missingness, date ranges,
 sample rows, and which fields are reliable candidates for model features.
 
+Audit ML labels, leakage, and feature safety:
+
+```bash
+python collabs/audit_ml_readiness.py --drive-root "/content/drive/MyDrive/pfe_data"
+```
+
+This writes:
+
+```text
+<drive-root>/reports/label_audit.md
+<drive-root>/reports/leakage_audit.md
+<drive-root>/reports/feature_safety_audit.md
+<drive-root>/reports/ml_readiness_audit.json
+```
+
 Train too:
 
 ```bash

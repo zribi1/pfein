@@ -245,6 +245,33 @@ Important audit fields to inspect:
 | `features_company_year` | Coverage for final model feature columns |
 | Label Balance By Year | Whether labels have positive examples |
 
+## Step 7.1: Generate ML Readiness Audits
+
+Run these audits after feature generation and before treating model metrics as
+final evidence.
+
+```python
+%cd /content/pfein/back_end
+
+!python collabs/audit_ml_readiness.py \
+  --drive-root "/content/drive/MyDrive/PFE ML Data/pfe_data" \
+  --sample-rows 20
+```
+
+Outputs:
+
+```text
+reports/label_audit.md
+reports/leakage_audit.md
+reports/feature_safety_audit.md
+reports/ml_readiness_audit.json
+```
+
+Use `label_audit.md` to explain label balance by year and source,
+`leakage_audit.md` to verify target/date leakage risks, and
+`feature_safety_audit.md` to review which features are safe historical signals
+and which still require verification.
+
 ## Step 8: Download BODACC Archives Only
 
 Use this on normal RAM. It downloads historical BODACC archives to Drive but

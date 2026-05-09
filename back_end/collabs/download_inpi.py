@@ -67,6 +67,9 @@ class InpiConnector:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
+
+    def close(self) -> None:
         try:
             if self.sftp is not None:
                 self.sftp.close()
@@ -78,6 +81,13 @@ class InpiConnector:
                     self.ftp.quit()
                 except Exception:
                     self.ftp.close()
+        self.sftp = None
+        self.transport = None
+        self.ftp = None
+
+    def reconnect(self) -> None:
+        self.close()
+        self.__enter__()
 
     def walk(self, base: str) -> Iterator[tuple[str, int, datetime | None]]:
         if self.protocol == "sftp":
@@ -176,8 +186,8 @@ class InpiConnector:
                         write_chunk(chunk)
             else:
                 assert self.ftp is not None
-                self.ftp.voidcmd("TYPE I")
                 try:
+                    self.ftp.voidcmd("TYPE I")
                     self.ftp.retrbinary(
                         f"RETR {remote_path}",
                         write_chunk,
@@ -200,6 +210,15 @@ class InpiConnector:
                         print(
                             f"[inpi] transfer timed out before completion: {local_path.name} "
                             f"written={written:,} expected={size:,}; rerun to resume"
+                        )
+                        raise
+                except OSError as exc:
+                    if size and written >= size:
+                        print(f"[inpi] control connection failed after complete transfer: {local_path.name} ({exc})")
+                    else:
+                        print(
+                            f"[inpi] transfer failed before completion: {local_path.name} "
+                            f"written={written:,} expected={size:,}; rerun to resume ({exc})"
                         )
                         raise
         if size and written != size:
@@ -232,7 +251,14 @@ def main() -> None:
             print(f"[inpi] download {index}/{len(selected)} {archive.path}")
             if args.work_dir and seed_file_from_drive(local_path, p["drive_root"], drive_p["drive_root"]):
                 print(f"[inpi] seeded local work file from Drive: {local_path.name}")
-            conn.download(archive.path, local_path, size=archive.size, overwrite=args.overwrite)
+            download_with_retries(
+                conn,
+                archive.path,
+                local_path,
+                size=archive.size,
+                overwrite=args.overwrite,
+                retries=args.retries,
+            )
             manifest_path = local_path.with_suffix(local_path.suffix + ".manifest.json")
             write_json(
                 manifest_path,
@@ -253,6 +279,35 @@ def main() -> None:
                 sync_file_to_drive(manifest_path, p["drive_root"], drive_p["drive_root"])
                 print(f"[inpi] synced archive to Drive: {local_path.name}")
         print("[inpi] download phase done")
+
+
+def download_with_retries(
+    conn: InpiConnector,
+    remote_path: str,
+    local_path: Path,
+    *,
+    size: int,
+    overwrite: bool,
+    retries: int,
+) -> None:
+    attempts = max(retries, 1)
+    for attempt in range(1, attempts + 1):
+        try:
+            conn.download(remote_path, local_path, size=size, overwrite=overwrite and attempt == 1)
+            return
+        except (TimeoutError, socket.timeout, OSError, ftplib.Error) as exc:
+            if local_path.exists() and (not size or local_path.stat().st_size == size):
+                print(f"[inpi] archive completed despite connection error: {local_path.name}")
+                return
+            if attempt >= attempts:
+                raise
+            wait_seconds = min(30 * attempt, 120)
+            print(
+                f"[inpi] retry {attempt + 1}/{attempts} after connection error on "
+                f"{local_path.name}: {exc}; waiting {wait_seconds}s"
+            )
+            time.sleep(wait_seconds)
+            conn.reconnect()
 
 
 def discover(conn: InpiConnector, base: str, *, categories: set[str], niveaux: set[str]) -> list[RemoteArchive]:
@@ -378,6 +433,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--categories", help="Comma-separated: comptes_annuels,formalites")
     parser.add_argument("--niveaux", help="Comma-separated: standard,niveau1")
     parser.add_argument("--max-files", type=int)
+    parser.add_argument("--retries", type=int, default=int(os.getenv("INPI_DOWNLOAD_RETRIES", "4")))
     parser.add_argument("--overwrite", action="store_true")
     return parser.parse_args()
 

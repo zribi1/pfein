@@ -8,6 +8,8 @@ import shutil
 import subprocess
 import sys
 import time
+import traceback
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError
@@ -125,6 +127,80 @@ def read_json_url(url: str) -> dict[str, Any]:
 def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+
+
+def append_status(
+    drive_root: str | Path,
+    *,
+    step: str,
+    status: str,
+    command: list[str] | None = None,
+    error: BaseException | None = None,
+    details: dict[str, Any] | None = None,
+) -> None:
+    report_dir = Path(drive_root).resolve() / "reports"
+    report_dir.mkdir(parents=True, exist_ok=True)
+    json_path = report_dir / "pipeline_status.json"
+    md_path = report_dir / "pipeline_status.md"
+    try:
+        payload = json.loads(json_path.read_text(encoding="utf-8")) if json_path.exists() else {"steps": []}
+    except json.JSONDecodeError:
+        payload = {"steps": []}
+    entry: dict[str, Any] = {
+        "step": step,
+        "status": status,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    if command:
+        entry["command"] = command
+    if details:
+        entry["details"] = details
+    if error:
+        entry["error_type"] = type(error).__name__
+        entry["error"] = str(error)
+        entry["traceback"] = "".join(traceback.format_exception(type(error), error, error.__traceback__))
+        if isinstance(error, subprocess.CalledProcessError):
+            entry["returncode"] = error.returncode
+    payload["steps"].append(entry)
+    payload["updated_at"] = entry["timestamp"]
+    write_json(json_path, payload)
+    write_pipeline_status_markdown(md_path, payload)
+
+
+def write_pipeline_status_markdown(path: Path, payload: dict[str, Any]) -> None:
+    rows = payload.get("steps", [])
+    lines = [
+        "# Pipeline Status",
+        "",
+        f"Updated at: `{payload.get('updated_at', '')}`",
+        "",
+        "| Step | Status | Time | Notes |",
+        "|---|---|---|---|",
+    ]
+    for row in rows:
+        notes = row.get("error") or ""
+        if row.get("returncode") is not None:
+            notes = f"returncode={row['returncode']} {notes}".strip()
+        notes = str(notes).replace("|", "\\|").replace("\n", " ")
+        lines.append(f"| `{row.get('step', '')}` | `{row.get('status', '')}` | `{row.get('timestamp', '')}` | {notes} |")
+    failures = [row for row in rows if row.get("status") == "failed"]
+    if failures:
+        lines.extend(["", "## Failures", ""])
+        for row in failures:
+            lines.extend(
+                [
+                    f"### {row.get('step', '')}",
+                    "",
+                    f"- Error: `{row.get('error_type', '')}` {row.get('error', '')}",
+                    f"- Return code: `{row.get('returncode', '')}`",
+                    "",
+                    "```text",
+                    row.get("traceback", "").strip(),
+                    "```",
+                    "",
+                ]
+            )
+    path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def download_resumable(url: str, path: Path, *, overwrite: bool = False) -> Path:
