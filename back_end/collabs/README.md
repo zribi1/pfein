@@ -56,21 +56,40 @@ python collabs/download_inpi.py --categories=comptes_annuels,formalites --niveau
 python collabs/export_raw_sources.py --no-insee --inpi --no-bodacc
 ```
 
-Export BODACC archives already placed in Drive:
+Download and export BODACC historical label archives:
 
 ```text
 /content/drive/MyDrive/pfe_data/source-archives/bodacc
 ```
 
 ```bash
-python collabs/download_bodacc.py --mode=current --families=PCL,RCS-B
+python collabs/download_bodacc.py --mode=historical --families=PCL,RCS-B --start-year 2010 --end-year 2025
 ```
+
+This discovers DILA BODACC archives, downloads selected `PCL` and `RCS-B`
+archives into Drive, and exports them to `/data-lake/raw/bodacc`.
 
 Build ML-ready tables:
 
 ```bash
 python collabs/build_ml_data.py --start-year 2017 --end-year 2025
 ```
+
+Audit raw, clean, and feature datasets:
+
+```bash
+python collabs/audit_data_lake.py --drive-root "/content/drive/MyDrive/pfe_data"
+```
+
+The audit writes:
+
+```text
+<drive-root>/reports/data_lake_audit.json
+<drive-root>/reports/data_lake_audit.md
+```
+
+Use this before training to inspect column coverage, missingness, date ranges,
+sample rows, and which fields are reliable candidates for model features.
 
 Train too:
 
@@ -82,6 +101,12 @@ Run the public-source pipeline in one command:
 
 ```bash
 python collabs/full_pipeline.py --install-deps --no-inpi --no-bodacc --start-year 2017 --end-year 2025
+```
+
+Run the public-source pipeline plus historical BODACC labels:
+
+```bash
+python collabs/full_pipeline.py --install-deps --no-inpi --bodacc --bodacc-mode=historical --bodacc-start-year 2010 --bodacc-end-year 2025 --start-year 2010 --end-year 2025
 ```
 
 Run with INPI after setting environment variables:

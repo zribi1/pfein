@@ -96,7 +96,12 @@ def main() -> None:
 
 def _discover_archives(input_dir: Path, families: set[str]) -> list[Path]:
     archives: list[Path] = []
-    for path in input_dir.rglob("*.taz"):
+    candidates = [
+        *input_dir.rglob("*.taz"),
+        *input_dir.rglob("*.tar"),
+        *input_dir.rglob("*.tar.gz"),
+    ]
+    for path in candidates:
         family = _family_from_name(path.name)
         if family in families:
             archives.append(path)

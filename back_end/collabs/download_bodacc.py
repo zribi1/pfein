@@ -1,10 +1,38 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
+from html.parser import HTMLParser
+from urllib.parse import unquote, urljoin, urlparse
 import sys
 from pathlib import Path
 
-from common import DEFAULT_DRIVE_ROOT, install_deps, paths, pipeline_env, run
+from common import DEFAULT_DRIVE_ROOT, download_resumable, install_deps, paths, pipeline_env, run
+
+
+CURRENT_BASE_URL = "https://echanges.dila.gouv.fr/OPENDATA/BODACC/FluxAnneeCourante/"
+HISTORICAL_BASE_URL = "https://echanges.dila.gouv.fr/OPENDATA/BODACC/FluxHistorique/"
+ARCHIVE_EXTENSIONS = (".taz", ".tar", ".tar.gz")
+
+
+@dataclass(frozen=True)
+class BodaccRemoteArchive:
+    url: str
+    year: int | None
+    family: str
+
+
+class HrefParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.hrefs: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.lower() != "a":
+            return
+        for name, value in attrs:
+            if name.lower() == "href" and value:
+                self.hrefs.append(value)
 
 
 def main() -> None:
@@ -15,10 +43,23 @@ def main() -> None:
         install_deps(repo_dir)
 
     bodacc_dir = p["source_archives"] / "bodacc"
-    archives = sorted([*bodacc_dir.rglob("*.taz"), *bodacc_dir.rglob("*.tar")])
+    if args.download:
+        download_archives(
+            bodacc_dir,
+            mode=args.mode,
+            families=_split_csv(args.families),
+            start_year=args.start_year,
+            end_year=args.end_year,
+            max_files=args.max_files,
+            overwrite=args.overwrite_download,
+        )
+
+    archives = sorted(
+        [*bodacc_dir.rglob("*.taz"), *bodacc_dir.rglob("*.tar"), *bodacc_dir.rglob("*.tar.gz")]
+    )
     if not archives:
         print(f"[bodacc] no local archives found under {bodacc_dir}")
-        print("[bodacc] put DILA/BODACC .taz or .tar files there, then rerun this script.")
+        print("[bodacc] no DILA/BODACC archives were downloaded or found.")
         return
 
     cmd = [
@@ -34,7 +75,7 @@ def main() -> None:
         "--mode",
         args.mode,
         "--families",
-        *args.families.split(","),
+        *_split_csv(args.families),
     ]
     if args.year:
         cmd.extend(["--year", str(args.year)])
@@ -42,14 +83,155 @@ def main() -> None:
     run(cmd, repo_dir, env=pipeline_env(args.drive_root))
 
 
+def download_archives(
+    output_dir: Path,
+    *,
+    mode: str,
+    families: list[str],
+    start_year: int | None,
+    end_year: int | None,
+    max_files: int | None,
+    overwrite: bool,
+) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    base_url = CURRENT_BASE_URL if mode == "current" else HISTORICAL_BASE_URL
+    archives = discover_archives(base_url, recursive=(mode == "historical"))
+    family_set = set(families)
+    selected = [
+        archive
+        for archive in archives
+        if archive.family in family_set
+        and (start_year is None or (archive.year is not None and archive.year >= start_year))
+        and (end_year is None or (archive.year is not None and archive.year <= end_year))
+    ]
+    if max_files is not None:
+        selected = selected[:max_files]
+
+    print(
+        "[bodacc] discovered="
+        f"{len(archives)} selected={len(selected)} mode={mode} "
+        f"families={','.join(families)} years={start_year or '*'}-{end_year or '*'}"
+    )
+    for archive in selected:
+        local_path = local_path_for(output_dir, archive, mode)
+        download_resumable(archive.url, local_path, overwrite=overwrite)
+
+
+def discover_archives(base_url: str, *, recursive: bool) -> list[BodaccRemoteArchive]:
+    from urllib.request import Request, urlopen
+
+    base_url = ensure_trailing_slash(base_url)
+    seen_dirs: set[str] = set()
+    found: dict[str, BodaccRemoteArchive] = {}
+
+    def read_html(url: str) -> str:
+        request = Request(url, headers={"User-Agent": "pfe-colab-ml-pipeline/1.0"})
+        with urlopen(request, timeout=120) as response:
+            return response.read().decode("utf-8", errors="replace")
+
+    def walk(url: str) -> None:
+        normalized_url = ensure_trailing_slash(url)
+        if normalized_url in seen_dirs:
+            return
+        seen_dirs.add(normalized_url)
+        parser = HrefParser()
+        parser.feed(read_html(normalized_url))
+        for href in parser.hrefs:
+            if href.startswith(("#", "?", "mailto:")):
+                continue
+            child = urljoin(normalized_url, href)
+            if not is_under_base(base_url, child):
+                continue
+            name = Path(unquote(urlparse(child).path).rstrip("/")).name
+            if not name or name in (".", ".."):
+                continue
+            if child.endswith("/"):
+                if recursive:
+                    walk(child)
+                continue
+            if not is_archive_name(name):
+                continue
+            family = family_from_name(name)
+            if family == "other":
+                continue
+            found[child] = BodaccRemoteArchive(
+                url=child,
+                year=year_from_name(name) or year_from_url(child),
+                family=family,
+            )
+
+    walk(base_url)
+    return sorted(found.values(), key=lambda item: item.url)
+
+
+def local_path_for(output_dir: Path, archive: BodaccRemoteArchive, mode: str) -> Path:
+    name = Path(unquote(urlparse(archive.url).path)).name
+    year = str(archive.year or "unknown")
+    return output_dir / mode / year / archive.family / name
+
+
+def is_archive_name(name: str) -> bool:
+    lower = name.lower()
+    return any(lower.endswith(ext) for ext in ARCHIVE_EXTENSIONS)
+
+
+def family_from_name(name: str) -> str:
+    value = name.upper().replace("_", "-")
+    if value.startswith("PCL-BXA") or value.startswith("PCL-"):
+        return "PCL"
+    if value.startswith("RCS-B-BXB") or value.startswith("RCSB-BXB") or value.startswith("RCS-B"):
+        return "RCS-B"
+    if value.startswith("RCS-A-BXA") or value.startswith("RCSA-BXA") or value.startswith("RCS-A"):
+        return "RCS-A"
+    if value.startswith("BILAN-BXC") or value.startswith("BILAN-"):
+        return "BILAN"
+    return "other"
+
+
+def year_from_name(name: str) -> int | None:
+    tokens = "".join(ch if ch.isdigit() else " " for ch in name).split()
+    for token in tokens:
+        if len(token) >= 4:
+            year = int(token[:4])
+            if 1900 <= year <= 2100:
+                return year
+    return None
+
+
+def year_from_url(url: str) -> int | None:
+    parts = [part for part in unquote(urlparse(url).path).split("/") if part]
+    for part in reversed(parts):
+        year = year_from_name(part)
+        if year is not None:
+            return year
+    return None
+
+
+def ensure_trailing_slash(url: str) -> str:
+    return url if url.endswith("/") else f"{url}/"
+
+
+def is_under_base(base_url: str, url: str) -> bool:
+    return url.startswith(base_url)
+
+
+def _split_csv(value: str) -> list[str]:
+    return [part.strip().upper() for part in value.split(",") if part.strip()]
+
+
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Export local BODACC archives in Colab.")
+    parser = argparse.ArgumentParser(description="Download and export BODACC archives in Colab.")
     parser.add_argument("--drive-root", default=DEFAULT_DRIVE_ROOT)
     parser.add_argument("--repo-dir", default=".")
     parser.add_argument("--install-deps", action="store_true")
     parser.add_argument("--mode", choices=("current", "historical"), default="current")
     parser.add_argument("--year", type=int)
+    parser.add_argument("--start-year", type=int)
+    parser.add_argument("--end-year", type=int)
     parser.add_argument("--families", default="PCL,RCS-B")
+    parser.add_argument("--download", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--max-files", type=int)
+    parser.add_argument("--overwrite-download", action="store_true")
     parser.add_argument("--overwrite-raw", action="store_true")
     return parser.parse_args()
 

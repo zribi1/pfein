@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
@@ -45,10 +46,16 @@ def build_clean_financials(
 
     con = duckdb.connect()
     try:
+        temp_dir = _duckdb_temp_dir(data_lake_dir)
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        con.execute(f"SET temp_directory = '{_sql_string(str(temp_dir).replace('\\', '/'))}'")
+        con.execute("PRAGMA enable_progress_bar")
         raw_glob = _duckdb_glob(raw_root)
         limit_sql = f"LIMIT {int(max_rows)}" if max_rows else ""
         output_file = output_dir / "financials.parquet"
         target = _sql_string(str(output_file).replace("\\", "/"))
+        logger.info("clean financials reading raw_root=%s", raw_root)
+        logger.info("clean financials writing output=%s", output_file)
         con.execute(
             f"""
             COPY (
@@ -148,6 +155,15 @@ def _first_dataset(*roots: Path) -> Path | None:
         if root.exists() and any(root.rglob("*.parquet")):
             return root
     return None
+
+
+def _duckdb_temp_dir(data_lake_dir: Path) -> Path:
+    configured = os.environ.get("DUCKDB_TEMP_DIRECTORY")
+    if configured:
+        return Path(configured)
+    if str(data_lake_dir).startswith("/content/drive/"):
+        return Path("/content/pfein_duckdb_tmp")
+    return data_lake_dir / "tmp" / "duckdb"
 
 
 def _duckdb_glob(root: Path) -> str:

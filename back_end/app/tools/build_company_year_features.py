@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
@@ -60,8 +61,17 @@ def build_company_year_datasets(
 
     con = duckdb.connect()
     try:
+        logger.info(
+            "feature build started data_lake=%s years=%s-%s overwrite=%s max_companies=%s",
+            data_lake_dir,
+            start_year,
+            end_year,
+            overwrite,
+            max_companies,
+        )
         _configure_duckdb(con, data_lake_dir)
         sources = _SourceRoots(data_lake_dir)
+        logger.info("feature source roots=%s", sources.as_dict())
         _create_company_identity_view(con, sources.company_identity)
         _create_legal_events_view(con, sources.legal_events)
         _create_formalities_view(con, sources.formalities_events)
@@ -104,9 +114,15 @@ def build_company_year_datasets(
             raise RuntimeError("no companies found in clean/raw data lake sources")
 
         _create_feature_tables(con)
+        logger.info("feature tables created in DuckDB; writing company_year_features")
         _write_partitioned(con, "company_year_feature_rows", company_year_dir)
+        logger.info("feature write done company_year_features rows=%s", _count(con, "company_year_feature_rows"))
+        logger.info("writing risk_labels")
         _write_partitioned(con, "risk_label_rows", labels_dir)
+        logger.info("feature write done risk_labels rows=%s", _count(con, "risk_label_rows"))
+        logger.info("writing company_features")
         _write_single_file(con, "company_feature_rows", company_features_dir / "company_features.parquet")
+        logger.info("feature write done company_features rows=%s", _count(con, "company_feature_rows"))
 
         _write_manifest(
             company_year_dir,
@@ -148,6 +164,7 @@ class _SourceRoots:
         self.company_identity = _first_dataset(
             data_lake_dir / "clean" / "company_identity",
             data_lake_dir / "raw" / "insee" / "unites_legales",
+            data_lake_dir / "raw" / "insee" / "bulk" / "stock_unite_legale",
         )
         self.legal_events = _first_dataset(
             data_lake_dir / "clean" / "legal_events",
@@ -266,6 +283,8 @@ def _create_financials_view(con: Any, root: Path | None) -> None:
             "debt_to_equity": ("DOUBLE", ("debt_to_equity",)),
             "has_negative_result": ("BOOLEAN", ("has_negative_result",)),
             "has_negative_equity": ("BOOLEAN", ("has_negative_equity",)),
+            "account_type": ("VARCHAR", ("account_type", "type_bilan", "typeBilan")),
+            "confidentiality": ("VARCHAR", ("confidentiality",)),
         },
     )
     con.execute(
@@ -285,7 +304,9 @@ def _create_financials_view(con: Any, root: Path | None) -> None:
             equity_ratio,
             debt_to_equity,
             has_negative_result,
-            has_negative_equity
+            has_negative_equity,
+            account_type,
+            confidentiality
         FROM financials_source
         """
     )
@@ -414,6 +435,9 @@ def _create_feature_tables(con: Any) -> None:
                 arg_max(fin.debt_to_equity, fin.financial_year) AS latest_debt_to_equity,
                 max(CASE WHEN COALESCE(fin.has_negative_result, false) THEN 1 ELSE 0 END)::BOOLEAN AS has_negative_result_history,
                 max(CASE WHEN COALESCE(fin.has_negative_equity, false) THEN 1 ELSE 0 END)::BOOLEAN AS has_negative_equity_history,
+                count(fin.financial_year) AS financial_years_available,
+                max(fin.financial_year) AS latest_financial_year,
+                max(CASE WHEN fin.confidentiality IS NOT NULL THEN 1 ELSE 0 END)::BOOLEAN AS has_confidential_financials,
                 max(CASE WHEN fin.financial_year = b.prediction_year - 1 THEN fin.revenue ELSE NULL END) AS previous_year_revenue,
                 max(CASE WHEN fin.financial_year = b.prediction_year - 1 THEN fin.net_result ELSE NULL END) AS previous_year_net_result
             FROM base_rows b
@@ -460,6 +484,14 @@ def _create_feature_tables(con: Any) -> None:
             fin.latest_debt_to_equity,
             fin.has_negative_result_history,
             fin.has_negative_equity_history,
+            (fin.financial_years_available > 0)::BOOLEAN AS has_financial_data,
+            COALESCE(fin.financial_years_available, 0) AS financial_years_available,
+            fin.latest_financial_year,
+            CASE
+                WHEN fin.latest_financial_year IS NULL THEN NULL
+                ELSE i.prediction_year - fin.latest_financial_year
+            END AS years_since_last_financial_statement,
+            COALESCE(fin.has_confidential_financials, false) AS has_confidential_financials,
             CASE
                 WHEN fin.previous_year_revenue IS NULL OR fin.previous_year_revenue = 0 THEN NULL
                 ELSE (fin.latest_revenue - fin.previous_year_revenue) / abs(fin.previous_year_revenue)
@@ -728,9 +760,19 @@ def _count(con: Any, table_name: str) -> int:
 
 
 def _configure_duckdb(con: Any, data_lake_dir: Path) -> None:
-    temp_dir = data_lake_dir / "tmp" / "duckdb"
+    temp_dir = _duckdb_temp_dir(data_lake_dir)
     temp_dir.mkdir(parents=True, exist_ok=True)
     con.execute(f"SET temp_directory = '{_sql_string(str(temp_dir).replace('\\', '/'))}'")
+    con.execute("PRAGMA enable_progress_bar")
+
+
+def _duckdb_temp_dir(data_lake_dir: Path) -> Path:
+    configured = os.environ.get("DUCKDB_TEMP_DIRECTORY")
+    if configured:
+        return Path(configured)
+    if str(data_lake_dir).startswith("/content/drive/"):
+        return Path("/content/pfein_duckdb_tmp")
+    return data_lake_dir / "tmp" / "duckdb"
 
 
 def _parse_args() -> argparse.Namespace:

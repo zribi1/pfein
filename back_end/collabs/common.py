@@ -64,8 +64,24 @@ def install_deps(repo_dir: str | Path) -> None:
 
 
 def run(command: list[str], cwd: str | Path, env: dict[str, str] | None = None) -> None:
+    command = _unbuffer_python(command)
+    merged_env = os.environ.copy()
+    if env:
+        merged_env.update(env)
+    merged_env["PYTHONUNBUFFERED"] = "1"
     print("[run]", " ".join(command))
-    subprocess.run(command, cwd=str(cwd), env=env, check=True)
+    subprocess.run(command, cwd=str(cwd), env=merged_env, check=True)
+
+
+def _unbuffer_python(command: list[str]) -> list[str]:
+    if not command:
+        return command
+    executable = Path(command[0]).name.lower()
+    if not executable.startswith("python"):
+        return command
+    if len(command) > 1 and command[1] == "-u":
+        return command
+    return [command[0], "-u", *command[1:]]
 
 
 def read_json_url(url: str) -> dict[str, Any]:

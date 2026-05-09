@@ -31,7 +31,24 @@ def main() -> None:
         )
         run([sys.executable, "collabs/export_raw_sources.py", *base, "--no-insee", "--inpi", "--no-bodacc"], repo_dir)
     if args.bodacc:
-        run([sys.executable, "collabs/download_bodacc.py", *base], repo_dir)
+        cmd = [
+            sys.executable,
+            "collabs/download_bodacc.py",
+            *base,
+            f"--mode={args.bodacc_mode}",
+            f"--families={args.bodacc_families}",
+        ]
+        if args.bodacc_start_year:
+            cmd.extend(["--start-year", str(args.bodacc_start_year)])
+        if args.bodacc_end_year:
+            cmd.extend(["--end-year", str(args.bodacc_end_year)])
+        if args.bodacc_max_files:
+            cmd.extend(["--max-files", str(args.bodacc_max_files)])
+        if args.bodacc_overwrite_download:
+            cmd.append("--overwrite-download")
+        if args.bodacc_overwrite_raw:
+            cmd.append("--overwrite-raw")
+        run(cmd, repo_dir)
     if args.build:
         cmd = [
             sys.executable,
@@ -56,6 +73,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--bilan", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--inpi", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--bodacc", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument("--bodacc-mode", choices=("current", "historical"), default="historical")
+    parser.add_argument("--bodacc-families", default="PCL,RCS-B")
+    parser.add_argument("--bodacc-start-year", type=int)
+    parser.add_argument("--bodacc-end-year", type=int)
+    parser.add_argument("--bodacc-max-files", type=int)
+    parser.add_argument("--bodacc-overwrite-download", action="store_true")
+    parser.add_argument("--bodacc-overwrite-raw", action="store_true")
     parser.add_argument("--build", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--train", action="store_true")
     parser.add_argument("--start-year", type=int, default=2017)

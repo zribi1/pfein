@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
@@ -47,10 +48,12 @@ def build_clean_core_sources(
     con = duckdb.connect()
     try:
         _configure_duckdb(con, data_lake_dir)
+        logger.info("clean core build started data_lake=%s overwrite=%s", data_lake_dir, overwrite)
         outputs["company_identity"] = _build_company_identity(con, data_lake_dir, overwrite, max_rows)
         outputs["legal_events"] = _build_legal_events(con, data_lake_dir, overwrite, max_rows)
         outputs["formalities_events"] = _build_formalities_events(con, data_lake_dir, overwrite, max_rows)
         outputs["annual_accounts"] = _build_annual_accounts(con, data_lake_dir, overwrite, max_rows)
+        logger.info("clean core build finished datasets=%s", ",".join(outputs))
     finally:
         con.close()
     return outputs
@@ -62,16 +65,21 @@ def _build_company_identity(
     overwrite: bool,
     max_rows: int | None,
 ) -> dict[str, Any]:
-    raw_root = data_lake_dir / "raw" / "insee" / "unites_legales"
+    raw_root = _first_dataset(
+        data_lake_dir / "raw" / "insee" / "unites_legales",
+        data_lake_dir / "raw" / "insee" / "bulk" / "stock_unite_legale",
+    )
     output_dir = data_lake_dir / "clean" / "company_identity"
-    if not _has_parquet(raw_root):
-        return _write_skipped_manifest(output_dir, "company_identity", raw_root)
+    if raw_root is None:
+        expected_root = data_lake_dir / "raw" / "insee"
+        return _write_skipped_manifest(output_dir, "company_identity", expected_root)
 
     _prepare_output_dir(output_dir, data_lake_dir, overwrite)
     path = _duckdb_glob(raw_root)
     available = _parquet_columns(con, path)
     limit_sql = f"LIMIT {int(max_rows)}" if max_rows else ""
     output_file = output_dir / "company_identity.parquet"
+    logger.info("clean dataset=company_identity reading raw_root=%s", raw_root)
 
     siren = _coalesce_expr(available, ("siren",), "VARCHAR")
     nic_siege = _coalesce_expr(available, ("nic_siege",), "VARCHAR")
@@ -83,6 +91,7 @@ def _build_company_identity(
         "DATE",
     )
 
+    logger.info("clean dataset=company_identity writing output=%s", output_file)
     con.execute(
         f"""
         COPY (
@@ -154,7 +163,9 @@ def _build_legal_events(
     siren = _coalesce_expr(available, ("siren",), "VARCHAR")
     event_date = _coalesce_expr(available, ("event_date", "eventDate", "date_parution", "dateParution"), "DATE")
     event_category = _coalesce_expr(available, ("event_category", "eventCategory", "bodacc_family", "bodaccFamily"), "VARCHAR")
+    logger.info("clean dataset=legal_events reading raw_root=%s", raw_root)
 
+    logger.info("clean dataset=legal_events writing partitioned output=%s", output_dir)
     con.execute(
         f"""
         COPY (
@@ -216,7 +227,9 @@ def _build_formalities_events(
     limit_sql = f"LIMIT {int(max_rows)}" if max_rows else ""
     siren = _coalesce_expr(available, ("siren",), "VARCHAR")
     event_date = _coalesce_expr(available, ("event_date", "date_depot", "dateDepot", "updated_at_source"), "DATE")
+    logger.info("clean dataset=formalities_events reading raw_root=%s", raw_root)
 
+    logger.info("clean dataset=formalities_events writing partitioned output=%s", output_dir)
     con.execute(
         f"""
         COPY (
@@ -272,7 +285,9 @@ def _build_annual_accounts(
     siren = _coalesce_expr(available, ("siren",), "VARCHAR")
     filing_date = _coalesce_expr(available, ("filing_date", "date_depot", "dateDepot", "updated_at_source"), "DATE")
     closing_date = _coalesce_expr(available, ("closing_date", "date_cloture", "dateCloture"), "DATE")
+    logger.info("clean dataset=annual_accounts reading raw_root=%s", raw_root)
 
+    logger.info("clean dataset=annual_accounts writing partitioned output=%s", output_dir)
     con.execute(
         f"""
         COPY (
@@ -348,6 +363,13 @@ def _has_parquet(root: Path) -> bool:
     return root.exists() and any(root.rglob("*.parquet"))
 
 
+def _first_dataset(*roots: Path) -> Path | None:
+    for root in roots:
+        if _has_parquet(root):
+            return root
+    return None
+
+
 def _duckdb_glob(root: Path) -> str:
     return str(root / "**" / "*.parquet").replace("\\", "/")
 
@@ -412,9 +434,19 @@ def _write_skipped_manifest(output_dir: Path, dataset: str, raw_root: Path) -> d
 
 
 def _configure_duckdb(con: Any, data_lake_dir: Path) -> None:
-    temp_dir = data_lake_dir / "tmp" / "duckdb"
+    temp_dir = _duckdb_temp_dir(data_lake_dir)
     temp_dir.mkdir(parents=True, exist_ok=True)
     con.execute(f"SET temp_directory = '{_sql_string(str(temp_dir).replace('\\', '/'))}'")
+    con.execute("PRAGMA enable_progress_bar")
+
+
+def _duckdb_temp_dir(data_lake_dir: Path) -> Path:
+    configured = os.environ.get("DUCKDB_TEMP_DIRECTORY")
+    if configured:
+        return Path(configured)
+    if str(data_lake_dir).startswith("/content/drive/"):
+        return Path("/content/pfein_duckdb_tmp")
+    return data_lake_dir / "tmp" / "duckdb"
 
 
 def _parse_args() -> argparse.Namespace:

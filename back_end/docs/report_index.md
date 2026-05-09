@@ -24,6 +24,9 @@ before copying sections into the final end-of-studies report.
 | `docs/data_collection_checklist.md` | Added | Incremental checklist for source inventory, collection, feature building, and training gates |
 | `docs/backend_api_operations_report.md` | Added | Missing API, worker, scheduler, endpoint, and operations section |
 | `docs/docker_runtime_strategy.md` | Added | Clarifies Docker as the final runtime and host volumes as storage |
+| `docs/project_ai_context.md` | Added | Compact decision memory for AI-assisted work and teammate handover |
+| `docs/project_weak_points_and_improvement_plan.md` | Added | Honest risk register for project weaknesses and improvement priorities |
+| `docs/feature_safety_registry.md` | Added | Feature/label safety registry for historical validity and leakage control |
 | `docs/report_markdown_rules.md` | Updated | Documentation style, structure, vocabulary, and checklist rules |
 
 ## Coverage Matrix
@@ -44,6 +47,9 @@ before copying sections into the final end-of-studies report.
 | Prediction publishing to MongoDB | `ml_continuity_risk_pipeline.md`, `backend_api_operations_report.md` |
 | FastAPI endpoints and scheduler jobs | `backend_api_operations_report.md` |
 | Docker runtime and host/local boundary | `docker_runtime_strategy.md` |
+| AI/project decision memory | `project_ai_context.md` |
+| Project weak points and improvement plan | `project_weak_points_and_improvement_plan.md` |
+| Feature leakage and historical safety registry | `feature_safety_registry.md` |
 | Report writing rules | `report_markdown_rules.md` |
 
 ## Review Findings
@@ -71,6 +77,7 @@ before copying sections into the final end-of-studies report.
 | Final Mongo serving model is still partly conceptual | Add a report section after implementing `company_profiles`, `company_events_summary`, and `company_search` |
 | Model validation metrics are not populated yet | Finish INPI, INSEE, and historical BODACC coverage, rebuild features, then train and update `docs/model_validation_report.md` |
 | Full data-quality measurements are not populated yet | Update `docs/data_quality_report.md` after final full exports |
+| Feature safety registry is currently documentation-backed | Optionally add a training-time registry loader to block unsafe columns automatically |
 
 ## Recommended Reading Order
 
@@ -84,6 +91,9 @@ before copying sections into the final end-of-studies report.
 8. `docs/backend_api_operations_report.md`
 9. `docs/docker_runtime_strategy.md`
 10. `docs/report_markdown_rules.md`
+11. `docs/project_ai_context.md`
+12. `docs/project_weak_points_and_improvement_plan.md`
+13. `docs/feature_safety_registry.md`
 
 ## Report Summary
 
