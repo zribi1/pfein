@@ -182,5 +182,6 @@ def print_outputs(drive_root: str | Path) -> None:
         p["data_lake"] / "features" / "risk_labels",
         p["data_lake"] / "features" / "company_features",
         p["artifacts"],
+        p["drive_root"] / "reports",
     ]:
         print(f"- {path}")

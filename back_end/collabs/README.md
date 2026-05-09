@@ -87,6 +87,12 @@ Build ML-ready tables:
 python collabs/build_ml_data.py --start-year 2017 --end-year 2025
 ```
 
+Build ML-ready tables and generate the audit report in one run:
+
+```bash
+python collabs/build_ml_data.py --start-year 2017 --end-year 2025 --audit
+```
+
 Audit raw, clean, and feature datasets:
 
 ```bash

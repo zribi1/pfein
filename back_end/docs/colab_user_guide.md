@@ -172,6 +172,17 @@ tables only:
 
 Use this after code fixes, such as cleaner mapping changes.
 
+If you also want the audit report from the same command, add `--audit`:
+
+```python
+!python collabs/build_ml_data.py \
+  --drive-root "/content/drive/MyDrive/PFE ML Data/pfe_data" \
+  --start-year 2017 \
+  --end-year 2025 \
+  --max-companies 100000 \
+  --audit
+```
+
 ## Step 7: Generate A Data-Lake Audit Report
 
 Run the audit after each important pipeline change.
@@ -547,4 +558,3 @@ temporary local folders.
 10. Run audit again.
 11. Add INPI after credentials are ready.
 12. Train only after audit readiness and label balance are acceptable.
-

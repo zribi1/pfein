@@ -76,6 +76,23 @@ def main() -> None:
             env=env,
         )
 
+    if args.audit:
+        audit_command = [
+            sys.executable,
+            "collabs/audit_data_lake.py",
+            "--drive-root",
+            str(args.drive_root),
+            "--max-columns",
+            str(args.audit_max_columns),
+            "--sample-rows",
+            str(args.audit_sample_rows),
+        ]
+        if args.audit_output_md:
+            audit_command.extend(["--output-md", args.audit_output_md])
+        if args.audit_output_json:
+            audit_command.extend(["--output-json", args.audit_output_json])
+        run(audit_command, repo_dir, env=env)
+
     print_outputs(args.drive_root)
 
 
@@ -91,6 +108,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-companies", type=int, help="Optional smoke-test cap for feature generation.")
     parser.add_argument("--train", action="store_true")
     parser.add_argument("--min-rows", type=int, default=1000)
+    parser.add_argument("--audit", action="store_true", help="Generate the data-lake audit report after building features.")
+    parser.add_argument("--audit-max-columns", type=int, default=25)
+    parser.add_argument("--audit-sample-rows", type=int, default=2)
+    parser.add_argument("--audit-output-md", help="Optional Markdown report path. Defaults to <drive-root>/reports/data_lake_audit.md.")
+    parser.add_argument("--audit-output-json", help="Optional JSON report path. Defaults to <drive-root>/reports/data_lake_audit.json.")
     return parser.parse_args()
 
 
