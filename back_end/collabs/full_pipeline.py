@@ -31,12 +31,13 @@ def main() -> None:
         )
         run([sys.executable, "collabs/export_raw_sources.py", *base, "--no-insee", "--inpi", "--no-bodacc"], repo_dir)
     if args.bodacc:
+        bodacc_families = ",".join(args.bodacc_families)
         cmd = [
             sys.executable,
             "collabs/download_bodacc.py",
             *base,
             f"--mode={args.bodacc_mode}",
-            f"--families={args.bodacc_families}",
+            f"--families={bodacc_families}",
         ]
         if args.bodacc_start_year:
             cmd.extend(["--start-year", str(args.bodacc_start_year)])
@@ -61,6 +62,8 @@ def main() -> None:
         ]
         if args.train:
             cmd.append("--train")
+        if args.max_companies:
+            cmd.extend(["--max-companies", str(args.max_companies)])
         run(cmd, repo_dir)
 
 
@@ -74,7 +77,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--inpi", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--bodacc", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--bodacc-mode", choices=("current", "historical"), default="historical")
-    parser.add_argument("--bodacc-families", default="PCL,RCS-B")
+    parser.add_argument("--bodacc-families", nargs="+", default=["PCL", "RCS-B"])
     parser.add_argument("--bodacc-start-year", type=int)
     parser.add_argument("--bodacc-end-year", type=int)
     parser.add_argument("--bodacc-max-files", type=int)
@@ -84,6 +87,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--train", action="store_true")
     parser.add_argument("--start-year", type=int, default=2017)
     parser.add_argument("--end-year", type=int, default=2025)
+    parser.add_argument("--max-companies", type=int, help="Optional smoke-test cap for feature generation.")
     parser.add_argument("--inpi-categories", default="comptes_annuels,formalites")
     parser.add_argument("--inpi-niveaux", default="standard,niveau1")
     return parser.parse_args()
