@@ -82,8 +82,12 @@ def _build_company_identity(
     logger.info("clean dataset=company_identity reading raw_root=%s", raw_root)
 
     siren = _coalesce_expr(available, ("siren",), "VARCHAR")
-    nic_siege = _coalesce_expr(available, ("nic_siege",), "VARCHAR")
-    source_updated = _coalesce_expr(available, ("source_updated_at", "exported_at"), "TIMESTAMP")
+    nic_siege = _coalesce_expr(available, ("nic_siege", "nicSiegeUniteLegale"), "VARCHAR")
+    source_updated = _coalesce_expr(
+        available,
+        ("source_updated_at", "dateDernierTraitementUniteLegale", "exported_at"),
+        "TIMESTAMP",
+    )
     exported_at = _coalesce_expr(available, ("exported_at",), "TIMESTAMP")
     status_period_start = _coalesce_expr(
         available,
@@ -98,15 +102,15 @@ def _build_company_identity(
             WITH normalized AS (
                 SELECT
                     {siren} AS siren,
-                    {_coalesce_expr(available, ("company_name", "denomination", "denomination_periode", "nom"), "VARCHAR")} AS company_name,
-                    {_coalesce_expr(available, ("activity_code", "activite_principale", "activite_principale_periode"), "VARCHAR")} AS activity_code,
-                    {_coalesce_expr(available, ("legal_category_code", "categorie_juridique"), "VARCHAR")} AS legal_category_code,
-                    {_coalesce_expr(available, ("administrative_status", "etat_administratif"), "VARCHAR")} AS administrative_status,
-                    {_coalesce_expr(available, ("creation_date", "date_creation"), "DATE")} AS creation_date,
+                    {_coalesce_expr(available, ("company_name", "denomination", "denomination_periode", "denominationUniteLegale", "nom", "nomUniteLegale", "nomUsageUniteLegale"), "VARCHAR")} AS company_name,
+                    {_coalesce_expr(available, ("activity_code", "activite_principale", "activite_principale_periode", "activitePrincipaleUniteLegale"), "VARCHAR")} AS activity_code,
+                    {_coalesce_expr(available, ("legal_category_code", "categorie_juridique", "categorieJuridiqueUniteLegale"), "VARCHAR")} AS legal_category_code,
+                    {_coalesce_expr(available, ("administrative_status", "etat_administratif", "etatAdministratifUniteLegale"), "VARCHAR")} AS administrative_status,
+                    {_coalesce_expr(available, ("creation_date", "date_creation", "dateCreationUniteLegale"), "DATE")} AS creation_date,
                     {_coalesce_expr(available, ("closure_date", "date_cessation", "date_cessation_activite"), "DATE")} AS closure_date,
                     {status_period_start} AS status_period_start,
-                    {_coalesce_expr(available, ("employee_size_bracket", "tranche_effectifs"), "VARCHAR")} AS employee_size_bracket,
-                    {_coalesce_expr(available, ("employee_size_year", "annee_effectifs"), "INTEGER")} AS employee_size_year,
+                    {_coalesce_expr(available, ("employee_size_bracket", "tranche_effectifs", "trancheEffectifsUniteLegale"), "VARCHAR")} AS employee_size_bracket,
+                    {_coalesce_expr(available, ("employee_size_year", "annee_effectifs", "anneeEffectifsUniteLegale"), "INTEGER")} AS employee_size_year,
                     CASE
                         WHEN length({siren}) = 9 AND length({nic_siege}) = 5 THEN {siren} || {nic_siege}
                         ELSE NULL
