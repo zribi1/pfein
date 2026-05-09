@@ -126,6 +126,16 @@ class InpiConnector:
         tmp = local_path.with_suffix(local_path.suffix + ".part")
         if overwrite and tmp.exists():
             tmp.unlink()
+        if not overwrite and local_path.exists() and (not tmp.exists() or local_path.stat().st_size > tmp.stat().st_size):
+            local_size = local_path.stat().st_size
+            if size and local_size < size:
+                print(
+                    f"[inpi] found incomplete final file; moving to resume partial "
+                    f"{local_path.name} ({local_size / 1024 / 1024:,.1f} MB)"
+                )
+                if tmp.exists():
+                    tmp.unlink()
+                local_path.replace(tmp)
         written = tmp.stat().st_size if tmp.exists() else 0
         if written:
             if size and written > size:
