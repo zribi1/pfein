@@ -123,11 +123,22 @@ class InpiConnector:
             print(f"[inpi] skip existing {local_path}")
             return
         tmp = local_path.with_suffix(local_path.suffix + ".part")
-        if tmp.exists():
+        if overwrite and tmp.exists():
             tmp.unlink()
-        written = 0
+        written = tmp.stat().st_size if tmp.exists() else 0
+        if written:
+            if size and written > size:
+                print(f"[inpi] partial file is larger than expected; restarting {local_path.name}")
+                tmp.unlink()
+                written = 0
+            elif size and written == size:
+                tmp.replace(local_path)
+                print(f"[inpi] completed from existing partial {local_path}")
+                return
+            else:
+                print(f"[inpi] resume {local_path.name} from {written / 1024 / 1024:,.1f} MB")
         started = time.monotonic()
-        with tmp.open("wb") as handle:
+        with tmp.open("ab" if written else "wb") as handle:
             def write_chunk(chunk: bytes) -> None:
                 nonlocal written
                 handle.write(chunk)
@@ -137,6 +148,8 @@ class InpiConnector:
 
             if self.protocol == "sftp":
                 with self.sftp.open(remote_path, "rb") as remote:
+                    if written:
+                        remote.seek(written)
                     remote.prefetch()
                     while True:
                         chunk = remote.read(1024 * 1024)
@@ -146,7 +159,12 @@ class InpiConnector:
             else:
                 assert self.ftp is not None
                 self.ftp.voidcmd("TYPE I")
-                self.ftp.retrbinary(f"RETR {remote_path}", write_chunk, blocksize=1024 * 1024)
+                self.ftp.retrbinary(
+                    f"RETR {remote_path}",
+                    write_chunk,
+                    blocksize=1024 * 1024,
+                    rest=written or None,
+                )
         if size and written != size:
             raise RuntimeError(f"size mismatch for {remote_path}: wrote {written}, expected {size}")
         tmp.replace(local_path)
