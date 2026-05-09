@@ -44,6 +44,10 @@ def main() -> None:
 
     bodacc_dir = p["source_archives"] / "bodacc"
     if args.download:
+        print(
+            "[bodacc] download phase start "
+            f"mode={args.mode} families={args.families} years={args.start_year or '*'}-{args.end_year or '*'}"
+        )
         download_archives(
             bodacc_dir,
             mode=args.mode,
@@ -53,10 +57,15 @@ def main() -> None:
             max_files=args.max_files,
             overwrite=args.overwrite_download,
         )
+        print("[bodacc] download phase done")
+    else:
+        print("[bodacc] download phase skipped")
 
     if not args.export:
+        print("[bodacc] raw export phase skipped")
         return
 
+    print(f"[bodacc] raw export phase start input_dir={bodacc_dir}")
     archives = sorted(
         [*bodacc_dir.rglob("*.taz"), *bodacc_dir.rglob("*.tar"), *bodacc_dir.rglob("*.tar.gz")]
     )
@@ -64,6 +73,7 @@ def main() -> None:
         print(f"[bodacc] no local archives found under {bodacc_dir}")
         print("[bodacc] no DILA/BODACC archives were downloaded or found.")
         return
+    print(f"[bodacc] raw export will scan local archives={len(archives)}")
 
     cmd = [
         sys.executable,
@@ -137,6 +147,8 @@ def discover_archives(base_url: str, *, recursive: bool) -> list[BodaccRemoteArc
         if normalized_url in seen_dirs:
             return
         seen_dirs.add(normalized_url)
+        if len(seen_dirs) == 1 or len(seen_dirs) % 25 == 0:
+            print(f"[bodacc] scanning directory {len(seen_dirs)}: {normalized_url}")
         parser = HrefParser()
         parser.feed(read_html(normalized_url))
         for href in parser.hrefs:
@@ -162,8 +174,11 @@ def discover_archives(base_url: str, *, recursive: bool) -> list[BodaccRemoteArc
                 year=year_from_name(name) or year_from_url(child),
                 family=family,
             )
+            if len(found) % 100 == 0:
+                print(f"[bodacc] discovered archives={len(found)} directories={len(seen_dirs)}")
 
     walk(base_url)
+    print(f"[bodacc] discovery done directories={len(seen_dirs)} archives={len(found)}")
     return sorted(found.values(), key=lambda item: item.url)
 
 

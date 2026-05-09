@@ -25,6 +25,7 @@ before copying sections into the final end-of-studies report.
 | `docs/backend_api_operations_report.md` | Added | Missing API, worker, scheduler, endpoint, and operations section |
 | `docs/docker_runtime_strategy.md` | Added | Clarifies Docker as the final runtime and host volumes as storage |
 | `docs/project_ai_context.md` | Added | Compact decision memory for AI-assisted work and teammate handover |
+| `docs/colab_user_guide.md` | Added | Copy-paste Google Colab user guide for fresh notebooks, downloads, rebuilds, audits, and troubleshooting |
 | `docs/project_weak_points_and_improvement_plan.md` | Added | Honest risk register for project weaknesses and improvement priorities |
 | `docs/complete_project_weaknesses_and_improvement_plan.md` | Added | Consolidated report and project weakness analysis with defense attack questions |
 | `docs/feature_safety_registry.md` | Added | Feature/label safety registry for historical validity and leakage control |
@@ -49,6 +50,7 @@ before copying sections into the final end-of-studies report.
 | FastAPI endpoints and scheduler jobs | `backend_api_operations_report.md` |
 | Docker runtime and host/local boundary | `docker_runtime_strategy.md` |
 | AI/project decision memory | `project_ai_context.md` |
+| Google Colab user workflow | `colab_user_guide.md` |
 | Project weak points and improvement plan | `project_weak_points_and_improvement_plan.md` |
 | Consolidated weakness analysis and defense questions | `complete_project_weaknesses_and_improvement_plan.md` |
 | Feature leakage and historical safety registry | `feature_safety_registry.md` |
@@ -94,8 +96,9 @@ before copying sections into the final end-of-studies report.
 9. `docs/docker_runtime_strategy.md`
 10. `docs/report_markdown_rules.md`
 11. `docs/project_ai_context.md`
-12. `docs/project_weak_points_and_improvement_plan.md`
-13. `docs/feature_safety_registry.md`
+12. `docs/colab_user_guide.md`
+13. `docs/project_weak_points_and_improvement_plan.md`
+14. `docs/feature_safety_registry.md`
 
 ## Report Summary
 

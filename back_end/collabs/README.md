@@ -1,5 +1,17 @@
 # Colab Data Preparation Blocks
 
+For a full runnable notebook, open:
+
+```text
+collabs/pfe_ml_colab_workbook.ipynb
+```
+
+For a detailed step-by-step user guide, read:
+
+```text
+docs/colab_user_guide.md
+```
+
 Mount Drive first:
 
 ```python

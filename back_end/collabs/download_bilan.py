@@ -23,9 +23,15 @@ def main() -> None:
     if args.install_deps:
         install_deps(repo_dir)
 
+    print("[bilan] discovering latest financial Parquet resource")
     resource = latest_financial_resource()
     url = str(resource.get("url") or resource.get("latest"))
     source_file = p["source_archives"] / "financials" / "data_gouv" / Path(url.split("?", 1)[0]).name
+    print(
+        "[bilan] selected resource "
+        f"id={resource.get('id')} size={resource.get('filesize')} "
+        f"modified={resource.get('last_modified') or resource.get('published')}"
+    )
     download_resumable(url, source_file, overwrite=args.overwrite)
     write_json(
         source_file.with_suffix(source_file.suffix + ".manifest.json"),
@@ -42,6 +48,7 @@ def main() -> None:
     )
 
     if args.copy_to_raw:
+        print("[bilan] copy-to-raw phase start")
         raw_dir = p["data_lake"] / "raw" / "financials" / source_file.stem
         raw_dir.mkdir(parents=True, exist_ok=True)
         raw_file = raw_dir / source_file.name
@@ -58,9 +65,12 @@ def main() -> None:
             },
         )
         print(f"[bilan] raw ready: {raw_file}")
+    else:
+        print("[bilan] copy-to-raw phase skipped")
 
 
 def latest_financial_resource() -> dict:
+    print(f"[bilan] reading metadata {DATAGOUV_API_BASE}/datasets/{FINANCIAL_DATASET_SLUG}/")
     meta = read_json_url(f"{DATAGOUV_API_BASE}/datasets/{FINANCIAL_DATASET_SLUG}/")
     resources = []
     for item in meta.get("resources", []):

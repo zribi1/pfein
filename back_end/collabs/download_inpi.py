@@ -162,10 +162,18 @@ def main() -> None:
     categories = _split_filter(args.categories)
     niveaux = _split_filter(args.niveaux)
     with InpiConnector(args) as conn:
+        print(
+            "[inpi] discovery phase start "
+            f"base={args.remote_base_dir or '/'} categories={','.join(sorted(categories)) or '*'} "
+            f"niveaux={','.join(sorted(niveaux)) or '*'}"
+        )
         archives = discover(conn, args.remote_base_dir, categories=categories, niveaux=niveaux)
         print(f"[inpi] discovered {len(archives)} matching archive(s)")
-        for archive in archives[: args.max_files or len(archives)]:
+        selected = archives[: args.max_files or len(archives)]
+        print(f"[inpi] download phase start selected={len(selected)}")
+        for index, archive in enumerate(selected, start=1):
             local_path = local_path_for(p["source_archives"] / "inpi", archive.path)
+            print(f"[inpi] download {index}/{len(selected)} {archive.path}")
             conn.download(archive.path, local_path, size=archive.size, overwrite=args.overwrite)
             write_json(
                 local_path.with_suffix(local_path.suffix + ".manifest.json"),
@@ -181,11 +189,16 @@ def main() -> None:
                     "downloaded_at": datetime.now(timezone.utc).isoformat(),
                 },
             )
+        print("[inpi] download phase done")
 
 
 def discover(conn: InpiConnector, base: str, *, categories: set[str], niveaux: set[str]) -> list[RemoteArchive]:
     archives = []
+    scanned = 0
     for remote_path, size, mtime in conn.walk(base or "/"):
+        scanned += 1
+        if scanned == 1 or scanned % 500 == 0:
+            print(f"[inpi] scanned files={scanned} matches={len(archives)} latest={remote_path}")
         target = detect_target(remote_path)
         if target is None:
             continue
@@ -195,6 +208,9 @@ def discover(conn: InpiConnector, base: str, *, categories: set[str], niveaux: s
         if niveaux and niveau not in niveaux:
             continue
         archives.append(RemoteArchive(remote_path, size, mtime, category, niveau))
+        if len(archives) % 50 == 0:
+            print(f"[inpi] matching archives={len(archives)} scanned={scanned}")
+    print(f"[inpi] discovery done scanned={scanned} matches={len(archives)}")
     return sorted(archives, key=lambda item: item.path)
 
 

@@ -16,6 +16,7 @@ def main() -> None:
         install_deps(repo_dir)
 
     if args.insee:
+        print("[export] INSEE raw export phase start")
         for dataset_type, url in INSEE_RESOURCES:
             path = p["source_archives"] / "insee" / "bulk" / dataset_type / Path(url).name
             if not path.exists():
@@ -35,9 +36,15 @@ def main() -> None:
             if args.overwrite:
                 cmd.append("--overwrite")
             run(cmd, repo_dir, env=env)
+        print("[export] INSEE raw export phase done")
+    else:
+        print("[export] INSEE raw export phase skipped")
 
     if args.inpi:
-        for path in sorted((p["source_archives"] / "inpi").rglob("*.zip")):
+        inpi_archives = sorted((p["source_archives"] / "inpi").rglob("*.zip"))
+        print(f"[export] INPI raw export phase start archives={len(inpi_archives)}")
+        for index, path in enumerate(inpi_archives, start=1):
+            print(f"[export] INPI export {index}/{len(inpi_archives)} {path.name}")
             run(
                 [
                     sys.executable,
@@ -52,10 +59,15 @@ def main() -> None:
                 repo_dir,
                 env=env,
             )
+        print("[export] INPI raw export phase done")
+    else:
+        print("[export] INPI raw export phase skipped")
 
     if args.bodacc:
         bodacc_dir = p["source_archives"] / "bodacc"
         if bodacc_dir.exists():
+            archive_count = sum(1 for _ in bodacc_dir.rglob("*") if _.suffix.lower() in {".taz", ".tar", ".gz"})
+            print(f"[export] BODACC raw export phase start archives={archive_count}")
             cmd = [
                 sys.executable,
                 "-m",
@@ -69,6 +81,11 @@ def main() -> None:
             ]
             cmd.append("--no-skip-existing" if args.overwrite else "--skip-existing")
             run(cmd, repo_dir, env=env)
+            print("[export] BODACC raw export phase done")
+        else:
+            print(f"[export] BODACC source directory missing: {bodacc_dir}")
+    else:
+        print("[export] BODACC raw export phase skipped")
 
 
 def parse_args() -> argparse.Namespace:
