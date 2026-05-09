@@ -48,6 +48,8 @@ complete, historically valid, and leakage-checked.
 | No future event columns in training | Future dates, label columns, and target columns must be excluded |
 | Temporal validation comes first | Main validation should train on older years and test on the latest year |
 | Missing financial data is not automatically bad | Missingness must be represented explicitly |
+| Metrics must match risk use | Report PR-AUC, recall/precision, top-K capture, and calibration, not accuracy only |
+| Explanations must be evidence-grounded | Do not let generated text invent reasons not supported by features/source evidence |
 
 ## Highest-Risk Weak Points
 
@@ -60,6 +62,9 @@ complete, historically valid, and leakage-checked.
 | Financial missingness ambiguity | Add `has_financial_data`, recency, availability, and confidentiality features |
 | Random split inflation | Prefer temporal split and document company overlap risk |
 | Weak explainability | Ground explanations in model features and source evidence |
+| Source freshness ambiguity | Track source-level update dates and profile completeness |
+| Vague serving model | Keep MongoDB documents compact and frontend-oriented |
+| Weak comparison to existing platforms | Emphasize that the project adds temporal ML risk prediction, not only company display |
 
 ## Current Implementation Priorities
 
@@ -71,11 +76,41 @@ complete, historically valid, and leakage-checked.
    fields are valid model inputs.
 4. Treat the baseline logistic-regression model as a validation baseline, not the
    final proof of predictive value.
+5. Add source freshness and data completeness fields to future serving documents.
+6. Evaluate risk models with temporal split, PR-AUC, calibration, and top-K risk
+   capture before claiming predictive value.
+
+## Defense Framing
+
+If challenged on missing final model results, answer:
+
+```text
+The current contribution is a reproducible temporal data architecture and
+training-ready pipeline. Final model claims are intentionally gated behind source
+coverage, leakage checks, and validation metrics.
+```
+
+If challenged on existing platforms, answer:
+
+```text
+Existing company-information platforms mainly display company records. This
+project transforms historical public signals into cutoff-safe company-year
+features and future continuity-risk labels.
+```
+
+If challenged on broad target definition, answer:
+
+```text
+The global continuity target is broad by design, but secondary labels separate
+legal distress, radiation, financial weakness, and filing anomaly risk.
+```
 
 ## Reference Documents
 
 - `docs/project_weak_points_and_improvement_plan.md`
+- `docs/complete_project_weaknesses_and_improvement_plan.md`
 - `docs/project_defense_report.md`
+- `docs/feature_safety_registry.md`
 - `docs/colab_data_preparation_pipeline_report.md`
 - `docs/ml_continuity_risk_pipeline.md`
 - `docs/model_validation_report.md`

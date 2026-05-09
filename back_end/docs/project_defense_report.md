@@ -47,6 +47,30 @@ The project therefore addresses three technical problems:
 3. How to create a machine-learning dataset without leaking future information
    into the model.
 
+## Difference From Existing Platforms
+
+Existing French company-information platforms such as public registry websites,
+company search portals, or commercial intelligence services are useful because
+they centralize company facts. Their main value is often descriptive: showing
+identity data, legal notices, filings, financial information, or documents.
+
+This project is positioned differently. Its objective is not only to display
+company information, but to transform historical public signals into a temporal
+risk-analysis dataset.
+
+| Existing Platform Pattern | Project Added Value |
+|---|---|
+| Displays latest company identity | Builds historical company-year observations |
+| Shows legal and registry documents | Converts dated events into cutoff-safe features and labels |
+| Provides financial statements | Extracts financial trends, missingness, and weakness indicators |
+| Focuses on current profile lookup | Adds future 12-month continuity-risk prediction |
+| Usually serves records directly | Separates analytical Parquet processing from compact serving documents |
+
+The contribution is therefore not a replacement for existing company search
+sites. It is a reproducible temporal data architecture for transforming
+heterogeneous French public company data into company-year risk features and
+future continuity labels.
+
 ## Project Objectives
 
 The project has both engineering and analytical objectives.
@@ -271,6 +295,17 @@ The project also prepares secondary labels:
 These labels can support either one global continuity-risk model or several
 specialized models in later work.
 
+The main target must always be described precisely. In this project,
+`continuity_risk_12m_label` means:
+
+```text
+legal distress OR radiation OR administrative closure/cessation within the next 12 months
+```
+
+It is not a pure bankruptcy target. This is why secondary labels are kept. They
+allow the system to say whether the global risk is mainly legal, administrative,
+financial, or filing-related.
+
 ## Feature Design
 
 The ML dataset is company-year based:
@@ -415,6 +450,19 @@ have incomplete, confidential, or delayed financial statements. However,
 financial features are valuable when available because they can reveal risk
 before administrative closure or legal distress is officially announced.
 
+Missing financial values are not treated as automatically negative. The feature
+set includes availability and recency variables so the model can distinguish
+between a company with weak financials and a company whose financial data is not
+available or is confidential.
+
+| Missingness Feature | Purpose |
+|---|---|
+| `has_financial_data` | Indicates whether any financial record exists before the cutoff |
+| `financial_years_available` | Measures how much financial history is available |
+| `latest_financial_year` | Records the most recent financial year observed before the cutoff |
+| `years_since_last_financial_statement` | Captures reporting recency without assuming missing values are bad |
+| `has_confidential_financials` | Separates confidential publication behavior from financial weakness |
+
 ## Why We Avoid Raw High-Cardinality Fields First
 
 The first feature version avoids feeding raw names, long event texts, archive
@@ -452,6 +500,19 @@ Label: continuity event between 2024-01-01 and 2024-12-31
 
 This prevents the model from learning from information that would not have been
 available in a real prediction scenario.
+
+The expected validation checks are:
+
+```text
+max(feature_event_date) <= prediction_date
+min(label_event_date) > prediction_date
+duplicate count for (siren, prediction_year) = 0
+for each label year: positive and negative class counts are reported
+for each feature table: SIREN validity is measured
+```
+
+These checks are not cosmetic. They are the difference between a model that
+predicts the future and a model that accidentally reads it.
 
 ## Target And Label Construction
 
@@ -601,11 +662,35 @@ Recommended metrics are:
 | Class counts | Shows whether the split has enough positive examples |
 | Accuracy | Useful but insufficient alone |
 | Confusion matrix | Helps choose an operational risk threshold |
+| Precision, recall, F1 | Show whether risky companies are actually detected |
+| PR-AUC | More useful than accuracy when risky companies are rare |
+| Top-K capture | Measures whether the highest-risk slice contains many true future events |
+| Brier score / calibration curve | Checks whether probabilities are reliable |
 
 The baseline logistic-regression model uses class weighting to reduce the impact
 of class imbalance during training. Later model comparisons should include
 threshold analysis because the business cost of false negatives and false
 positives may not be equal.
+
+The operational threshold should not be chosen only because it maximizes a
+generic metric. It should reflect the cost trade-off:
+
+| Error Type | Business Meaning |
+|---|---|
+| False negative | A risky company is missed |
+| False positive | A healthy company is flagged and may require unnecessary review |
+
+For a risk-monitoring platform, a useful evaluation is also:
+
+```text
+Among the top 5% or top 10% highest-risk companies, how many future events were captured?
+```
+
+This top-K view is often more actionable than a single classification threshold.
+
+Probability calibration is also required before presenting a score as a
+probability. If the model says `80%`, the system should test whether companies
+with similar scores actually experience events at approximately that rate.
 
 ## Why The Baseline Model Is A Good First Step
 
@@ -653,6 +738,108 @@ The choice of logistic regression as a first model is deliberate:
 However, final training is deferred until the dataset is complete. Training too
 early would produce a technically valid artifact but a scientifically weak
 result.
+
+After the baseline, the project can compare calibrated tree-based models such as
+random forests, gradient boosting, LightGBM, XGBoost, or CatBoost. More complex
+models should be introduced only after the dataset passes coverage, leakage, and
+temporal validation checks.
+
+## Source Freshness And Profile Confidence
+
+The sources do not update at the same rhythm. A company profile may contain a
+recent BODACC event, older financial statements, and an INSEE identity snapshot
+from another date. For this reason, each serving profile should expose source
+freshness.
+
+Recommended freshness fields:
+
+```json
+{
+  "last_insee_update": "2026-03-01",
+  "last_inpi_update": "2026-03-10",
+  "last_bodacc_update": "2026-03-15",
+  "last_financial_update": "2025-12-31",
+  "last_pipeline_run": "2026-05-09",
+  "data_completeness_score": 0.84
+}
+```
+
+This prevents the frontend from presenting a profile as equally complete for all
+sources when some inputs may be stale or missing.
+
+## MongoDB Serving Design
+
+MongoDB should contain compact documents designed for API/frontend use. It
+should not become the historical analytical database.
+
+Recommended serving collections:
+
+| Collection | Role |
+|---|---|
+| `company_profiles` | Latest identity, status, summary facts, and source freshness |
+| `company_events_summary` | Compact BODACC/INPI event counts and recent events |
+| `company_predictions` or `prediction_results` | Latest model score, model version, and explanation factors |
+| `company_search` | Search/autocomplete document |
+| `ingestion_jobs` / `pipeline_runs` | Operational monitoring and freshness state |
+
+Example serving document:
+
+```json
+{
+  "siren": "123456789",
+  "identity": {
+    "company_name": "Example SAS",
+    "activity_code": "6201Z",
+    "administrative_status": "active"
+  },
+  "latest_prediction": {
+    "continuity_risk_score": 0.72,
+    "risk_level": "High",
+    "prediction_date": "2025-12-31",
+    "model_version": "v1"
+  },
+  "data_freshness": {
+    "insee": "2026-03-01",
+    "bodacc": "2026-03-15",
+    "inpi": "2026-03-10",
+    "financials": "2025-12-31"
+  }
+}
+```
+
+This gives the frontend a stable contract while keeping raw history in Parquet.
+
+## Explainability Strategy
+
+A risk score alone is not enough. The platform should explain why a company was
+flagged, but explanations must be grounded in model features and source
+evidence.
+
+The explanation format should include:
+
+1. model score;
+2. risk level;
+3. top contributing feature groups;
+4. source evidence supporting each factor;
+5. cautious recommended action;
+6. model version and prediction date.
+
+Example:
+
+```text
+Risk score: 78%
+
+Main factors:
+- two legal-risk BODACC events in the last 12 months
+- no recent account filing
+- negative equity in the latest available financial statement
+
+Recommended action:
+Review legal announcements and request updated financial documents before engagement.
+```
+
+An LLM may help phrase the explanation later, but it must not invent reasons.
+The evidence must come from features and source records.
 
 ## Google Colab Role
 
@@ -794,6 +981,15 @@ The next work is organized by priority.
 The contribution of the project is not only a prediction model. The main
 contribution is the construction of a complete, traceable pipeline that turns
 large public company datasets into a usable analytical and predictive system.
+
+More precisely:
+
+```text
+The contribution is a reproducible temporal data architecture for transforming
+heterogeneous French public company data into company-year risk features and
+future 12-month continuity labels, while separating analytical processing from
+operational serving.
+```
 
 The project demonstrates:
 

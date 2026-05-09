@@ -61,6 +61,8 @@ IMPORTANT_COLUMNS = {
     "has_confidential_financials",
 }
 
+EXACT_DISTINCT_ROW_LIMIT = 5_000_000
+
 
 def main() -> None:
     args = parse_args()
@@ -158,7 +160,7 @@ def profile_dataset(
         column["name"]: profile_column(con, sql, column["name"], column["type"], rows, max_categories=max_categories)
         for column in selected
     }
-    sample = con.execute(f"SELECT * FROM {sql} LIMIT {int(sample_rows)}").fetchdf().to_dict(orient="records")
+    sample = sample_rows_for_report(con, sql, selected, sample_rows)
     return {
         "exists": True,
         "root": str(root),
@@ -173,11 +175,30 @@ def profile_dataset(
 
 def profile_column(con: Any, sql: str, column: str, dtype: str, rows: int, *, max_categories: int) -> dict[str, Any]:
     ident = quote_ident(column)
+    dtype_upper = dtype.upper()
+    if is_complex_type(dtype_upper):
+        nulls_row = con.execute(
+            f"SELECT SUM(CASE WHEN {ident} IS NULL THEN 1 ELSE 0 END) AS nulls FROM {sql}"
+        ).fetchone()
+        nulls = int(nulls_row[0] or 0)
+        return {
+            "type": dtype,
+            "nulls": nulls,
+            "coverage_rate": round((rows - nulls) / rows, 6) if rows else None,
+            "distinct_values": None,
+            "summary": "complex column; coverage only",
+        }
+
+    distinct_expr = (
+        f"COUNT(DISTINCT {ident})"
+        if rows <= EXACT_DISTINCT_ROW_LIMIT
+        else f"APPROX_COUNT_DISTINCT({ident})"
+    )
     base = con.execute(
         f"""
         SELECT
           SUM(CASE WHEN {ident} IS NULL THEN 1 ELSE 0 END) AS nulls,
-          COUNT(DISTINCT {ident}) AS distinct_values
+          {distinct_expr} AS distinct_values
         FROM {sql}
         """
     ).fetchone()
@@ -187,14 +208,14 @@ def profile_column(con: Any, sql: str, column: str, dtype: str, rows: int, *, ma
         "nulls": nulls,
         "coverage_rate": round((rows - nulls) / rows, 6) if rows else None,
         "distinct_values": int(base[1] or 0),
+        "distinct_is_approximate": rows > EXACT_DISTINCT_ROW_LIMIT,
     }
-    dtype_upper = dtype.upper()
-    if any(token in dtype_upper for token in ("INT", "DOUBLE", "FLOAT", "DECIMAL", "HUGEINT", "BIGINT")):
+    if is_numeric_type(dtype_upper):
         stats = con.execute(
             f"SELECT MIN({ident}), MAX({ident}), AVG(CAST({ident} AS DOUBLE)) FROM {sql}"
         ).fetchone()
         profile.update({"min": stats[0], "max": stats[1], "avg": stats[2]})
-    elif "DATE" in dtype_upper or "TIMESTAMP" in dtype_upper:
+    elif is_temporal_type(dtype_upper):
         stats = con.execute(f"SELECT MIN({ident}), MAX({ident}) FROM {sql}").fetchone()
         profile.update({"min": stats[0], "max": stats[1]})
     elif profile["distinct_values"] <= max_categories:
@@ -212,13 +233,64 @@ def profile_column(con: Any, sql: str, column: str, dtype: str, rows: int, *, ma
     return profile
 
 
+def sample_rows_for_report(con: Any, sql: str, columns: list[dict[str, str]], sample_rows: int) -> list[dict[str, Any]]:
+    if sample_rows <= 0 or not columns:
+        return []
+    select_parts = []
+    for column in columns:
+        ident = quote_ident(column["name"])
+        alias = quote_ident(column["name"])
+        if is_complex_type(column["type"].upper()):
+            select_parts.append(f"CAST({ident} AS VARCHAR) AS {alias}")
+        else:
+            select_parts.append(f"{ident} AS {alias}")
+    return (
+        con.execute(f"SELECT {', '.join(select_parts)} FROM {sql} LIMIT {int(sample_rows)}")
+        .fetchdf()
+        .to_dict(orient="records")
+    )
+
+
+def is_complex_type(dtype_upper: str) -> bool:
+    normalized = dtype_upper.strip()
+    return (
+        normalized.startswith(("MAP", "STRUCT", "LIST", "UNION", "ARRAY"))
+        or "[]" in normalized
+        or any(token in normalized for token in (" MAP(", " STRUCT(", " LIST(", " UNION(", " ARRAY("))
+    )
+
+
+def is_numeric_type(dtype_upper: str) -> bool:
+    normalized = dtype_upper.split("(", 1)[0].strip()
+    return normalized in {
+        "TINYINT",
+        "SMALLINT",
+        "INTEGER",
+        "BIGINT",
+        "HUGEINT",
+        "UTINYINT",
+        "USMALLINT",
+        "UINTEGER",
+        "UBIGINT",
+        "FLOAT",
+        "DOUBLE",
+        "REAL",
+        "DECIMAL",
+    }
+
+
+def is_temporal_type(dtype_upper: str) -> bool:
+    normalized = dtype_upper.split("(", 1)[0].strip()
+    return normalized in {"DATE", "TIME", "TIMESTAMP", "TIMESTAMP WITH TIME ZONE"}
+
+
 def select_profile_columns(columns: list[dict[str, str]], *, max_columns: int) -> list[dict[str, str]]:
     by_name = {col["name"]: col for col in columns}
     selected = [by_name[name] for name in sorted(IMPORTANT_COLUMNS) if name in by_name]
     for col in columns:
         if len(selected) >= max_columns:
             break
-        if col not in selected:
+        if col not in selected and not is_complex_type(col["type"].upper()):
             selected.append(col)
     return selected[:max_columns]
 
@@ -306,6 +378,10 @@ def build_quality_checks(con: Any, datasets: dict[str, Any]) -> dict[str, Any]:
 
 
 def duplicate_key_check(con: Any, sql: str, columns: tuple[str, ...]) -> dict[str, Any]:
+    available = {str(row[0]) for row in con.execute(f"DESCRIBE SELECT * FROM {sql}").fetchall()}
+    missing = [column for column in columns if column not in available]
+    if missing:
+        return {"key": list(columns), "ok": False, "reason": f"missing key columns: {', '.join(missing)}"}
     key_expr = ", ".join(quote_ident(col) for col in columns)
     row = con.execute(
         f"""
@@ -335,7 +411,7 @@ def siren_quality_check(con: Any, sql: str) -> dict[str, Any]:
         f"""
         SELECT
             COUNT(*) AS rows,
-            SUM(CASE WHEN regexp_matches(siren, '^[0-9]{{9}}$') THEN 1 ELSE 0 END) AS valid_siren,
+            SUM(CASE WHEN regexp_matches(CAST(siren AS VARCHAR), '^[0-9]{{9}}$') THEN 1 ELSE 0 END) AS valid_siren,
             SUM(CASE WHEN siren IS NULL THEN 1 ELSE 0 END) AS null_siren
         FROM {sql}
         """
@@ -366,7 +442,10 @@ def label_balance_by_year(con: Any, sql: str) -> list[dict[str, Any]]:
     select_parts = ["prediction_year", "COUNT(*) AS rows"]
     for label in selected:
         ident = quote_ident(label)
-        select_parts.append(f"SUM(CASE WHEN {ident} THEN 1 ELSE 0 END) AS {quote_ident(label + '_positive')}")
+        select_parts.append(
+            f"SUM(CASE WHEN COALESCE(TRY_CAST({ident} AS BOOLEAN), false) THEN 1 ELSE 0 END) "
+            f"AS {quote_ident(label + '_positive')}"
+        )
     rows = con.execute(
         f"""
         SELECT {", ".join(select_parts)}

@@ -26,6 +26,7 @@ before copying sections into the final end-of-studies report.
 | `docs/docker_runtime_strategy.md` | Added | Clarifies Docker as the final runtime and host volumes as storage |
 | `docs/project_ai_context.md` | Added | Compact decision memory for AI-assisted work and teammate handover |
 | `docs/project_weak_points_and_improvement_plan.md` | Added | Honest risk register for project weaknesses and improvement priorities |
+| `docs/complete_project_weaknesses_and_improvement_plan.md` | Added | Consolidated report and project weakness analysis with defense attack questions |
 | `docs/feature_safety_registry.md` | Added | Feature/label safety registry for historical validity and leakage control |
 | `docs/report_markdown_rules.md` | Updated | Documentation style, structure, vocabulary, and checklist rules |
 
@@ -49,6 +50,7 @@ before copying sections into the final end-of-studies report.
 | Docker runtime and host/local boundary | `docker_runtime_strategy.md` |
 | AI/project decision memory | `project_ai_context.md` |
 | Project weak points and improvement plan | `project_weak_points_and_improvement_plan.md` |
+| Consolidated weakness analysis and defense questions | `complete_project_weaknesses_and_improvement_plan.md` |
 | Feature leakage and historical safety registry | `feature_safety_registry.md` |
 | Report writing rules | `report_markdown_rules.md` |
 
