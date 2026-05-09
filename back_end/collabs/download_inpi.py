@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import ftplib
 import os
+import socket
 import stat
 import sys
 import time
@@ -159,12 +160,31 @@ class InpiConnector:
             else:
                 assert self.ftp is not None
                 self.ftp.voidcmd("TYPE I")
-                self.ftp.retrbinary(
-                    f"RETR {remote_path}",
-                    write_chunk,
-                    blocksize=1024 * 1024,
-                    rest=written or None,
-                )
+                try:
+                    self.ftp.retrbinary(
+                        f"RETR {remote_path}",
+                        write_chunk,
+                        blocksize=1024 * 1024,
+                        rest=written or None,
+                    )
+                except TimeoutError:
+                    if size and written >= size:
+                        print(f"[inpi] control connection timed out after complete transfer: {local_path.name}")
+                    else:
+                        print(
+                            f"[inpi] transfer timed out before completion: {local_path.name} "
+                            f"written={written:,} expected={size:,}; rerun to resume"
+                        )
+                        raise
+                except socket.timeout:
+                    if size and written >= size:
+                        print(f"[inpi] control connection timed out after complete transfer: {local_path.name}")
+                    else:
+                        print(
+                            f"[inpi] transfer timed out before completion: {local_path.name} "
+                            f"written={written:,} expected={size:,}; rerun to resume"
+                        )
+                        raise
         if size and written != size:
             raise RuntimeError(f"size mismatch for {remote_path}: wrote {written}, expected {size}")
         tmp.replace(local_path)
