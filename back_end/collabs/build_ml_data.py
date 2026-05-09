@@ -43,22 +43,21 @@ def main() -> None:
             env=env,
         )
 
-    run(
-        [
-            sys.executable,
-            "-m",
-            "app.tools.build_company_year_features",
-            "--data-lake-dir",
-            str(p["data_lake"]),
-            "--start-year",
-            str(args.start_year),
-            "--end-year",
-            str(args.end_year),
-            "--overwrite",
-        ],
-        repo_dir,
-        env=env,
-    )
+    feature_command = [
+        sys.executable,
+        "-m",
+        "app.tools.build_company_year_features",
+        "--data-lake-dir",
+        str(p["data_lake"]),
+        "--start-year",
+        str(args.start_year),
+        "--end-year",
+        str(args.end_year),
+        "--overwrite",
+    ]
+    if args.max_companies:
+        feature_command.extend(["--max-companies", str(args.max_companies)])
+    run(feature_command, repo_dir, env=env)
 
     if args.train:
         run(
@@ -89,6 +88,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--end-year", type=int, default=2025)
     parser.add_argument("--clean-core", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--clean-financials", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--max-companies", type=int, help="Optional smoke-test cap for feature generation.")
     parser.add_argument("--train", action="store_true")
     parser.add_argument("--min-rows", type=int, default=1000)
     return parser.parse_args()
