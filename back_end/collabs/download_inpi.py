@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import ftplib
 import os
+import shutil
 import socket
 import stat
 import sys
@@ -251,14 +252,20 @@ def main() -> None:
             print(f"[inpi] download {index}/{len(selected)} {archive.path}")
             if args.work_dir and seed_file_from_drive(local_path, p["drive_root"], drive_p["drive_root"]):
                 print(f"[inpi] seeded local work file from Drive: {local_path.name}")
-            download_with_retries(
+            if args.work_dir and seed_partial_from_drive(local_path, p["drive_root"], drive_p["drive_root"]):
+                print(f"[inpi] seeded local partial from Drive: {local_path.name}.part")
+            download_ok = download_with_retries(
                 conn,
                 archive.path,
                 local_path,
                 size=archive.size,
                 overwrite=args.overwrite,
                 retries=args.retries,
+                drive_root=drive_p["drive_root"] if args.work_dir else None,
+                local_root=p["drive_root"] if args.work_dir else None,
             )
+            if not download_ok:
+                continue
             manifest_path = local_path.with_suffix(local_path.suffix + ".manifest.json")
             write_json(
                 manifest_path,
@@ -276,6 +283,7 @@ def main() -> None:
             )
             if args.work_dir:
                 sync_file_to_drive(local_path, p["drive_root"], drive_p["drive_root"])
+                remove_drive_partial(local_path, p["drive_root"], drive_p["drive_root"])
                 sync_file_to_drive(manifest_path, p["drive_root"], drive_p["drive_root"])
                 print(f"[inpi] synced archive to Drive: {local_path.name}")
         print("[inpi] download phase done")
@@ -289,16 +297,20 @@ def download_with_retries(
     size: int,
     overwrite: bool,
     retries: int,
-) -> None:
+    drive_root: Path | None = None,
+    local_root: Path | None = None,
+) -> bool:
     attempts = max(retries, 1)
     for attempt in range(1, attempts + 1):
         try:
             conn.download(remote_path, local_path, size=size, overwrite=overwrite and attempt == 1)
-            return
+            return True
         except (TimeoutError, socket.timeout, OSError, ftplib.Error) as exc:
             if local_path.exists() and (not size or local_path.stat().st_size == size):
                 print(f"[inpi] archive completed despite connection error: {local_path.name}")
-                return
+                return True
+            if drive_root is not None and local_root is not None:
+                sync_partial_to_drive(local_path, local_root, drive_root)
             if attempt >= attempts:
                 raise
             wait_seconds = min(30 * attempt, 120)
@@ -308,6 +320,40 @@ def download_with_retries(
             )
             time.sleep(wait_seconds)
             conn.reconnect()
+    return False
+
+
+def seed_partial_from_drive(local_path: Path, local_root: Path, drive_root: Path) -> bool:
+    local_part = local_path.with_suffix(local_path.suffix + ".part")
+    drive_part = (drive_root / local_path.relative_to(local_root)).with_suffix(local_path.suffix + ".part")
+    if not drive_part.exists():
+        return False
+    if local_part.exists() and local_part.stat().st_size >= drive_part.stat().st_size:
+        return False
+    local_part.parent.mkdir(parents=True, exist_ok=True)
+    if local_path.exists() and local_path.stat().st_size < drive_part.stat().st_size:
+        local_path.unlink()
+    shutil.copy2(drive_part, local_part)
+    return True
+
+
+def sync_partial_to_drive(local_path: Path, local_root: Path, drive_root: Path) -> None:
+    local_part = local_path.with_suffix(local_path.suffix + ".part")
+    if not local_part.exists():
+        return
+    drive_part = (drive_root / local_path.relative_to(local_root)).with_suffix(local_path.suffix + ".part")
+    if drive_part.exists() and drive_part.stat().st_size >= local_part.stat().st_size:
+        return
+    drive_part.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(local_part, drive_part)
+    print(f"[inpi] synced partial to Drive: {drive_part.name} ({drive_part.stat().st_size / 1024 / 1024:,.1f} MB)")
+
+
+def remove_drive_partial(local_path: Path, local_root: Path, drive_root: Path) -> None:
+    drive_part = (drive_root / local_path.relative_to(local_root)).with_suffix(local_path.suffix + ".part")
+    if drive_part.exists():
+        drive_part.unlink()
+        print(f"[inpi] removed stale Drive partial: {drive_part.name}")
 
 
 def discover(conn: InpiConnector, base: str, *, categories: set[str], niveaux: set[str]) -> list[RemoteArchive]:
