@@ -28,12 +28,19 @@ def main() -> None:
     progress_path = Path(args.progress_file)
     progress_path.parent.mkdir(parents=True, exist_ok=True)
 
-    archives = _discover_archives(input_dir, set(args.families))
+    archives = _discover_archives(
+        input_dir,
+        set(args.families),
+        start_year=args.start_year,
+        end_year=args.end_year,
+    )
     logger.info(
-        "batch export discovered=%d input_dir=%s families=%s",
+        "batch export discovered=%d input_dir=%s families=%s years=%s-%s",
         len(archives),
         input_dir,
         ",".join(args.families),
+        args.start_year or "*",
+        args.end_year or "*",
     )
 
     stats = {
@@ -53,7 +60,7 @@ def main() -> None:
         stats["current_file"] = str(archive)
         _write_progress(progress_path, stats)
 
-        year = args.year or _infer_year(archive.name)
+        year = args.year or _infer_year_from_path(archive)
         output_dir = output_base / args.mode / str(year or "unknown") / archive.stem
 
         if args.skip_existing and _manifest_done(output_dir / "_manifest.json"):
@@ -95,7 +102,13 @@ def main() -> None:
     )
 
 
-def _discover_archives(input_dir: Path, families: set[str]) -> list[Path]:
+def _discover_archives(
+    input_dir: Path,
+    families: set[str],
+    *,
+    start_year: int | None,
+    end_year: int | None,
+) -> list[Path]:
     archives: list[Path] = []
     candidates = [
         *input_dir.rglob("*.taz"),
@@ -104,8 +117,14 @@ def _discover_archives(input_dir: Path, families: set[str]) -> list[Path]:
     ]
     for path in candidates:
         family = _family_from_name(path.name)
-        if family in families or family == FULL_YEAR_FAMILY:
-            archives.append(path)
+        if family not in families and family != FULL_YEAR_FAMILY:
+            continue
+        year = _infer_year_from_path(path)
+        if start_year is not None and (year is None or year < start_year):
+            continue
+        if end_year is not None and (year is None or year > end_year):
+            continue
+        archives.append(path)
     return sorted(archives)
 
 
@@ -141,6 +160,14 @@ def _infer_year(name: str) -> int | None:
     return None
 
 
+def _infer_year_from_path(path: Path) -> int | None:
+    for part in reversed(path.parts):
+        year = _infer_year(part)
+        if year is not None:
+            return year
+    return None
+
+
 def _manifest_done(path: Path) -> bool:
     if not path.exists():
         return False
@@ -167,6 +194,8 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--mode", choices=("current", "historical"), default="current")
     parser.add_argument("--year", type=int)
+    parser.add_argument("--start-year", type=int)
+    parser.add_argument("--end-year", type=int)
     parser.add_argument("--families", nargs="+", default=["PCL", "RCS-B"])
     parser.add_argument("--batch-size", type=int, default=100_000)
     parser.add_argument("--progress-file", default="/data-lake/raw/bodacc/_batch_progress.json")

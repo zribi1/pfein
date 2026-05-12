@@ -130,23 +130,77 @@ downloads, extraction, and Parquet writes on local disk, then sync completed
 archives and outputs back to Drive. Drive remains the durable copy; `/content`
 can disappear when the runtime resets.
 
-## Step 5: Download INSEE And Financial Data
+## Step 5: Run One Download Or Export At A Time
 
-Run this when starting from zero or when you want to refresh public INSEE and
-financial source files.
+Run separate cells instead of one long pipeline cell. This makes Colab failures
+cheaper: rerun only the failed download or export, and keep the status file
+focused on the stage you are currently fixing. Each step checks Drive first and
+is skipped when the expected artifacts already exist.
 
 ```python
 %cd /content/pfein/back_end
 
 !python collabs/full_pipeline.py \
+  --step download_insee \
   --drive-root "/content/drive/MyDrive/PFE ML Data/pfe_data" \
   --work-dir "/content/pfe_work" \
   --install-deps \
-  --no-inpi \
-  --no-bodacc \
+  --start-year 2017 \
+  --end-year 2025
+```
+
+```python
+!python collabs/full_pipeline.py \
+  --step export_raw_insee \
+  --drive-root "/content/drive/MyDrive/PFE ML Data/pfe_data" \
+  --work-dir "/content/pfe_work" \
+  --start-year 2017 \
+  --end-year 2025
+```
+
+```python
+!python collabs/full_pipeline.py \
+  --step download_bilan \
+  --drive-root "/content/drive/MyDrive/PFE ML Data/pfe_data" \
+  --work-dir "/content/pfe_work" \
+  --start-year 2017 \
+  --end-year 2025
+```
+
+```python
+!python collabs/full_pipeline.py \
+  --step export_raw_bilan \
+  --drive-root "/content/drive/MyDrive/PFE ML Data/pfe_data" \
+  --work-dir "/content/pfe_work" \
+  --start-year 2017 \
+  --end-year 2025
+```
+
+The main source steps are:
+
+| Step | What It Runs |
+|---|---|
+| `download_insee` | Download INSEE bulk files to Drive |
+| `export_raw_insee` | Pull INSEE files from Drive if needed, then export raw Parquet |
+| `download_bilan` | Download financial bilan Parquet to Drive |
+| `export_raw_bilan` | Pull the financial file from Drive if needed, then copy to raw |
+| `download_inpi` | Download INPI ZIP archives to Drive |
+| `export_raw_inpi` | Pull INPI ZIPs from Drive if needed, then export raw Parquet |
+| `download_bodacc` | Download BODACC archives to Drive |
+| `export_raw_bodacc` | Pull BODACC archives from Drive if needed, then export raw Parquet |
+
+Then build a capped feature table from the sources that are ready. This step is
+global because it joins all available sources:
+
+```python
+!python collabs/full_pipeline.py \
+  --step build_ml_data \
+  --drive-root "/content/drive/MyDrive/PFE ML Data/pfe_data" \
+  --work-dir "/content/pfe_work" \
   --start-year 2017 \
   --end-year 2025 \
-  --max-companies 100000
+  --max-companies 100000 \
+  --audit
 ```
 
 This downloads or reuses:
@@ -158,6 +212,16 @@ This downloads or reuses:
 | Raw Parquet exports | `data-lake/raw` |
 | Clean normalized tables | `data-lake/clean` |
 | Feature and label tables | `data-lake/features` |
+
+Each command appends to:
+
+```text
+reports/pipeline_status.md
+reports/pipeline_status.json
+```
+
+Use `--force` when you intentionally want to rerun a step even though Drive
+already contains the expected artifacts.
 
 Expected main outputs:
 
@@ -274,22 +338,53 @@ and which still require verification.
 
 ## Step 8: Download BODACC Archives Only
 
-Use this on normal RAM. It downloads historical BODACC archives to Drive but
-does not export/process them.
+First download the BODACC archives:
 
 ```python
 %cd /content/pfein/back_end
 
-!python collabs/download_bodacc.py \
+!python collabs/full_pipeline.py \
+  --step download_bodacc \
   --drive-root "/content/drive/MyDrive/PFE ML Data/pfe_data" \
   --work-dir "/content/pfe_work" \
   --repo-dir "/content/pfein/back_end" \
-  --mode historical \
-  --families PCL,RCS-B \
+  --bodacc-mode historical \
+  --bodacc-families PCL RCS-B \
   --start-year 2017 \
-  --end-year 2025 \
-  --download \
-  --no-export
+  --end-year 2025
+```
+
+Then export them:
+
+```python
+!python collabs/full_pipeline.py \
+  --step export_raw_bodacc \
+  --drive-root "/content/drive/MyDrive/PFE ML Data/pfe_data" \
+  --work-dir "/content/pfe_work" \
+  --repo-dir "/content/pfein/back_end" \
+  --bodacc-mode historical \
+  --bodacc-families PCL RCS-B \
+  --start-year 2017 \
+  --end-year 2025
+```
+
+The export step seeds BODACC archives from Drive into `/content/pfe_work` when
+the Colab runtime has reset.
+
+If you want to call the lower-level downloader directly, use:
+
+```python
+%cd /content/pfein/back_end
+
+!python collabs/full_pipeline.py \
+  --step download_bodacc \
+  --drive-root "/content/drive/MyDrive/PFE ML Data/pfe_data" \
+  --work-dir "/content/pfe_work" \
+  --repo-dir "/content/pfein/back_end" \
+  --bodacc-mode historical \
+  --bodacc-families PCL RCS-B \
+  --start-year 2017 \
+  --end-year 2025
 ```
 
 Expected output includes discovery and download progress:
@@ -308,17 +403,16 @@ Expected output includes discovery and download progress:
 For a small smoke test:
 
 ```python
-!python collabs/download_bodacc.py \
+!python collabs/full_pipeline.py \
+  --step download_bodacc \
   --drive-root "/content/drive/MyDrive/PFE ML Data/pfe_data" \
   --work-dir "/content/pfe_work" \
   --repo-dir "/content/pfein/back_end" \
-  --mode historical \
-  --families PCL,RCS-B \
+  --bodacc-mode historical \
+  --bodacc-families PCL RCS-B \
   --start-year 2025 \
   --end-year 2025 \
-  --max-files 2 \
-  --download \
-  --no-export
+  --bodacc-max-files 2
 ```
 
 ## Step 9: Export Existing BODACC Archives
@@ -329,16 +423,15 @@ feature building hits memory pressure.
 ```python
 %cd /content/pfein/back_end
 
-!python collabs/download_bodacc.py \
+!python collabs/full_pipeline.py \
+  --step export_raw_bodacc \
   --drive-root "/content/drive/MyDrive/PFE ML Data/pfe_data" \
   --work-dir "/content/pfe_work" \
   --repo-dir "/content/pfein/back_end" \
-  --mode historical \
-  --families PCL,RCS-B \
+  --bodacc-mode historical \
+  --bodacc-families PCL RCS-B \
   --start-year 2017 \
-  --end-year 2025 \
-  --no-download \
-  --export
+  --end-year 2025
 ```
 
 This writes BODACC raw Parquet under:
@@ -356,8 +449,10 @@ automatically when they fall inside the requested year range.
 Then rebuild clean and features:
 
 ```python
-!python collabs/build_ml_data.py \
+!python collabs/full_pipeline.py \
+  --step build_ml_data \
   --drive-root "/content/drive/MyDrive/PFE ML Data/pfe_data" \
+  --work-dir "/content/pfe_work" \
   --start-year 2017 \
   --end-year 2025 \
   --max-companies 100000
@@ -404,12 +499,19 @@ Download INPI archives:
 ```python
 %cd /content/pfein/back_end
 
-!python collabs/download_inpi.py \
+!python collabs/full_pipeline.py \
+  --step download_inpi \
   --drive-root "/content/drive/MyDrive/PFE ML Data/pfe_data" \
+  --work-dir "/content/pfe_work" \
   --repo-dir "/content/pfein/back_end" \
-  --categories comptes_annuels,formalites \
-  --niveaux standard,niveau1
+  --inpi-categories comptes_annuels,formalites \
+  --inpi-niveaux standard,niveau1 \
+  --inpi-retries 2
 ```
+
+If the transfer fails, rerun the same cell. Partial `.part` files are synced
+to Drive and resumed, so short retries are usually better than waiting through
+one very long failing cell.
 
 For a smoke test:
 
@@ -425,22 +527,24 @@ For a smoke test:
 Export existing INPI ZIP archives to raw Parquet:
 
 ```python
-!python collabs/export_raw_sources.py \
+!python collabs/full_pipeline.py \
+  --step export_raw_inpi \
   --drive-root "/content/drive/MyDrive/PFE ML Data/pfe_data" \
-  --repo-dir "/content/pfein/back_end" \
-  --no-insee \
-  --inpi \
-  --no-bodacc
+  --work-dir "/content/pfe_work" \
+  --repo-dir "/content/pfein/back_end"
 ```
 
 Then rebuild and audit:
 
 ```python
-!python collabs/build_ml_data.py \
+!python collabs/full_pipeline.py \
+  --step build_ml_data \
   --drive-root "/content/drive/MyDrive/PFE ML Data/pfe_data" \
+  --work-dir "/content/pfe_work" \
   --start-year 2017 \
   --end-year 2025 \
-  --max-companies 100000
+  --max-companies 100000 \
+  --audit
 
 !python collabs/audit_data_lake.py \
   --drive-root "/content/drive/MyDrive/PFE ML Data/pfe_data" \

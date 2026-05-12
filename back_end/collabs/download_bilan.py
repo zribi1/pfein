@@ -27,36 +27,55 @@ def main() -> None:
     if args.install_deps:
         install_deps(repo_dir)
 
-    print("[bilan] discovering latest financial Parquet resource")
-    resource = latest_financial_resource()
-    url = str(resource.get("url") or resource.get("latest"))
-    source_file = p["source_archives"] / "financials" / "data_gouv" / Path(url.split("?", 1)[0]).name
-    print(
-        "[bilan] selected resource "
-        f"id={resource.get('id')} size={resource.get('filesize')} "
-        f"modified={resource.get('last_modified') or resource.get('published')}"
-    )
-    if args.work_dir and seed_file_from_drive(source_file, p["drive_root"], drive_p["drive_root"]):
-        print(f"[bilan] seeded local work file from Drive: {source_file.name}")
-    download_resumable(url, source_file, overwrite=args.overwrite)
-    manifest_path = source_file.with_suffix(source_file.suffix + ".manifest.json")
-    write_json(
-        manifest_path,
-        {
-            "source": "data.gouv.fr",
-            "dataset_slug": FINANCIAL_DATASET_SLUG,
-            "resource_id": resource.get("id"),
-            "resource_title": resource.get("title"),
-            "resource_url": url,
-            "resource_last_modified": resource.get("last_modified") or resource.get("published"),
-            "resource_filesize": resource.get("filesize"),
-            "size_bytes": source_file.stat().st_size,
-        },
-    )
-    if args.work_dir:
-        print(f"[bilan] syncing source archive to Drive")
-        sync_file_to_drive(source_file, p["drive_root"], drive_p["drive_root"])
-        sync_file_to_drive(manifest_path, p["drive_root"], drive_p["drive_root"])
+    if args.download:
+        print("[bilan] discovering latest financial Parquet resource")
+        resource = latest_financial_resource()
+        url = str(resource.get("url") or resource.get("latest"))
+        source_file = p["source_archives"] / "financials" / "data_gouv" / Path(url.split("?", 1)[0]).name
+        print(
+            "[bilan] selected resource "
+            f"id={resource.get('id')} size={resource.get('filesize')} "
+            f"modified={resource.get('last_modified') or resource.get('published')}"
+        )
+        if args.work_dir and seed_file_from_drive(source_file, p["drive_root"], drive_p["drive_root"]):
+            print(f"[bilan] seeded local work file from Drive: {source_file.name}")
+        download_resumable(url, source_file, overwrite=args.overwrite)
+        manifest_path = source_file.with_suffix(source_file.suffix + ".manifest.json")
+        write_json(
+            manifest_path,
+            {
+                "source": "data.gouv.fr",
+                "dataset_slug": FINANCIAL_DATASET_SLUG,
+                "resource_id": resource.get("id"),
+                "resource_title": resource.get("title"),
+                "resource_url": url,
+                "resource_last_modified": resource.get("last_modified") or resource.get("published"),
+                "resource_filesize": resource.get("filesize"),
+                "size_bytes": source_file.stat().st_size,
+            },
+        )
+        if args.work_dir:
+            print(f"[bilan] syncing source archive to Drive")
+            sync_file_to_drive(source_file, p["drive_root"], drive_p["drive_root"])
+            sync_file_to_drive(manifest_path, p["drive_root"], drive_p["drive_root"])
+    else:
+        print("[bilan] download phase skipped; selecting existing Drive/local source")
+        source_file = existing_source_file(p["source_archives"] / "financials" / "data_gouv")
+        if source_file is None and args.work_dir:
+            drive_source = existing_source_file(drive_p["source_archives"] / "financials" / "data_gouv")
+            if drive_source is not None:
+                source_file = p["source_archives"] / "financials" / "data_gouv" / drive_source.name
+                if seed_file_from_drive(source_file, p["drive_root"], drive_p["drive_root"]):
+                    print(f"[bilan] seeded local work file from Drive: {source_file.name}")
+                drive_manifest = drive_source.with_suffix(drive_source.suffix + ".manifest.json")
+                if drive_manifest.exists():
+                    seed_file_from_drive(
+                        source_file.with_suffix(source_file.suffix + ".manifest.json"),
+                        p["drive_root"],
+                        drive_p["drive_root"],
+                    )
+        if source_file is None or not source_file.exists():
+            raise FileNotFoundError("No existing financial Parquet source found; run download_bilan first.")
 
     if args.copy_to_raw:
         print("[bilan] copy-to-raw phase start")
@@ -108,8 +127,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--repo-dir", default=".")
     parser.add_argument("--install-deps", action="store_true")
     parser.add_argument("--overwrite", action="store_true")
+    parser.add_argument("--download", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--copy-to-raw", action=argparse.BooleanOptionalAction, default=True)
     return parser.parse_args()
+
+
+def existing_source_file(source_dir: Path) -> Path | None:
+    if not source_dir.exists():
+        return None
+    files = [path for path in source_dir.glob("*.parquet") if path.is_file() and path.stat().st_size > 0]
+    if not files:
+        return None
+    return sorted(files, key=lambda path: path.stat().st_mtime, reverse=True)[0]
 
 
 if __name__ == "__main__":

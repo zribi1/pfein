@@ -66,6 +66,15 @@ def seed_file_from_drive(local_path: Path, local_root: Path, drive_root: Path) -
     return True
 
 
+def seed_tree_from_drive(local_path: Path, local_root: Path, drive_root: Path) -> bool:
+    source = drive_root / local_path.relative_to(local_root)
+    if not source.exists():
+        return False
+    local_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(source, local_path, dirs_exist_ok=True)
+    return True
+
+
 def storage_paths(drive_root: str | Path, work_dir: str | Path | None) -> tuple[dict[str, Path], dict[str, Path]]:
     drive_paths = paths(drive_root)
     if not work_dir:
@@ -181,6 +190,9 @@ def write_pipeline_status_markdown(path: Path, payload: dict[str, Any]) -> None:
         notes = row.get("error") or ""
         if row.get("returncode") is not None:
             notes = f"returncode={row['returncode']} {notes}".strip()
+        if not notes and row.get("details"):
+            details = row.get("details") or {}
+            notes = details.get("reason") or details.get("summary") or ""
         notes = str(notes).replace("|", "\\|").replace("\n", " ")
         lines.append(f"| `{row.get('step', '')}` | `{row.get('status', '')}` | `{row.get('timestamp', '')}` | {notes} |")
     failures = [row for row in rows if row.get("status") == "failed"]

@@ -13,6 +13,7 @@ from common import (
     install_deps,
     pipeline_env,
     seed_file_from_drive,
+    seed_tree_from_drive,
     storage_paths,
     sync_file_to_drive,
     sync_tree_to_drive,
@@ -79,6 +80,10 @@ def main() -> None:
         print("[bodacc] raw export phase skipped")
         return
 
+    if args.work_dir and drive_bodacc_dir.exists():
+        if seed_tree_from_drive(bodacc_dir, p["drive_root"], drive_p["drive_root"]):
+            print(f"[bodacc] seeded local work archives from Drive: {bodacc_dir}")
+
     print(f"[bodacc] raw export phase start input_dir={bodacc_dir}")
     archives = sorted(
         [*bodacc_dir.rglob("*.taz"), *bodacc_dir.rglob("*.tar"), *bodacc_dir.rglob("*.tar.gz")]
@@ -91,14 +96,14 @@ def main() -> None:
 
     cmd = [
         sys.executable,
-            "-m",
-            "app.tools.bodacc_archives_to_parquet",
-            "--input-dir",
-            str(bodacc_dir),
-            "--output-dir",
-            str(p["data_lake"]),
-            "--progress-file",
-            str(p["data_lake"] / "raw" / "bodacc" / "_batch_progress.json"),
+        "-m",
+        "app.tools.bodacc_archives_to_parquet",
+        "--input-dir",
+        str(bodacc_dir),
+        "--output-dir",
+        str(p["data_lake"]),
+        "--progress-file",
+        str(p["data_lake"] / "raw" / "bodacc" / "_batch_progress.json"),
         "--mode",
         args.mode,
         "--families",
@@ -106,6 +111,10 @@ def main() -> None:
     ]
     if args.year:
         cmd.extend(["--year", str(args.year)])
+    if args.start_year:
+        cmd.extend(["--start-year", str(args.start_year)])
+    if args.end_year:
+        cmd.extend(["--end-year", str(args.end_year)])
     cmd.append("--no-skip-existing" if args.overwrite_raw else "--skip-existing")
     run(cmd, repo_dir, env=pipeline_env(p["drive_root"]))
     if args.work_dir:
@@ -134,7 +143,7 @@ def download_archives(
     selected = [
         archive
         for archive in archives
-        if archive.family in family_set or archive.family == FULL_YEAR_FAMILY
+        if (archive.family in family_set or archive.family == FULL_YEAR_FAMILY)
         and (start_year is None or (archive.year is not None and archive.year >= start_year))
         and (end_year is None or (archive.year is not None and archive.year <= end_year))
     ]

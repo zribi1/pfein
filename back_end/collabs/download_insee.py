@@ -30,15 +30,19 @@ def main() -> None:
     print(f"[insee] preparing {len(INSEE_RESOURCES)} bulk resource(s)")
     for index, (dataset_type, url) in enumerate(INSEE_RESOURCES, start=1):
         path = p["source_archives"] / "insee" / "bulk" / dataset_type / Path(url).name
-        print(f"[insee] download {index}/{len(INSEE_RESOURCES)} dataset={dataset_type}")
+        phase = "download" if args.download else "prepare"
+        print(f"[insee] {phase} {index}/{len(INSEE_RESOURCES)} dataset={dataset_type}")
         if args.work_dir and seed_file_from_drive(path, p["drive_root"], drive_p["drive_root"]):
             print(f"[insee] seeded local work file from Drive: {path.name}")
-        download_resumable(url, path, overwrite=args.overwrite)
-        if args.work_dir:
+        if args.download:
+            download_resumable(url, path, overwrite=args.overwrite)
+        elif not path.exists():
+            raise FileNotFoundError(f"INSEE source file missing; run download first: {path}")
+        if args.download and args.work_dir:
             synced = sync_file_to_drive(path, p["drive_root"], drive_p["drive_root"])
             print(f"[insee] synced archive to Drive: {synced}")
         downloaded.append((dataset_type, path))
-    print(f"[insee] download phase done files={len(downloaded)}")
+    print(f"[insee] source phase done files={len(downloaded)}")
 
     if args.export_raw:
         env = pipeline_env(p["drive_root"])
@@ -75,6 +79,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--repo-dir", default=".")
     parser.add_argument("--install-deps", action="store_true")
     parser.add_argument("--overwrite", action="store_true")
+    parser.add_argument("--download", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--export-raw", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--overwrite-raw", action="store_true")
     return parser.parse_args()

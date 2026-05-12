@@ -46,6 +46,61 @@ For faster Colab runs, use local staging plus Drive persistence:
 When `--work-dir` is set, downloads and raw Parquet exports run on Colab's
 local disk, then completed archives and outputs are synced back to Drive.
 
+## Recommended Download/Export Run
+
+Use `full_pipeline.py --step ...` in separate Colab cells. Each step checks
+Drive first; if the expected download or export artifacts are already there,
+the step is marked skipped instead of redownloading or re-exporting.
+
+```python
+DRIVE_ROOT = "/content/drive/MyDrive/PFE ML Data/pfe_data"
+WORK_DIR = "/content/pfe_work"
+```
+
+Run one cell at a time:
+
+```bash
+python collabs/full_pipeline.py --step download_insee --drive-root "$DRIVE_ROOT" --work-dir "$WORK_DIR" --install-deps --start-year 2017 --end-year 2025
+python collabs/full_pipeline.py --step export_raw_insee --drive-root "$DRIVE_ROOT" --work-dir "$WORK_DIR" --start-year 2017 --end-year 2025
+python collabs/full_pipeline.py --step download_bilan --drive-root "$DRIVE_ROOT" --work-dir "$WORK_DIR" --start-year 2017 --end-year 2025
+python collabs/full_pipeline.py --step export_raw_bilan --drive-root "$DRIVE_ROOT" --work-dir "$WORK_DIR" --start-year 2017 --end-year 2025
+python collabs/full_pipeline.py --step download_inpi --drive-root "$DRIVE_ROOT" --work-dir "$WORK_DIR" --start-year 2017 --end-year 2025 --inpi-retries 2
+python collabs/full_pipeline.py --step export_raw_inpi --drive-root "$DRIVE_ROOT" --work-dir "$WORK_DIR" --start-year 2017 --end-year 2025
+python collabs/full_pipeline.py --step download_bodacc --drive-root "$DRIVE_ROOT" --work-dir "$WORK_DIR" --bodacc-mode historical --bodacc-families PCL RCS-B --start-year 2017 --end-year 2025
+python collabs/full_pipeline.py --step export_raw_bodacc --drive-root "$DRIVE_ROOT" --work-dir "$WORK_DIR" --bodacc-mode historical --bodacc-families PCL RCS-B --start-year 2017 --end-year 2025
+python collabs/full_pipeline.py --step build_ml_data --drive-root "$DRIVE_ROOT" --work-dir "$WORK_DIR" --start-year 2017 --end-year 2025 --audit
+```
+
+The step split is:
+
+| Step | Checks In Drive | Pipeline |
+|---|---|
+| `download_insee` | `source-archives/insee/bulk` | Download INSEE bulk files |
+| `export_raw_insee` | `data-lake/raw/insee/bulk` | Seed INSEE files from Drive if needed, then export raw Parquet |
+| `download_bilan` | `source-archives/financials/data_gouv` | Download public financial bilan Parquet |
+| `export_raw_bilan` | `data-lake/raw/financials` | Seed financial file from Drive if needed, then copy to raw |
+| `download_inpi` | `source-archives/inpi` | Download INPI ZIP archives |
+| `export_raw_inpi` | `data-lake/raw/inpi` | Seed INPI ZIPs from Drive if needed, then export raw Parquet |
+| `download_bodacc` | `source-archives/bodacc` | Download BODACC archives |
+| `export_raw_bodacc` | `data-lake/raw/bodacc` | Seed BODACC archives from Drive if needed, then export raw Parquet |
+
+The final `build_ml_data` step is global because it joins all available
+sources into clean tables, labels, features, audits, and optional training.
+
+`download_inpi` uses short retries by default. If a transfer fails, rerun the
+same cell; partial `.part` files are synced to Drive and resumed.
+
+`download_bodacc` and `export_raw_bodacc` default to the same
+`--start-year/--end-year` window used for feature building. Add
+`--bodacc-all-years` only when you intentionally want the full archive history.
+
+Use `--force` when you intentionally want to rerun a step even though Drive
+already contains the expected artifacts.
+
+You can still run source bundles with `--source insee`, `--source bilan`,
+`--source inpi`, or `--source bodacc`; each bundle runs its download step and
+then its export step.
+
 ## Separate Blocks
 
 Download/export INSEE:
