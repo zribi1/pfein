@@ -1,0 +1,4818 @@
+{
+  "generated_at": "2026-05-14T22:31:08.432739+00:00",
+  "data_lake_dir": "/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake",
+  "datasets": {
+    "raw_insee": {
+      "exists": true,
+      "root": "/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake/raw/insee",
+      "parquet_files": 5,
+      "manifest": null,
+      "rows": 246453008,
+      "columns": [
+        {
+          "name": "siren",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "nic",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "siret",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "statutDiffusionEtablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "dateCreationEtablissement",
+          "type": "DATE"
+        },
+        {
+          "name": "trancheEffectifsEtablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "anneeEffectifsEtablissement",
+          "type": "BIGINT"
+        },
+        {
+          "name": "activitePrincipaleRegistreMetiersEtablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "dateDernierTraitementEtablissement",
+          "type": "TIMESTAMP"
+        },
+        {
+          "name": "etablissementSiege",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "nombrePeriodesEtablissement",
+          "type": "BIGINT"
+        },
+        {
+          "name": "complementAdresseEtablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "numeroVoieEtablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "indiceRepetitionEtablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "dernierNumeroVoieEtablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "indiceRepetitionDernierNumeroVoieEtablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "typeVoieEtablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "libelleVoieEtablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "codePostalEtablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "libelleCommuneEtablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "libelleCommuneEtrangerEtablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "distributionSpecialeEtablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "codeCommuneEtablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "codeCedexEtablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "libelleCedexEtablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "codePaysEtrangerEtablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "libellePaysEtrangerEtablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "identifiantAdresseEtablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "coordonneeLambertAbscisseEtablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "coordonneeLambertOrdonneeEtablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "complementAdresse2Etablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "numeroVoie2Etablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "indiceRepetition2Etablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "typeVoie2Etablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "libelleVoie2Etablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "codePostal2Etablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "libelleCommune2Etablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "libelleCommuneEtranger2Etablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "distributionSpeciale2Etablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "codeCommune2Etablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "codeCedex2Etablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "libelleCedex2Etablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "codePaysEtranger2Etablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "libellePaysEtranger2Etablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "dateDebut",
+          "type": "DATE"
+        },
+        {
+          "name": "etatAdministratifEtablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "enseigne1Etablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "enseigne2Etablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "enseigne3Etablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "denominationUsuelleEtablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "activitePrincipaleEtablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "nomenclatureActivitePrincipaleEtablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "caractereEmployeurEtablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "activitePrincipaleNAF25Etablissement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "dateFin",
+          "type": "DATE"
+        },
+        {
+          "name": "changementEtatAdministratifEtablissement",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "changementEnseigneEtablissement",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "changementDenominationUsuelleEtablissement",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "changementActivitePrincipaleEtablissement",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "changementCaractereEmployeurEtablissement",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "siretEtablissementPredecesseur",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "siretEtablissementSuccesseur",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "dateLienSuccession",
+          "type": "DATE"
+        },
+        {
+          "name": "transfertSiege",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "continuiteEconomique",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "dateDernierTraitementLienSuccession",
+          "type": "TIMESTAMP"
+        },
+        {
+          "name": "statutDiffusionUniteLegale",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "unitePurgeeUniteLegale",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "dateCreationUniteLegale",
+          "type": "DATE"
+        },
+        {
+          "name": "sigleUniteLegale",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "sexeUniteLegale",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "prenom1UniteLegale",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "prenom2UniteLegale",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "prenom3UniteLegale",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "prenom4UniteLegale",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "prenomUsuelUniteLegale",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "pseudonymeUniteLegale",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "identifiantAssociationUniteLegale",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "trancheEffectifsUniteLegale",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "anneeEffectifsUniteLegale",
+          "type": "BIGINT"
+        },
+        {
+          "name": "dateDernierTraitementUniteLegale",
+          "type": "TIMESTAMP"
+        },
+        {
+          "name": "nombrePeriodesUniteLegale",
+          "type": "BIGINT"
+        },
+        {
+          "name": "categorieEntreprise",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "anneeCategorieEntreprise",
+          "type": "BIGINT"
+        },
+        {
+          "name": "etatAdministratifUniteLegale",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "nomUniteLegale",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "nomUsageUniteLegale",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "denominationUniteLegale",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "denominationUsuelle1UniteLegale",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "denominationUsuelle2UniteLegale",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "denominationUsuelle3UniteLegale",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "categorieJuridiqueUniteLegale",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "activitePrincipaleUniteLegale",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "nomenclatureActivitePrincipaleUniteLegale",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "nicSiegeUniteLegale",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "economieSocialeSolidaireUniteLegale",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "societeMissionUniteLegale",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "caractereEmployeurUniteLegale",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "activitePrincipaleNAF25UniteLegale",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "changementEtatAdministratifUniteLegale",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "changementNomUniteLegale",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "changementNomUsageUniteLegale",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "changementDenominationUniteLegale",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "changementDenominationUsuelleUniteLegale",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "changementCategorieJuridiqueUniteLegale",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "changementActivitePrincipaleUniteLegale",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "changementNicSiegeUniteLegale",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "changementEconomieSocialeSolidaireUniteLegale",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "changementSocieteMissionUniteLegale",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "changementCaractereEmployeurUniteLegale",
+          "type": "BOOLEAN"
+        }
+      ],
+      "column_profile": {
+        "siren": {
+          "type": "VARCHAR",
+          "nulls": 9620567,
+          "coverage_rate": 0.960964,
+          "distinct_values": 28586411,
+          "distinct_is_approximate": true
+        },
+        "nic": {
+          "type": "VARCHAR",
+          "nulls": 109012649,
+          "coverage_rate": 0.557674,
+          "distinct_values": 70386,
+          "distinct_is_approximate": true
+        },
+        "siret": {
+          "type": "VARCHAR",
+          "nulls": 109012649,
+          "coverage_rate": 0.557674,
+          "distinct_values": 47732907,
+          "distinct_is_approximate": true
+        },
+        "statutDiffusionEtablissement": {
+          "type": "VARCHAR",
+          "nulls": 203137520,
+          "coverage_rate": 0.175756,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "O",
+              "rows": 37963332
+            },
+            {
+              "value": "P",
+              "rows": 5352156
+            }
+          ]
+        },
+        "dateCreationEtablissement": {
+          "type": "DATE",
+          "nulls": 206565105,
+          "coverage_rate": 0.161848,
+          "distinct_values": 31031,
+          "distinct_is_approximate": true,
+          "min": "0001-01-16",
+          "max": "5015-04-05"
+        },
+        "trancheEffectifsEtablissement": {
+          "type": "VARCHAR",
+          "nulls": 203137520,
+          "coverage_rate": 0.175756,
+          "distinct_values": 17,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "NN",
+              "rows": 41002306
+            },
+            {
+              "value": "01",
+              "rows": 929916
+            },
+            {
+              "value": "02",
+              "rows": 495201
+            },
+            {
+              "value": "03",
+              "rows": 267377
+            },
+            {
+              "value": "11",
+              "rows": 214006
+            },
+            {
+              "value": "00",
+              "rows": 188008
+            },
+            {
+              "value": "12",
+              "rows": 133442
+            },
+            {
+              "value": "21",
+              "rows": 49768
+            },
+            {
+              "value": "22",
+              "rows": 21147
+            },
+            {
+              "value": "32",
+              "rows": 6638
+            },
+            {
+              "value": "31",
+              "rows": 3762
+            },
+            {
+              "value": "41",
+              "rows": 2420
+            },
+            {
+              "value": "42",
+              "rows": 956
+            },
+            {
+              "value": "51",
+              "rows": 463
+            },
+            {
+              "value": "52",
+              "rows": 67
+            },
+            {
+              "value": "53",
+              "rows": 11
+            }
+          ]
+        },
+        "anneeEffectifsEtablissement": {
+          "type": "BIGINT",
+          "nulls": 243969497,
+          "coverage_rate": 0.010077,
+          "distinct_values": 1,
+          "distinct_is_approximate": true,
+          "min": 2023,
+          "max": 2023,
+          "avg": 2023.0
+        },
+        "activitePrincipaleRegistreMetiersEtablissement": {
+          "type": "VARCHAR",
+          "nulls": 243393934,
+          "coverage_rate": 0.012412,
+          "distinct_values": 520,
+          "distinct_is_approximate": true
+        },
+        "dateDernierTraitementEtablissement": {
+          "type": "TIMESTAMP",
+          "nulls": 203137520,
+          "coverage_rate": 0.175756,
+          "distinct_values": 3418664,
+          "distinct_is_approximate": true,
+          "min": "2024-03-22 15:40:57",
+          "max": "2026-04-30 23:55:58"
+        },
+        "etablissementSiege": {
+          "type": "BOOLEAN",
+          "nulls": 203137520,
+          "coverage_rate": 0.175756,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "true",
+              "rows": 29551047
+            },
+            {
+              "value": "false",
+              "rows": 13764441
+            }
+          ]
+        },
+        "nombrePeriodesEtablissement": {
+          "type": "BIGINT",
+          "nulls": 203137520,
+          "coverage_rate": 0.175756,
+          "distinct_values": 47,
+          "distinct_is_approximate": true,
+          "min": 1,
+          "max": 52,
+          "avg": 2.1730072855233677
+        },
+        "complementAdresseEtablissement": {
+          "type": "VARCHAR",
+          "nulls": 234067146,
+          "coverage_rate": 0.050256,
+          "distinct_values": 2607333,
+          "distinct_is_approximate": true
+        },
+        "numeroVoieEtablissement": {
+          "type": "VARCHAR",
+          "nulls": 211149075,
+          "coverage_rate": 0.143248,
+          "distinct_values": 9333,
+          "distinct_is_approximate": true
+        },
+        "indiceRepetitionEtablissement": {
+          "type": "VARCHAR",
+          "nulls": 239673939,
+          "coverage_rate": 0.027507,
+          "distinct_values": 41,
+          "distinct_is_approximate": true
+        },
+        "dernierNumeroVoieEtablissement": {
+          "type": "VARCHAR",
+          "nulls": 241084636,
+          "coverage_rate": 0.021783,
+          "distinct_values": 357,
+          "distinct_is_approximate": true
+        },
+        "indiceRepetitionDernierNumeroVoieEtablissement": {
+          "type": "VARCHAR",
+          "nulls": 241100852,
+          "coverage_rate": 0.021717,
+          "distinct_values": 1,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "[ND]",
+              "rows": 5352156
+            }
+          ]
+        },
+        "typeVoieEtablissement": {
+          "type": "VARCHAR",
+          "nulls": 208213654,
+          "coverage_rate": 0.155159,
+          "distinct_values": 503,
+          "distinct_is_approximate": true
+        },
+        "libelleVoieEtablissement": {
+          "type": "VARCHAR",
+          "nulls": 203953269,
+          "coverage_rate": 0.172446,
+          "distinct_values": 1834047,
+          "distinct_is_approximate": true
+        },
+        "codePostalEtablissement": {
+          "type": "VARCHAR",
+          "nulls": 203441481,
+          "coverage_rate": 0.174522,
+          "distinct_values": 20408,
+          "distinct_is_approximate": true
+        },
+        "libelleCommuneEtablissement": {
+          "type": "VARCHAR",
+          "nulls": 203497923,
+          "coverage_rate": 0.174293,
+          "distinct_values": 40535,
+          "distinct_is_approximate": true
+        },
+        "libelleCommuneEtrangerEtablissement": {
+          "type": "VARCHAR",
+          "nulls": 246122310,
+          "coverage_rate": 0.001342,
+          "distinct_values": 126590,
+          "distinct_is_approximate": true
+        },
+        "distributionSpecialeEtablissement": {
+          "type": "VARCHAR",
+          "nulls": 241100852,
+          "coverage_rate": 0.021717,
+          "distinct_values": 1,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "[ND]",
+              "rows": 5352156
+            }
+          ]
+        },
+        "codeCommuneEtablissement": {
+          "type": "VARCHAR",
+          "nulls": 203497923,
+          "coverage_rate": 0.174293,
+          "distinct_values": 44356,
+          "distinct_is_approximate": true
+        },
+        "codeCedexEtablissement": {
+          "type": "VARCHAR",
+          "nulls": 241100852,
+          "coverage_rate": 0.021717,
+          "distinct_values": 1,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "[ND]",
+              "rows": 5352156
+            }
+          ]
+        },
+        "libelleCedexEtablissement": {
+          "type": "VARCHAR",
+          "nulls": 241100852,
+          "coverage_rate": 0.021717,
+          "distinct_values": 1,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "[ND]",
+              "rows": 5352156
+            }
+          ]
+        }
+      },
+      "sample_rows": [
+        {
+          "siren": "000325175",
+          "nic": "00016",
+          "siret": "00032517500016",
+          "statutDiffusionEtablissement": "O",
+          "dateCreationEtablissement": "2000-09-26 00:00:00",
+          "trancheEffectifsEtablissement": "NN",
+          "anneeEffectifsEtablissement": NaN,
+          "activitePrincipaleRegistreMetiersEtablissement": "3212ZZ",
+          "dateDernierTraitementEtablissement": "2024-03-22 15:40:57",
+          "etablissementSiege": false,
+          "nombrePeriodesEtablissement": 3,
+          "complementAdresseEtablissement": null,
+          "numeroVoieEtablissement": null,
+          "indiceRepetitionEtablissement": null,
+          "dernierNumeroVoieEtablissement": null,
+          "indiceRepetitionDernierNumeroVoieEtablissement": null,
+          "typeVoieEtablissement": null,
+          "libelleVoieEtablissement": "MANIHI COTE MONTAGNE TUAMOTU",
+          "codePostalEtablissement": "98770",
+          "libelleCommuneEtablissement": "MANIHI",
+          "libelleCommuneEtrangerEtablissement": null,
+          "distributionSpecialeEtablissement": null,
+          "codeCommuneEtablissement": "98727",
+          "codeCedexEtablissement": null,
+          "libelleCedexEtablissement": null
+        },
+        {
+          "siren": "000325175",
+          "nic": "00024",
+          "siret": "00032517500024",
+          "statutDiffusionEtablissement": "O",
+          "dateCreationEtablissement": "2008-05-20 00:00:00",
+          "trancheEffectifsEtablissement": "NN",
+          "anneeEffectifsEtablissement": NaN,
+          "activitePrincipaleRegistreMetiersEtablissement": null,
+          "dateDernierTraitementEtablissement": "2024-03-30 05:08:28",
+          "etablissementSiege": false,
+          "nombrePeriodesEtablissement": 2,
+          "complementAdresseEtablissement": null,
+          "numeroVoieEtablissement": "1",
+          "indiceRepetitionEtablissement": null,
+          "dernierNumeroVoieEtablissement": null,
+          "indiceRepetitionDernierNumeroVoieEtablissement": null,
+          "typeVoieEtablissement": "PLACE",
+          "libelleVoieEtablissement": "LEONCE DE SEYNES",
+          "codePostalEtablissement": "84000",
+          "libelleCommuneEtablissement": "AVIGNON",
+          "libelleCommuneEtrangerEtablissement": null,
+          "distributionSpecialeEtablissement": null,
+          "codeCommuneEtablissement": "84007",
+          "codeCedexEtablissement": null,
+          "libelleCedexEtablissement": null
+        }
+      ]
+    },
+    "raw_financials": {
+      "exists": true,
+      "root": "/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake/raw/financials",
+      "parquet_files": 1,
+      "manifest": null,
+      "rows": 6368964,
+      "columns": [
+        {
+          "name": "siren",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "date_cloture_exercice",
+          "type": "DATE"
+        },
+        {
+          "name": "type_bilan",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "confidentiality",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "liasse",
+          "type": "MAP(VARCHAR, INTEGER)"
+        }
+      ],
+      "column_profile": {
+        "siren": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 1798383,
+          "distinct_is_approximate": true
+        },
+        "date_cloture_exercice": {
+          "type": "DATE",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 1483,
+          "distinct_is_approximate": true,
+          "min": "1919-09-30",
+          "max": "2029-12-31"
+        },
+        "type_bilan": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 3,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "C",
+              "rows": 4791633
+            },
+            {
+              "value": "S",
+              "rows": 1546390
+            },
+            {
+              "value": "K",
+              "rows": 30941
+            }
+          ]
+        },
+        "confidentiality": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 3,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "Public",
+              "rows": 4836814
+            },
+            {
+              "value": "Partiellement confidentiel",
+              "rows": 1483657
+            },
+            {
+              "value": "Partiellement confidentiel (RAPCAC)",
+              "rows": 46591
+            },
+            {
+              "value": "Publication simplifiee",
+              "rows": 1902
+            }
+          ]
+        }
+      },
+      "sample_rows": [
+        {
+          "siren": "005420120",
+          "date_cloture_exercice": "2018-12-31 00:00:00",
+          "type_bilan": "C",
+          "confidentiality": "Public"
+        },
+        {
+          "siren": "005420120",
+          "date_cloture_exercice": "2021-12-31 00:00:00",
+          "type_bilan": "C",
+          "confidentiality": "Public"
+        }
+      ]
+    },
+    "raw_inpi": {
+      "exists": true,
+      "root": "/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake/raw/inpi",
+      "parquet_files": 663,
+      "manifest": null,
+      "rows": 66141121,
+      "columns": [
+        {
+          "name": "record_key",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "siren",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "denomination",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "category",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "niveau",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_file",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "inpi_id",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "updated_at_source",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "date_depot",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "date_cloture",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "type_bilan",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "confidentiality",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "deleted",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "exported_at",
+          "type": "TIMESTAMP WITH TIME ZONE"
+        }
+      ],
+      "column_profile": {
+        "date_cloture": {
+          "type": "VARCHAR",
+          "nulls": 53544636,
+          "coverage_rate": 0.190449,
+          "distinct_values": 1763,
+          "distinct_is_approximate": true
+        },
+        "date_depot": {
+          "type": "VARCHAR",
+          "nulls": 53544636,
+          "coverage_rate": 0.190449,
+          "distinct_values": 3349,
+          "distinct_is_approximate": true
+        },
+        "siren": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 26522538,
+          "distinct_is_approximate": true
+        },
+        "record_key": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 74423382,
+          "distinct_is_approximate": true
+        },
+        "denomination": {
+          "type": "VARCHAR",
+          "nulls": 31381877,
+          "coverage_rate": 0.525532,
+          "distinct_values": 7816245,
+          "distinct_is_approximate": true
+        },
+        "category": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "formalites",
+              "rows": 53544636
+            },
+            {
+              "value": "comptes_annuels",
+              "rows": 12596485
+            }
+          ]
+        },
+        "niveau": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "niveau1",
+              "rows": 33635530
+            },
+            {
+              "value": "standard",
+              "rows": 32505591
+            }
+          ]
+        },
+        "source_file": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 4,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "stock_RNE_formalites_NIVEAU1_20260304_1400.zip",
+              "rows": 27348473
+            },
+            {
+              "value": "stock_RNE_formalites_20250523_0000.zip",
+              "rows": 26196163
+            },
+            {
+              "value": "stock_RNE_comptes_annuels_20250926_1000_v2.zip",
+              "rows": 6309428
+            },
+            {
+              "value": "stock_RNE_comptes_annuels_NIVEAU1_20260320_1400.zip",
+              "rows": 6287057
+            }
+          ]
+        },
+        "inpi_id": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 35852950,
+          "distinct_is_approximate": true
+        },
+        "updated_at_source": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 6571303,
+          "distinct_is_approximate": true
+        },
+        "type_bilan": {
+          "type": "VARCHAR",
+          "nulls": 53544636,
+          "coverage_rate": 0.190449,
+          "distinct_values": 9,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "C",
+              "rows": 9357698
+            },
+            {
+              "value": "S",
+              "rows": 3153394
+            },
+            {
+              "value": "K",
+              "rows": 59330
+            },
+            {
+              "value": "B",
+              "rows": 19955
+            },
+            {
+              "value": "A",
+              "rows": 3474
+            },
+            {
+              "value": "AC",
+              "rows": 1910
+            },
+            {
+              "value": "AS",
+              "rows": 693
+            },
+            {
+              "value": "0",
+              "rows": 31
+            }
+          ]
+        },
+        "confidentiality": {
+          "type": "VARCHAR",
+          "nulls": 53544636,
+          "coverage_rate": 0.190449,
+          "distinct_values": 3,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "Public",
+              "rows": 9614702
+            },
+            {
+              "value": "Partiellement confidentiel",
+              "rows": 2891129
+            },
+            {
+              "value": "Partiellement confidentiel (RAPCAC)",
+              "rows": 86636
+            },
+            {
+              "value": "Publication simplifiee",
+              "rows": 4018
+            }
+          ]
+        },
+        "deleted": {
+          "type": "BOOLEAN",
+          "nulls": 53544636,
+          "coverage_rate": 0.190449,
+          "distinct_values": 1,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "false",
+              "rows": 12596485
+            }
+          ]
+        },
+        "exported_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 69928583,
+          "distinct_is_approximate": true,
+          "min": "2026-05-13 07:48:39.779894+00:00",
+          "max": "2026-05-13 13:21:10.368956+00:00"
+        }
+      },
+      "sample_rows": [
+        {
+          "date_cloture": "2016-12-31",
+          "date_depot": "2017-11-10",
+          "siren": "005880596",
+          "record_key": "a0bbc0000314fa23b08a09f5911a913c70f70287a7a79870095d304d56aea2a9",
+          "denomination": "GEDIMO HOLDING",
+          "category": "comptes_annuels",
+          "niveau": "niveau1",
+          "source_file": "stock_RNE_comptes_annuels_NIVEAU1_20260320_1400.zip",
+          "inpi_id": "63ec89b3c90370f18005a937",
+          "updated_at_source": "2023-06-24T15:51:50+02:00",
+          "type_bilan": "C",
+          "confidentiality": "Public",
+          "deleted": false,
+          "exported_at": "2026-05-13 08:23:04.596137+00:00"
+        },
+        {
+          "date_cloture": "2017-12-31",
+          "date_depot": "2019-01-21",
+          "siren": "005880596",
+          "record_key": "a3c5d4fceab18d61450d04348d84079cc6e1c7678f7cebebddb1ba3786b6cbcf",
+          "denomination": "GEDIMO HOLDING",
+          "category": "comptes_annuels",
+          "niveau": "niveau1",
+          "source_file": "stock_RNE_comptes_annuels_NIVEAU1_20260320_1400.zip",
+          "inpi_id": "63ec89b3c90370f18005a938",
+          "updated_at_source": "2023-06-24T15:51:50+02:00",
+          "type_bilan": "C",
+          "confidentiality": "Public",
+          "deleted": false,
+          "exported_at": "2026-05-13 08:23:04.596320+00:00"
+        }
+      ]
+    },
+    "raw_bodacc": {
+      "exists": true,
+      "root": "/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake/raw/bodacc",
+      "parquet_files": 2660,
+      "manifest": null,
+      "rows": 17923111,
+      "columns": [
+        {
+          "name": "record_key",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "nojo",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "siren",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "denomination",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "nom",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "prenom",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "personne_type",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "bodacc_family",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "bodacc_edition",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "event_category",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "event_type",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "event_date",
+          "type": "TIMESTAMP WITH TIME ZONE"
+        },
+        {
+          "name": "date_parution",
+          "type": "TIMESTAMP WITH TIME ZONE"
+        },
+        {
+          "name": "jugement_date",
+          "type": "TIMESTAMP WITH TIME ZONE"
+        },
+        {
+          "name": "date_cessation_paiement",
+          "type": "TIMESTAMP WITH TIME ZONE"
+        },
+        {
+          "name": "date_cloture_comptes",
+          "type": "TIMESTAMP WITH TIME ZONE"
+        },
+        {
+          "name": "numero_annonce",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "numero_departement",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "tribunal",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "greffe",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "forme_juridique",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "activite",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "adresse",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "code_postal",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "ville",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "jugement_nature",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "jugement_text",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "is_risk_event",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "is_radiation",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "flag_liquidation",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "flag_redressement",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "flag_sauvegarde",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "flag_cessation_paiement",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "flag_interdiction_gerer",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "flag_procedure_collective",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "archive_name",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "archive_member_name",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_url",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "mode",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "year",
+          "type": "INTEGER"
+        },
+        {
+          "name": "exported_at",
+          "type": "TIMESTAMP WITH TIME ZONE"
+        }
+      ],
+      "column_profile": {
+        "date_parution": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 3132,
+          "distinct_is_approximate": true,
+          "min": "2017-01-03 00:00:00+00:00",
+          "max": "2025-12-31 00:00:00+00:00"
+        },
+        "event_date": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 3132,
+          "distinct_is_approximate": true,
+          "min": "2017-01-03 00:00:00+00:00",
+          "max": "2025-12-31 00:00:00+00:00"
+        },
+        "siren": {
+          "type": "VARCHAR",
+          "nulls": 183798,
+          "coverage_rate": 0.989745,
+          "distinct_values": 7108938,
+          "distinct_is_approximate": true
+        },
+        "record_key": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 13070699,
+          "distinct_is_approximate": true
+        },
+        "nojo": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 13070699,
+          "distinct_is_approximate": true
+        },
+        "denomination": {
+          "type": "VARCHAR",
+          "nulls": 2428855,
+          "coverage_rate": 0.864485,
+          "distinct_values": 3800263,
+          "distinct_is_approximate": true
+        },
+        "nom": {
+          "type": "VARCHAR",
+          "nulls": 15494297,
+          "coverage_rate": 0.135513,
+          "distinct_values": 532880,
+          "distinct_is_approximate": true
+        },
+        "prenom": {
+          "type": "VARCHAR",
+          "nulls": 15494297,
+          "coverage_rate": 0.135513,
+          "distinct_values": 696060,
+          "distinct_is_approximate": true
+        },
+        "personne_type": {
+          "type": "VARCHAR",
+          "nulls": 7394996,
+          "coverage_rate": 0.587404,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "morale",
+              "rows": 8091109
+            },
+            {
+              "value": "physique",
+              "rows": 2437006
+            }
+          ]
+        },
+        "bodacc_family": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 5,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "BILAN",
+              "rows": 7394989
+            },
+            {
+              "value": "RCS_B",
+              "rows": 6796966
+            },
+            {
+              "value": "RCS_A",
+              "rows": 2287664
+            },
+            {
+              "value": "PCL",
+              "rows": 1443485
+            },
+            {
+              "value": "UNKNOWN",
+              "rows": 7
+            }
+          ]
+        },
+        "bodacc_edition": {
+          "type": "VARCHAR",
+          "nulls": 7,
+          "coverage_rate": 1.0,
+          "distinct_values": 3,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "C",
+              "rows": 7394989
+            },
+            {
+              "value": "B",
+              "rows": 6796966
+            },
+            {
+              "value": "A",
+              "rows": 3731149
+            }
+          ]
+        },
+        "event_category": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 5,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "comptes_annuels",
+              "rows": 7394989
+            },
+            {
+              "value": "rcs_modification",
+              "rows": 4420976
+            },
+            {
+              "value": "radiation",
+              "rows": 2375990
+            },
+            {
+              "value": "rcs_immatriculation",
+              "rows": 2287664
+            },
+            {
+              "value": "procedure_collective",
+              "rows": 1443485
+            },
+            {
+              "value": "unknown",
+              "rows": 7
+            }
+          ]
+        },
+        "event_type": {
+          "type": "VARCHAR",
+          "nulls": 1215,
+          "coverage_rate": 0.999932,
+          "distinct_values": 48,
+          "distinct_is_approximate": true
+        },
+        "jugement_date": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "nulls": 16481128,
+          "coverage_rate": 0.080454,
+          "distinct_values": 4698,
+          "distinct_is_approximate": true,
+          "min": "1930-03-29 00:00:00+00:00",
+          "max": "2026-08-16 00:00:00+00:00"
+        },
+        "date_cessation_paiement": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "nulls": 17522818,
+          "coverage_rate": 0.022334,
+          "distinct_values": 5345,
+          "distinct_is_approximate": true,
+          "min": "1917-10-16 00:00:00+00:00",
+          "max": "2026-11-30 00:00:00+00:00"
+        },
+        "date_cloture_comptes": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "nulls": 10528767,
+          "coverage_rate": 0.412559,
+          "distinct_values": 1307,
+          "distinct_is_approximate": true,
+          "min": "1993-12-31 00:00:00+00:00",
+          "max": "2025-11-30 00:00:00+00:00"
+        },
+        "numero_annonce": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 34779,
+          "distinct_is_approximate": true
+        },
+        "numero_departement": {
+          "type": "VARCHAR",
+          "nulls": 7,
+          "coverage_rate": 1.0,
+          "distinct_values": 99,
+          "distinct_is_approximate": true
+        },
+        "tribunal": {
+          "type": "VARCHAR",
+          "nulls": 7,
+          "coverage_rate": 1.0,
+          "distinct_values": 914,
+          "distinct_is_approximate": true
+        },
+        "greffe": {
+          "type": "VARCHAR",
+          "nulls": 183798,
+          "coverage_rate": 0.989745,
+          "distinct_values": 1406,
+          "distinct_is_approximate": true
+        },
+        "forme_juridique": {
+          "type": "VARCHAR",
+          "nulls": 2480725,
+          "coverage_rate": 0.861591,
+          "distinct_values": 2303,
+          "distinct_is_approximate": true
+        },
+        "activite": {
+          "type": "VARCHAR",
+          "nulls": 11791320,
+          "coverage_rate": 0.342116,
+          "distinct_values": 3779401,
+          "distinct_is_approximate": true
+        },
+        "adresse": {
+          "type": "VARCHAR",
+          "nulls": 1243608,
+          "coverage_rate": 0.930614,
+          "distinct_values": 5047925,
+          "distinct_is_approximate": true
+        },
+        "code_postal": {
+          "type": "VARCHAR",
+          "nulls": 1262391,
+          "coverage_rate": 0.929566,
+          "distinct_values": 11750,
+          "distinct_is_approximate": true
+        },
+        "ville": {
+          "type": "VARCHAR",
+          "nulls": 1262391,
+          "coverage_rate": 0.929566,
+          "distinct_values": 73773,
+          "distinct_is_approximate": true
+        }
+      },
+      "sample_rows": [
+        {
+          "date_parution": "2017-01-03 00:00:00+00:00",
+          "event_date": "2017-01-03 00:00:00+00:00",
+          "siren": "390432326",
+          "record_key": "002016122600100",
+          "nojo": "002016122600100",
+          "denomination": "ASSOCIATION AIDE AUX DEPLACEMENTS EN THIERACHE",
+          "nom": null,
+          "prenom": null,
+          "personne_type": "morale",
+          "bodacc_family": "PCL",
+          "bodacc_edition": "A",
+          "event_category": "procedure_collective",
+          "event_type": "liquidation_judiciaire",
+          "jugement_date": "2016-12-14 00:00:00+00:00",
+          "date_cessation_paiement": "2016-12-14 00:00:00+00:00",
+          "date_cloture_comptes": "NaT",
+          "numero_annonce": "1106",
+          "numero_departement": "02",
+          "tribunal": "TRIBUNAL DE GRANDE INSTANCE DE LAON",
+          "greffe": "Laon",
+          "forme_juridique": "Association",
+          "activite": "non précisée",
+          "adresse": "rue du Hautbert Maison du Quartier",
+          "code_postal": "02500",
+          "ville": "Hirson"
+        },
+        {
+          "date_parution": "2017-01-03 00:00:00+00:00",
+          "event_date": "2017-01-03 00:00:00+00:00",
+          "siren": "500105242",
+          "record_key": "002016122600098",
+          "nojo": "002016122600098",
+          "denomination": "SCI VIDAL",
+          "nom": null,
+          "prenom": null,
+          "personne_type": "morale",
+          "bodacc_family": "PCL",
+          "bodacc_edition": "A",
+          "event_category": "procedure_collective",
+          "event_type": "liquidation_judiciaire",
+          "jugement_date": "2016-12-14 00:00:00+00:00",
+          "date_cessation_paiement": "2016-12-14 00:00:00+00:00",
+          "date_cloture_comptes": "NaT",
+          "numero_annonce": "1107",
+          "numero_departement": "02",
+          "tribunal": "TRIBUNAL DE GRANDE INSTANCE DE LAON",
+          "greffe": "Laon",
+          "forme_juridique": "S.C.I.",
+          "activite": "non précisée",
+          "adresse": "5 Bis avenue du Général de Gaulle",
+          "code_postal": "02700",
+          "ville": "Tergnier"
+        }
+      ]
+    },
+    "clean_company_identity": {
+      "exists": true,
+      "root": "/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake/clean/company_identity",
+      "parquet_files": 1,
+      "manifest": {
+        "dataset": "company_identity",
+        "rows": 29572772,
+        "raw_root": "/content/pfe_work/data-lake/raw/insee/bulk/stock_unite_legale",
+        "schema_version": 1,
+        "grain": "one row per SIREN",
+        "source_found": true,
+        "generated_at": "2026-05-14T21:15:51.979129+00:00"
+      },
+      "rows": 29572772,
+      "columns": [
+        {
+          "name": "siren",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "company_name",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "activity_code",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "legal_category_code",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "administrative_status",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "creation_date",
+          "type": "DATE"
+        },
+        {
+          "name": "closure_date",
+          "type": "DATE"
+        },
+        {
+          "name": "status_period_start",
+          "type": "DATE"
+        },
+        {
+          "name": "employee_size_bracket",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "employee_size_year",
+          "type": "INTEGER"
+        },
+        {
+          "name": "head_office_siret",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_updated_at",
+          "type": "TIMESTAMP"
+        },
+        {
+          "name": "source_file",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "exported_at",
+          "type": "TIMESTAMP"
+        }
+      ],
+      "column_profile": {
+        "activity_code": {
+          "type": "VARCHAR",
+          "nulls": 21523,
+          "coverage_rate": 0.999272,
+          "distinct_values": 2691,
+          "distinct_is_approximate": true
+        },
+        "administrative_status": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "A",
+              "rows": 16999584
+            },
+            {
+              "value": "C",
+              "rows": 12573188
+            }
+          ]
+        },
+        "legal_category_code": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 253,
+          "distinct_is_approximate": true
+        },
+        "siren": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 28586411,
+          "distinct_is_approximate": true
+        },
+        "company_name": {
+          "type": "VARCHAR",
+          "nulls": 714,
+          "coverage_rate": 0.999976,
+          "distinct_values": 10457938,
+          "distinct_is_approximate": true
+        },
+        "creation_date": {
+          "type": "DATE",
+          "nulls": 1172116,
+          "coverage_rate": 0.960365,
+          "distinct_values": 32187,
+          "distinct_is_approximate": true,
+          "min": "1900-01-01",
+          "max": "2027-04-20"
+        },
+        "closure_date": {
+          "type": "DATE",
+          "nulls": 29572772,
+          "coverage_rate": 0.0,
+          "distinct_values": 0,
+          "distinct_is_approximate": true,
+          "min": null,
+          "max": null
+        },
+        "status_period_start": {
+          "type": "DATE",
+          "nulls": 29572772,
+          "coverage_rate": 0.0,
+          "distinct_values": 0,
+          "distinct_is_approximate": true,
+          "min": null,
+          "max": null
+        },
+        "employee_size_bracket": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 17,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "NN",
+              "rows": 27707007
+            },
+            {
+              "value": "01",
+              "rows": 843458
+            },
+            {
+              "value": "02",
+              "rows": 390784
+            },
+            {
+              "value": "03",
+              "rows": 199064
+            },
+            {
+              "value": "11",
+              "rows": 154336
+            },
+            {
+              "value": "00",
+              "rows": 118068
+            },
+            {
+              "value": "12",
+              "rows": 94584
+            },
+            {
+              "value": "21",
+              "rows": 34486
+            },
+            {
+              "value": "22",
+              "rows": 16017
+            },
+            {
+              "value": "32",
+              "rows": 6135
+            },
+            {
+              "value": "31",
+              "rows": 3185
+            },
+            {
+              "value": "41",
+              "rows": 3026
+            },
+            {
+              "value": "42",
+              "rows": 1498
+            },
+            {
+              "value": "51",
+              "rows": 856
+            },
+            {
+              "value": "52",
+              "rows": 177
+            },
+            {
+              "value": "53",
+              "rows": 91
+            }
+          ]
+        },
+        "employee_size_year": {
+          "type": "INTEGER",
+          "nulls": 27564010,
+          "coverage_rate": 0.067926,
+          "distinct_values": 1,
+          "distinct_is_approximate": true,
+          "min": 2023,
+          "max": 2023,
+          "avg": 2023.0
+        },
+        "head_office_siret": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 32719884,
+          "distinct_is_approximate": true
+        },
+        "source_updated_at": {
+          "type": "TIMESTAMP",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 2826147,
+          "distinct_is_approximate": true,
+          "min": "2024-03-22 14:26:06",
+          "max": "2026-04-30 23:55:58"
+        },
+        "source_file": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 1,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "/content/pfe_work/data-lake/raw/insee/bulk/stock_unite_legale/StockUniteLegale_utf8/part-00001.parquet",
+              "rows": 29572772
+            }
+          ]
+        },
+        "exported_at": {
+          "type": "TIMESTAMP",
+          "nulls": 29572772,
+          "coverage_rate": 0.0,
+          "distinct_values": 0,
+          "distinct_is_approximate": true,
+          "min": null,
+          "max": null
+        }
+      },
+      "sample_rows": [
+        {
+          "activity_code": "01.43Z",
+          "administrative_status": "A",
+          "legal_category_code": "6597",
+          "siren": "884783044",
+          "company_name": "ELEVAGE DE CUVELETTE SCEA",
+          "creation_date": "2020-07-01 00:00:00",
+          "closure_date": "NaT",
+          "status_period_start": "NaT",
+          "employee_size_bracket": "NN",
+          "employee_size_year": NaN,
+          "head_office_siret": "88478304400016",
+          "source_updated_at": "2025-12-06 11:05:43",
+          "source_file": "/content/pfe_work/data-lake/raw/insee/bulk/stock_unite_legale/StockUniteLegale_utf8/part-00001.parquet",
+          "exported_at": "NaT"
+        },
+        {
+          "activity_code": "66.30Z",
+          "administrative_status": "A",
+          "legal_category_code": "5499",
+          "siren": "884783242",
+          "company_name": "MARGUERITE BLEUE",
+          "creation_date": "2019-07-31 00:00:00",
+          "closure_date": "NaT",
+          "status_period_start": "NaT",
+          "employee_size_bracket": "NN",
+          "employee_size_year": NaN,
+          "head_office_siret": "88478324200016",
+          "source_updated_at": "2025-12-06 10:16:21",
+          "source_file": "/content/pfe_work/data-lake/raw/insee/bulk/stock_unite_legale/StockUniteLegale_utf8/part-00001.parquet",
+          "exported_at": "NaT"
+        }
+      ]
+    },
+    "clean_financials": {
+      "exists": true,
+      "root": "/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake/clean/financials",
+      "parquet_files": 1,
+      "manifest": {
+        "dataset": "clean_financials",
+        "rows": 6368963,
+        "raw_root": "/content/pfe_work/data-lake/raw/financials",
+        "schema_version": 1,
+        "liasse_mappings": {
+          "revenue": "FL",
+          "net_result": "HN",
+          "equity": "DL",
+          "debt": "EC",
+          "total_liabilities_and_equity": "EE",
+          "total_assets": "CO",
+          "share_capital": "DA",
+          "goods_sales": "FJ",
+          "services_sales": "FK"
+        },
+        "derived_columns": [
+          "net_margin",
+          "debt_to_assets",
+          "equity_ratio",
+          "debt_to_equity",
+          "has_negative_result",
+          "has_negative_equity"
+        ],
+        "generated_at": "2026-05-14T21:20:23.858610+00:00"
+      },
+      "rows": 6368963,
+      "columns": [
+        {
+          "name": "siren",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "closing_date",
+          "type": "DATE"
+        },
+        {
+          "name": "financial_year",
+          "type": "INTEGER"
+        },
+        {
+          "name": "account_type",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "confidentiality",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "revenue",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "net_result",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "equity",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "debt",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "total_liabilities_and_equity",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "total_assets",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "share_capital",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "goods_sales",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "services_sales",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "net_margin",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "debt_to_assets",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "equity_ratio",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "debt_to_equity",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "has_negative_result",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "has_negative_equity",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "source",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_file",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "exported_at",
+          "type": "TIMESTAMP WITH TIME ZONE"
+        }
+      ],
+      "column_profile": {
+        "closing_date": {
+          "type": "DATE",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 1483,
+          "distinct_is_approximate": true,
+          "min": "1919-09-30",
+          "max": "2026-01-10"
+        },
+        "debt": {
+          "type": "DOUBLE",
+          "nulls": 1563754,
+          "coverage_rate": 0.754473,
+          "distinct_values": 2404882,
+          "distinct_is_approximate": true,
+          "min": -973594595.0,
+          "max": 2147483647.0,
+          "avg": 6789544.704968712
+        },
+        "equity": {
+          "type": "DOUBLE",
+          "nulls": 1549055,
+          "coverage_rate": 0.756781,
+          "distinct_values": 2015394,
+          "distinct_is_approximate": true,
+          "min": -2147483648.0,
+          "max": 2147483647.0,
+          "avg": 5346464.947425553
+        },
+        "financial_year": {
+          "type": "INTEGER",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 24,
+          "distinct_is_approximate": true,
+          "min": 1919,
+          "max": 2026,
+          "avg": 2019.8399606026915
+        },
+        "net_result": {
+          "type": "DOUBLE",
+          "nulls": 2869712,
+          "coverage_rate": 0.549422,
+          "distinct_values": 1368891,
+          "distinct_is_approximate": true,
+          "min": -2147483648.0,
+          "max": 2147483647.0,
+          "avg": 532681.7850017047
+        },
+        "revenue": {
+          "type": "DOUBLE",
+          "nulls": 3349591,
+          "coverage_rate": 0.474076,
+          "distinct_values": 2000388,
+          "distinct_is_approximate": true,
+          "min": -1073450944.0,
+          "max": 2147483647.0,
+          "avg": 10810460.03573922
+        },
+        "siren": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 1798383,
+          "distinct_is_approximate": true
+        },
+        "total_assets": {
+          "type": "DOUBLE",
+          "nulls": 1547411,
+          "coverage_rate": 0.757039,
+          "distinct_values": 2877955,
+          "distinct_is_approximate": true,
+          "min": -1039967296.0,
+          "max": 2147483647.0,
+          "avg": 10948693.23944427
+        },
+        "account_type": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 3,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "C",
+              "rows": 4791632
+            },
+            {
+              "value": "S",
+              "rows": 1546390
+            },
+            {
+              "value": "K",
+              "rows": 30941
+            }
+          ]
+        },
+        "confidentiality": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 3,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "Public",
+              "rows": 4836813
+            },
+            {
+              "value": "Partiellement confidentiel",
+              "rows": 1483657
+            },
+            {
+              "value": "Partiellement confidentiel (RAPCAC)",
+              "rows": 46591
+            },
+            {
+              "value": "Publication simplifiee",
+              "rows": 1902
+            }
+          ]
+        },
+        "total_liabilities_and_equity": {
+          "type": "DOUBLE",
+          "nulls": 1547314,
+          "coverage_rate": 0.757054,
+          "distinct_values": 2717464,
+          "distinct_is_approximate": true,
+          "min": -1866000000.0,
+          "max": 2147483647.0,
+          "avg": 11272308.591822425
+        },
+        "share_capital": {
+          "type": "DOUBLE",
+          "nulls": 1556694,
+          "coverage_rate": 0.755581,
+          "distinct_values": 145741,
+          "distinct_is_approximate": true,
+          "min": -2147483648.0,
+          "max": 2147483647.0,
+          "avg": 2264763.3378759585
+        },
+        "goods_sales": {
+          "type": "DOUBLE",
+          "nulls": 3349591,
+          "coverage_rate": 0.474076,
+          "distinct_values": 1849892,
+          "distinct_is_approximate": true,
+          "min": -1073450944.0,
+          "max": 2147483647.0,
+          "avg": 5493745.158362402
+        },
+        "services_sales": {
+          "type": "DOUBLE",
+          "nulls": 3349591,
+          "coverage_rate": 0.474076,
+          "distinct_values": 319596,
+          "distinct_is_approximate": true,
+          "min": -52500000.0,
+          "max": 2147483647.0,
+          "avg": 1074645.9600628873
+        },
+        "net_margin": {
+          "type": "DOUBLE",
+          "nulls": 3424173,
+          "coverage_rate": 0.462366,
+          "distinct_values": 3571757,
+          "distinct_is_approximate": true,
+          "min": -114478294.0,
+          "max": 90761797.0,
+          "avg": -33.27255996378482
+        },
+        "debt_to_assets": {
+          "type": "DOUBLE",
+          "nulls": 1663587,
+          "coverage_rate": 0.738798,
+          "distinct_values": 5155015,
+          "distinct_is_approximate": true,
+          "min": -849347749.0,
+          "max": 2147483647.0,
+          "avg": 272.07977219891643
+        },
+        "equity_ratio": {
+          "type": "DOUBLE",
+          "nulls": 1650621,
+          "coverage_rate": 0.740834,
+          "distinct_values": 4797776,
+          "distinct_is_approximate": true,
+          "min": -13978000.0,
+          "max": 2147483647.0,
+          "avg": 472.71492590045693
+        },
+        "debt_to_equity": {
+          "type": "DOUBLE",
+          "nulls": 1565634,
+          "coverage_rate": 0.754178,
+          "distinct_values": 4196633,
+          "distinct_is_approximate": true,
+          "min": -17463259.75,
+          "max": 17910145.0,
+          "avg": 27.546117608418996
+        },
+        "has_negative_result": {
+          "type": "BOOLEAN",
+          "nulls": 2869712,
+          "coverage_rate": 0.549422,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "false",
+              "rows": 2476756
+            },
+            {
+              "value": "true",
+              "rows": 1022495
+            }
+          ]
+        },
+        "has_negative_equity": {
+          "type": "BOOLEAN",
+          "nulls": 1549055,
+          "coverage_rate": 0.756781,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "false",
+              "rows": 4285367
+            },
+            {
+              "value": "true",
+              "rows": 534541
+            }
+          ]
+        },
+        "source": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 1,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "data_gouv_financial_parquet",
+              "rows": 6368963
+            }
+          ]
+        },
+        "source_file": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 1,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "/content/pfe_work/data-lake/raw/financials/export-detail-bilan/export-detail-bilan.parquet",
+              "rows": 6368963
+            }
+          ]
+        },
+        "exported_at": {
+          "type": "TIMESTAMP WITH TIME ZONE",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 1,
+          "distinct_is_approximate": true,
+          "min": "2026-05-14 21:20:01.482000+00:00",
+          "max": "2026-05-14 21:20:01.482000+00:00"
+        }
+      },
+      "sample_rows": [
+        {
+          "closing_date": "2018-12-31 00:00:00",
+          "debt": 1464579374.0,
+          "equity": 317376298.0,
+          "financial_year": 2018,
+          "net_result": 23176851.0,
+          "revenue": 518852407.0,
+          "siren": "313606477",
+          "total_assets": 2147483647.0,
+          "account_type": "C",
+          "confidentiality": "Public",
+          "total_liabilities_and_equity": 1784974528.0,
+          "share_capital": 14040000.0,
+          "goods_sales": 518852407.0,
+          "services_sales": 0.0,
+          "net_margin": 0.044669448743638575,
+          "debt_to_assets": 0.681997916978783,
+          "equity_ratio": 0.14778985555646468,
+          "debt_to_equity": 4.614646346401079,
+          "has_negative_result": false,
+          "has_negative_equity": false,
+          "source": "data_gouv_financial_parquet",
+          "source_file": "/content/pfe_work/data-lake/raw/financials/export-detail-bilan/export-detail-bilan.parquet",
+          "exported_at": "2026-05-14 21:20:01.482000+00:00"
+        },
+        {
+          "closing_date": "2022-12-31 00:00:00",
+          "debt": 1745638967.0,
+          "equity": 516236440.0,
+          "financial_year": 2022,
+          "net_result": 58679022.0,
+          "revenue": 613230744.0,
+          "siren": "313606477",
+          "total_assets": 2147483647.0,
+          "account_type": "C",
+          "confidentiality": "Public",
+          "total_liabilities_and_equity": 2147483647.0,
+          "share_capital": 14040000.0,
+          "goods_sales": 613230744.0,
+          "services_sales": 0.0,
+          "net_margin": 0.09568832380654418,
+          "debt_to_assets": 0.8128764889262973,
+          "equity_ratio": 0.24039132531750543,
+          "debt_to_equity": 3.381471805826028,
+          "has_negative_result": false,
+          "has_negative_equity": false,
+          "source": "data_gouv_financial_parquet",
+          "source_file": "/content/pfe_work/data-lake/raw/financials/export-detail-bilan/export-detail-bilan.parquet",
+          "exported_at": "2026-05-14 21:20:01.482000+00:00"
+        }
+      ]
+    },
+    "clean_legal_events": {
+      "exists": true,
+      "root": "/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake/clean/legal_events",
+      "parquet_files": 35,
+      "manifest": {
+        "dataset": "legal_events",
+        "rows": 17739313,
+        "raw_root": "/content/pfe_work/data-lake/raw/bodacc",
+        "schema_version": 1,
+        "grain": "one row per BODACC announcement",
+        "partitioned_by": [
+          "event_year",
+          "event_category"
+        ],
+        "source_found": true,
+        "generated_at": "2026-05-14T21:16:38.384533+00:00"
+      },
+      "rows": 17739313,
+      "columns": [
+        {
+          "name": "siren",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "event_date",
+          "type": "DATE"
+        },
+        {
+          "name": "event_type",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "is_risk_event",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "is_radiation",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "flag_liquidation",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "flag_redressement",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "flag_sauvegarde",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "flag_procedure_collective",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "flag_cessation_paiement",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "nojo",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "denomination",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_file",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_member",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "exported_at",
+          "type": "TIMESTAMP"
+        },
+        {
+          "name": "event_category",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "event_year",
+          "type": "BIGINT"
+        }
+      ],
+      "column_profile": {
+        "event_date": {
+          "type": "DATE",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 2185,
+          "distinct_is_approximate": true,
+          "min": "2017-01-03",
+          "max": "2025-12-31"
+        },
+        "siren": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 7108938,
+          "distinct_is_approximate": true
+        },
+        "event_type": {
+          "type": "VARCHAR",
+          "nulls": 969,
+          "coverage_rate": 0.999945,
+          "distinct_values": 48,
+          "distinct_is_approximate": true
+        },
+        "is_risk_event": {
+          "type": "BOOLEAN",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "false",
+              "rows": 16730923
+            },
+            {
+              "value": "true",
+              "rows": 1008390
+            }
+          ]
+        },
+        "is_radiation": {
+          "type": "BOOLEAN",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "false",
+              "rows": 15363323
+            },
+            {
+              "value": "true",
+              "rows": 2375990
+            }
+          ]
+        },
+        "flag_liquidation": {
+          "type": "BOOLEAN",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "false",
+              "rows": 16906744
+            },
+            {
+              "value": "true",
+              "rows": 832569
+            }
+          ]
+        },
+        "flag_redressement": {
+          "type": "BOOLEAN",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "false",
+              "rows": 17602212
+            },
+            {
+              "value": "true",
+              "rows": 137101
+            }
+          ]
+        },
+        "flag_sauvegarde": {
+          "type": "BOOLEAN",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "false",
+              "rows": 17714167
+            },
+            {
+              "value": "true",
+              "rows": 25146
+            }
+          ]
+        },
+        "flag_procedure_collective": {
+          "type": "BOOLEAN",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "false",
+              "rows": 16756165
+            },
+            {
+              "value": "true",
+              "rows": 983148
+            }
+          ]
+        },
+        "flag_cessation_paiement": {
+          "type": "BOOLEAN",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "false",
+              "rows": 17333036
+            },
+            {
+              "value": "true",
+              "rows": 406277
+            }
+          ]
+        },
+        "nojo": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 13070699,
+          "distinct_is_approximate": true
+        },
+        "denomination": {
+          "type": "VARCHAR",
+          "nulls": 2319953,
+          "coverage_rate": 0.86922,
+          "distinct_values": 3800263,
+          "distinct_is_approximate": true
+        },
+        "source_file": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 2657,
+          "distinct_is_approximate": true
+        },
+        "source_member": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 5953,
+          "distinct_is_approximate": true
+        },
+        "exported_at": {
+          "type": "TIMESTAMP",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 14275198,
+          "distinct_is_approximate": true,
+          "min": "2026-05-14 19:08:50.328959",
+          "max": "2026-05-14 21:10:57.726653"
+        },
+        "event_category": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 4,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "comptes_annuels",
+              "rows": 7394989
+            },
+            {
+              "value": "rcs_modification",
+              "rows": 4420976
+            },
+            {
+              "value": "radiation",
+              "rows": 2375990
+            },
+            {
+              "value": "rcs_immatriculation",
+              "rows": 2244833
+            },
+            {
+              "value": "procedure_collective",
+              "rows": 1302525
+            }
+          ]
+        },
+        "event_year": {
+          "type": "BIGINT",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 10,
+          "distinct_is_approximate": true,
+          "min": 2017,
+          "max": 2025,
+          "avg": 2022.540010033083
+        }
+      },
+      "sample_rows": [
+        {
+          "event_date": "2017-01-03 00:00:00",
+          "siren": "390432326",
+          "event_type": "liquidation_judiciaire",
+          "is_risk_event": true,
+          "is_radiation": false,
+          "flag_liquidation": true,
+          "flag_redressement": false,
+          "flag_sauvegarde": false,
+          "flag_procedure_collective": true,
+          "flag_cessation_paiement": true,
+          "nojo": "002016122600100",
+          "denomination": "ASSOCIATION AIDE AUX DEPLACEMENTS EN THIERACHE",
+          "source_file": "PCL_BXA20170001.taz",
+          "source_member": "PCL_BXA20170001.xml",
+          "exported_at": "2026-05-14 19:08:50.328959",
+          "event_category": "procedure_collective",
+          "event_year": 2017
+        },
+        {
+          "event_date": "2017-01-03 00:00:00",
+          "siren": "500105242",
+          "event_type": "liquidation_judiciaire",
+          "is_risk_event": true,
+          "is_radiation": false,
+          "flag_liquidation": true,
+          "flag_redressement": false,
+          "flag_sauvegarde": false,
+          "flag_procedure_collective": true,
+          "flag_cessation_paiement": true,
+          "nojo": "002016122600098",
+          "denomination": "SCI VIDAL",
+          "source_file": "PCL_BXA20170001.taz",
+          "source_member": "PCL_BXA20170001.xml",
+          "exported_at": "2026-05-14 19:08:50.328983",
+          "event_category": "procedure_collective",
+          "event_year": 2017
+        }
+      ]
+    },
+    "clean_formalities_events": {
+      "exists": true,
+      "root": "/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake/clean/formalities_events",
+      "parquet_files": 5,
+      "manifest": {
+        "dataset": "formalities_events",
+        "rows": 53544636,
+        "raw_root": "/content/pfe_work/data-lake/raw/inpi/formalites",
+        "schema_version": 1,
+        "grain": "one row per INPI formality record",
+        "partitioned_by": [
+          "event_year",
+          "niveau"
+        ],
+        "source_found": true,
+        "generated_at": "2026-05-14T21:18:43.227084+00:00"
+      },
+      "rows": 53544636,
+      "columns": [
+        {
+          "name": "siren",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "event_date",
+          "type": "DATE"
+        },
+        {
+          "name": "event_type",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "event_text",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "record_key",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "inpi_id",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "source_file",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "exported_at",
+          "type": "TIMESTAMP"
+        },
+        {
+          "name": "event_year",
+          "type": "BIGINT"
+        },
+        {
+          "name": "niveau",
+          "type": "VARCHAR"
+        }
+      ],
+      "column_profile": {
+        "event_date": {
+          "type": "DATE",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 663,
+          "distinct_is_approximate": true,
+          "min": "2024-01-04",
+          "max": "2026-03-05"
+        },
+        "siren": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 26522538,
+          "distinct_is_approximate": true
+        },
+        "event_type": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 1,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "formalites",
+              "rows": 53544636
+            }
+          ]
+        },
+        "event_text": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 7440802,
+          "distinct_is_approximate": true
+        },
+        "record_key": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 66088658,
+          "distinct_is_approximate": true
+        },
+        "inpi_id": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 28794234,
+          "distinct_is_approximate": true
+        },
+        "source_file": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "stock_RNE_formalites_NIVEAU1_20260304_1400.zip",
+              "rows": 27348473
+            },
+            {
+              "value": "stock_RNE_formalites_20250523_0000.zip",
+              "rows": 26196163
+            }
+          ]
+        },
+        "exported_at": {
+          "type": "TIMESTAMP",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 57951921,
+          "distinct_is_approximate": true,
+          "min": "2026-05-13 08:58:14.916779",
+          "max": "2026-05-13 13:21:10.368956"
+        },
+        "event_year": {
+          "type": "BIGINT",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 3,
+          "distinct_is_approximate": true,
+          "min": 2024,
+          "max": 2026,
+          "avg": 2024.2483545317218
+        },
+        "niveau": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "niveau1",
+              "rows": 27348473
+            },
+            {
+              "value": "standard",
+              "rows": 26196163
+            }
+          ]
+        }
+      },
+      "sample_rows": [
+        {
+          "event_date": "2024-07-05 00:00:00",
+          "siren": "307136309",
+          "event_type": "formalites",
+          "event_text": "formalites",
+          "record_key": "276be03916b2d3a8ea1f7e70a690f9ed607522a5cd7f15dcd37a1428617d11bb",
+          "inpi_id": "63a493e4f5da5674900bfc91",
+          "source_file": "stock_RNE_formalites_NIVEAU1_20260304_1400.zip",
+          "exported_at": "2026-05-13 11:01:55.060713",
+          "event_year": 2024,
+          "niveau": "niveau1"
+        },
+        {
+          "event_date": "2024-07-05 00:00:00",
+          "siren": "307136663",
+          "event_type": "formalites",
+          "event_text": "formalites",
+          "record_key": "86498e89588542dcd1907285d5d049e5fdd7dacfc0d8199bd9dfd180348bab15",
+          "inpi_id": "63a493e8f5da5674900bfca5",
+          "source_file": "stock_RNE_formalites_NIVEAU1_20260304_1400.zip",
+          "exported_at": "2026-05-13 11:01:55.060955",
+          "event_year": 2024,
+          "niveau": "niveau1"
+        }
+      ]
+    },
+    "clean_annual_accounts": {
+      "exists": true,
+      "root": "/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake/clean/annual_accounts",
+      "parquet_files": 29,
+      "manifest": {
+        "dataset": "annual_accounts",
+        "rows": 12596485,
+        "raw_root": "/content/pfe_work/data-lake/raw/inpi/comptes_annuels",
+        "schema_version": 1,
+        "grain": "one row per INPI annual account filing",
+        "partitioned_by": [
+          "filing_year",
+          "niveau"
+        ],
+        "source_found": true,
+        "generated_at": "2026-05-14T21:19:13.706713+00:00"
+      },
+      "rows": 12596485,
+      "columns": [
+        {
+          "name": "siren",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "filing_date",
+          "type": "DATE"
+        },
+        {
+          "name": "closing_date",
+          "type": "DATE"
+        },
+        {
+          "name": "account_type",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "confidentiality",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "record_key",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "inpi_id",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "deleted",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "source_file",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "exported_at",
+          "type": "TIMESTAMP"
+        },
+        {
+          "name": "filing_year",
+          "type": "BIGINT"
+        },
+        {
+          "name": "niveau",
+          "type": "VARCHAR"
+        }
+      ],
+      "column_profile": {
+        "closing_date": {
+          "type": "DATE",
+          "nulls": 2,
+          "coverage_rate": 1.0,
+          "distinct_values": 1964,
+          "distinct_is_approximate": true,
+          "min": "1919-09-30",
+          "max": "2026-02-28"
+        },
+        "filing_date": {
+          "type": "DATE",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 4172,
+          "distinct_is_approximate": true,
+          "min": "2012-09-06",
+          "max": "2026-03-13"
+        },
+        "siren": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 1823790,
+          "distinct_is_approximate": true
+        },
+        "account_type": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 9,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "C",
+              "rows": 9357698
+            },
+            {
+              "value": "S",
+              "rows": 3153394
+            },
+            {
+              "value": "K",
+              "rows": 59330
+            },
+            {
+              "value": "B",
+              "rows": 19955
+            },
+            {
+              "value": "A",
+              "rows": 3474
+            },
+            {
+              "value": "AC",
+              "rows": 1910
+            },
+            {
+              "value": "AS",
+              "rows": 693
+            },
+            {
+              "value": "0",
+              "rows": 31
+            }
+          ]
+        },
+        "confidentiality": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 3,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "Public",
+              "rows": 9614702
+            },
+            {
+              "value": "Partiellement confidentiel",
+              "rows": 2891129
+            },
+            {
+              "value": "Partiellement confidentiel (RAPCAC)",
+              "rows": 86636
+            },
+            {
+              "value": "Publication simplifiee",
+              "rows": 4018
+            }
+          ]
+        },
+        "record_key": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 14994139,
+          "distinct_is_approximate": true
+        },
+        "inpi_id": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 7617973,
+          "distinct_is_approximate": true
+        },
+        "deleted": {
+          "type": "BOOLEAN",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 1,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "false",
+              "rows": 12596485
+            }
+          ]
+        },
+        "source_file": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "stock_RNE_comptes_annuels_20250926_1000_v2.zip",
+              "rows": 6309428
+            },
+            {
+              "value": "stock_RNE_comptes_annuels_NIVEAU1_20260320_1400.zip",
+              "rows": 6287057
+            }
+          ]
+        },
+        "exported_at": {
+          "type": "TIMESTAMP",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 11438935,
+          "distinct_is_approximate": true,
+          "min": "2026-05-13 07:48:39.779894",
+          "max": "2026-05-13 08:58:11.719224"
+        },
+        "filing_year": {
+          "type": "BIGINT",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 17,
+          "distinct_is_approximate": true,
+          "min": 2012,
+          "max": 2026,
+          "avg": 2020.9731935535985
+        },
+        "niveau": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "standard",
+              "rows": 6309428
+            },
+            {
+              "value": "niveau1",
+              "rows": 6287057
+            }
+          ]
+        }
+      },
+      "sample_rows": [
+        {
+          "closing_date": "2012-06-30 00:00:00",
+          "filing_date": "2012-10-26 00:00:00",
+          "siren": "338211915",
+          "account_type": "C",
+          "confidentiality": "Public",
+          "record_key": "295974b59d5be9b91129c67037022594dc095aacb2778aa8c496d9829718d653",
+          "inpi_id": "649e1458335d69d7bd0b4c88",
+          "deleted": false,
+          "source_file": "stock_RNE_comptes_annuels_NIVEAU1_20260320_1400.zip",
+          "exported_at": "2026-05-13 08:25:33.850483",
+          "filing_year": 2012,
+          "niveau": "niveau1"
+        },
+        {
+          "closing_date": "2012-06-30 00:00:00",
+          "filing_date": "2012-11-27 00:00:00",
+          "siren": "409144177",
+          "account_type": "C",
+          "confidentiality": "Public",
+          "record_key": "0e5f2c02cdb6cf8ed51dc0c5754a7b30bb592108ae3ac8d66fbdbf4898df174e",
+          "inpi_id": "63ec66b93fdc867bc5119f5e",
+          "deleted": false,
+          "source_file": "stock_RNE_comptes_annuels_NIVEAU1_20260320_1400.zip",
+          "exported_at": "2026-05-13 08:30:04.522670",
+          "filing_year": 2012,
+          "niveau": "niveau1"
+        }
+      ]
+    },
+    "features_company_year": {
+      "exists": true,
+      "root": "/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake/features/company_year_features",
+      "parquet_files": 9,
+      "manifest": {
+        "dataset": "company_year_features",
+        "rows": 220803039,
+        "start_year": 2017,
+        "end_year": 2025,
+        "max_companies": null,
+        "year_batch_size": 2,
+        "source_roots": {
+          "company_identity": "/content/pfe_work/data-lake/clean/company_identity",
+          "legal_events": "/content/pfe_work/data-lake/clean/legal_events",
+          "formalities_events": "/content/pfe_work/data-lake/clean/formalities_events",
+          "annual_accounts": "/content/pfe_work/data-lake/clean/annual_accounts",
+          "financials": "/content/pfe_work/data-lake/clean/financials"
+        },
+        "generated_at": "2026-05-14T21:54:55.700177+00:00"
+      },
+      "rows": 220803039,
+      "columns": [
+        {
+          "name": "siren",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "prediction_date",
+          "type": "DATE"
+        },
+        {
+          "name": "company_name",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "activity_code",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "legal_category_code",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "employee_size_bracket",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "administrative_status_at_cutoff",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "company_age_years",
+          "type": "BIGINT"
+        },
+        {
+          "name": "legal_events_count_all",
+          "type": "BIGINT"
+        },
+        {
+          "name": "legal_events_count_12m",
+          "type": "BIGINT"
+        },
+        {
+          "name": "legal_risk_events_count_all",
+          "type": "BIGINT"
+        },
+        {
+          "name": "legal_risk_events_count_12m",
+          "type": "BIGINT"
+        },
+        {
+          "name": "legal_distress_events_count_all",
+          "type": "BIGINT"
+        },
+        {
+          "name": "radiation_events_count_all",
+          "type": "BIGINT"
+        },
+        {
+          "name": "days_since_last_legal_event",
+          "type": "BIGINT"
+        },
+        {
+          "name": "formalities_count_all",
+          "type": "BIGINT"
+        },
+        {
+          "name": "formalities_count_12m",
+          "type": "BIGINT"
+        },
+        {
+          "name": "cessation_formalities_count_all",
+          "type": "BIGINT"
+        },
+        {
+          "name": "annual_accounts_count_all",
+          "type": "BIGINT"
+        },
+        {
+          "name": "annual_accounts_count_24m",
+          "type": "BIGINT"
+        },
+        {
+          "name": "days_since_last_account_filing",
+          "type": "BIGINT"
+        },
+        {
+          "name": "latest_account_closing_year",
+          "type": "BIGINT"
+        },
+        {
+          "name": "latest_revenue",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "latest_net_result",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "latest_equity",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "latest_debt",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "latest_total_assets",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "latest_net_margin",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "latest_debt_to_assets",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "latest_equity_ratio",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "latest_debt_to_equity",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "has_negative_result_history",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "has_negative_equity_history",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "has_financial_data",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "financial_years_available",
+          "type": "BIGINT"
+        },
+        {
+          "name": "latest_financial_year",
+          "type": "INTEGER"
+        },
+        {
+          "name": "years_since_last_financial_statement",
+          "type": "INTEGER"
+        },
+        {
+          "name": "has_confidential_financials",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "revenue_growth_1y",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "net_result_change_1y",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "prediction_year",
+          "type": "BIGINT"
+        }
+      ],
+      "column_profile": {
+        "activity_code": {
+          "type": "VARCHAR",
+          "nulls": 760653,
+          "coverage_rate": 0.996555,
+          "distinct_values": 2691,
+          "distinct_is_approximate": true
+        },
+        "annual_accounts_count_24m": {
+          "type": "BIGINT",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 43,
+          "distinct_is_approximate": true,
+          "min": 0,
+          "max": 59,
+          "avg": 0.1076318972222117
+        },
+        "company_age_years": {
+          "type": "BIGINT",
+          "nulls": 11115990,
+          "coverage_rate": 0.949657,
+          "distinct_values": 128,
+          "distinct_is_approximate": true,
+          "min": 0,
+          "max": 125,
+          "avg": 19.237260957399425
+        },
+        "days_since_last_account_filing": {
+          "type": "BIGINT",
+          "nulls": 210255823,
+          "coverage_rate": 0.047768,
+          "distinct_values": 4023,
+          "distinct_is_approximate": true,
+          "min": 0,
+          "max": 4811,
+          "avg": 657.431689651563
+        },
+        "financial_years_available": {
+          "type": "BIGINT",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 26,
+          "distinct_is_approximate": true,
+          "min": 0,
+          "max": 26,
+          "avg": 0.17284543352684562
+        },
+        "has_confidential_financials": {
+          "type": "BOOLEAN",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "false",
+              "rows": 209231948
+            },
+            {
+              "value": "true",
+              "rows": 11571091
+            }
+          ]
+        },
+        "has_financial_data": {
+          "type": "BOOLEAN",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "false",
+              "rows": 209231948
+            },
+            {
+              "value": "true",
+              "rows": 11571091
+            }
+          ]
+        },
+        "latest_financial_year": {
+          "type": "INTEGER",
+          "nulls": 209231948,
+          "coverage_rate": 0.052405,
+          "distinct_values": 20,
+          "distinct_is_approximate": true,
+          "min": 2004,
+          "max": 2025,
+          "avg": 2019.7230850574074
+        },
+        "legal_category_code": {
+          "type": "VARCHAR",
+          "nulls": 566946,
+          "coverage_rate": 0.997432,
+          "distinct_values": 253,
+          "distinct_is_approximate": true
+        },
+        "legal_distress_events_count_all": {
+          "type": "BIGINT",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 17,
+          "distinct_is_approximate": true,
+          "min": 0,
+          "max": 22,
+          "avg": 0.021771625163184462
+        },
+        "legal_events_count_12m": {
+          "type": "BIGINT",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 59,
+          "distinct_is_approximate": true,
+          "min": 0,
+          "max": 142,
+          "avg": 0.08024372798600839
+        },
+        "prediction_date": {
+          "type": "DATE",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 10,
+          "distinct_is_approximate": true,
+          "min": "2017-12-31",
+          "max": "2025-12-31"
+        },
+        "prediction_year": {
+          "type": "BIGINT",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 10,
+          "distinct_is_approximate": true,
+          "min": 2017,
+          "max": 2025,
+          "avg": 2021.305640933683
+        },
+        "radiation_events_count_all": {
+          "type": "BIGINT",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 27,
+          "distinct_is_approximate": true,
+          "min": 0,
+          "max": 123,
+          "avg": 0.047476896366449015
+        },
+        "siren": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 28586411,
+          "distinct_is_approximate": true
+        },
+        "years_since_last_financial_statement": {
+          "type": "INTEGER",
+          "nulls": 209231948,
+          "coverage_rate": 0.052405,
+          "distinct_values": 21,
+          "distinct_is_approximate": true,
+          "min": 0,
+          "max": 18,
+          "avg": 1.7206994569483551
+        },
+        "company_name": {
+          "type": "VARCHAR",
+          "nulls": 573372,
+          "coverage_rate": 0.997403,
+          "distinct_values": 9438428,
+          "distinct_is_approximate": true
+        },
+        "employee_size_bracket": {
+          "type": "VARCHAR",
+          "nulls": 566946,
+          "coverage_rate": 0.997432,
+          "distinct_values": 17,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "NN",
+              "rows": 205255846
+            },
+            {
+              "value": "01",
+              "rows": 6617611
+            },
+            {
+              "value": "02",
+              "rows": 3114833
+            },
+            {
+              "value": "03",
+              "rows": 1634546
+            },
+            {
+              "value": "11",
+              "rows": 1301016
+            },
+            {
+              "value": "00",
+              "rows": 917602
+            },
+            {
+              "value": "12",
+              "rows": 816594
+            },
+            {
+              "value": "21",
+              "rows": 303233
+            },
+            {
+              "value": "22",
+              "rows": 141694
+            },
+            {
+              "value": "32",
+              "rows": 54563
+            },
+            {
+              "value": "31",
+              "rows": 28239
+            },
+            {
+              "value": "41",
+              "rows": 26960
+            },
+            {
+              "value": "42",
+              "rows": 13345
+            },
+            {
+              "value": "51",
+              "rows": 7625
+            },
+            {
+              "value": "52",
+              "rows": 1567
+            },
+            {
+              "value": "53",
+              "rows": 819
+            }
+          ]
+        },
+        "administrative_status_at_cutoff": {
+          "type": "VARCHAR",
+          "nulls": 566946,
+          "coverage_rate": 0.997432,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "A",
+              "rows": 115180826
+            },
+            {
+              "value": "C",
+              "rows": 105055267
+            }
+          ]
+        },
+        "legal_events_count_all": {
+          "type": "BIGINT",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 118,
+          "distinct_is_approximate": true,
+          "min": 0,
+          "max": 267,
+          "avg": 0.2778747714609127
+        },
+        "legal_risk_events_count_all": {
+          "type": "BIGINT",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 17,
+          "distinct_is_approximate": true,
+          "min": 0,
+          "max": 22,
+          "avg": 0.02232740555713094
+        },
+        "legal_risk_events_count_12m": {
+          "type": "BIGINT",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 10,
+          "distinct_is_approximate": true,
+          "min": 0,
+          "max": 22,
+          "avg": 0.004566880078131533
+        },
+        "days_since_last_legal_event": {
+          "type": "BIGINT",
+          "nulls": 190684164,
+          "coverage_rate": 0.136406,
+          "distinct_values": 3139,
+          "distinct_is_approximate": true,
+          "min": 0,
+          "max": 3284,
+          "avg": 702.3326744441816
+        },
+        "formalities_count_all": {
+          "type": "BIGINT",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 5,
+          "distinct_is_approximate": true,
+          "min": 0,
+          "max": 4,
+          "avg": 0.4245103483380951
+        },
+        "formalities_count_12m": {
+          "type": "BIGINT",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 5,
+          "distinct_is_approximate": true,
+          "min": 0,
+          "max": 4,
+          "avg": 0.2347876108716058
+        }
+      },
+      "sample_rows": [
+        {
+          "activity_code": "55.20Z",
+          "annual_accounts_count_24m": 0,
+          "company_age_years": 19,
+          "days_since_last_account_filing": NaN,
+          "financial_years_available": 0,
+          "has_confidential_financials": false,
+          "has_financial_data": false,
+          "latest_financial_year": NaN,
+          "legal_category_code": "1000",
+          "legal_distress_events_count_all": 0,
+          "legal_events_count_12m": 0,
+          "prediction_date": "2017-12-31 00:00:00",
+          "prediction_year": 2017,
+          "radiation_events_count_all": 0,
+          "siren": "419841218",
+          "years_since_last_financial_statement": NaN,
+          "company_name": "[ND]",
+          "employee_size_bracket": "NN",
+          "administrative_status_at_cutoff": "A",
+          "legal_events_count_all": 0,
+          "legal_risk_events_count_all": 0,
+          "legal_risk_events_count_12m": 0,
+          "days_since_last_legal_event": NaN,
+          "formalities_count_all": 0,
+          "formalities_count_12m": 0
+        },
+        {
+          "activity_code": "43.21A",
+          "annual_accounts_count_24m": 0,
+          "company_age_years": 19,
+          "days_since_last_account_filing": NaN,
+          "financial_years_available": 0,
+          "has_confidential_financials": false,
+          "has_financial_data": false,
+          "latest_financial_year": NaN,
+          "legal_category_code": "1000",
+          "legal_distress_events_count_all": 0,
+          "legal_events_count_12m": 0,
+          "prediction_date": "2017-12-31 00:00:00",
+          "prediction_year": 2017,
+          "radiation_events_count_all": 0,
+          "siren": "419842968",
+          "years_since_last_financial_statement": NaN,
+          "company_name": "EMLEK",
+          "employee_size_bracket": "NN",
+          "administrative_status_at_cutoff": "A",
+          "legal_events_count_all": 0,
+          "legal_risk_events_count_all": 0,
+          "legal_risk_events_count_12m": 0,
+          "days_since_last_legal_event": NaN,
+          "formalities_count_all": 0,
+          "formalities_count_12m": 0
+        }
+      ]
+    },
+    "features_risk_labels": {
+      "exists": true,
+      "root": "/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake/features/risk_labels",
+      "parquet_files": 9,
+      "manifest": {
+        "dataset": "risk_labels",
+        "rows": 220803039,
+        "start_year": 2017,
+        "end_year": 2025,
+        "max_companies": null,
+        "year_batch_size": 2,
+        "source_roots": {
+          "company_identity": "/content/pfe_work/data-lake/clean/company_identity",
+          "legal_events": "/content/pfe_work/data-lake/clean/legal_events",
+          "formalities_events": "/content/pfe_work/data-lake/clean/formalities_events",
+          "annual_accounts": "/content/pfe_work/data-lake/clean/annual_accounts",
+          "financials": "/content/pfe_work/data-lake/clean/financials"
+        },
+        "generated_at": "2026-05-14T21:54:55.703842+00:00"
+      },
+      "rows": 220803039,
+      "columns": [
+        {
+          "name": "siren",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "prediction_date",
+          "type": "DATE"
+        },
+        {
+          "name": "legal_distress_risk_12m_label",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "radiation_risk_12m_label",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "financial_weakness_risk_12m_label",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "filing_anomaly_risk_12m_label",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "continuity_risk_12m_label",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "first_future_legal_event_date",
+          "type": "DATE"
+        },
+        {
+          "name": "prediction_year",
+          "type": "BIGINT"
+        }
+      ],
+      "column_profile": {
+        "continuity_risk_12m_label": {
+          "type": "BOOLEAN",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "false",
+              "rows": 218115051
+            },
+            {
+              "value": "true",
+              "rows": 2687988
+            }
+          ]
+        },
+        "filing_anomaly_risk_12m_label": {
+          "type": "BOOLEAN",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "false",
+              "rows": 217868650
+            },
+            {
+              "value": "true",
+              "rows": 2934389
+            }
+          ]
+        },
+        "financial_weakness_risk_12m_label": {
+          "type": "BOOLEAN",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "false",
+              "rows": 219944217
+            },
+            {
+              "value": "true",
+              "rows": 858822
+            }
+          ]
+        },
+        "legal_distress_risk_12m_label": {
+          "type": "BOOLEAN",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "false",
+              "rows": 220068796
+            },
+            {
+              "value": "true",
+              "rows": 734243
+            }
+          ]
+        },
+        "prediction_date": {
+          "type": "DATE",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 10,
+          "distinct_is_approximate": true,
+          "min": "2017-12-31",
+          "max": "2025-12-31"
+        },
+        "prediction_year": {
+          "type": "BIGINT",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 10,
+          "distinct_is_approximate": true,
+          "min": 2017,
+          "max": 2025,
+          "avg": 2021.305640933683
+        },
+        "radiation_risk_12m_label": {
+          "type": "BOOLEAN",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "false",
+              "rows": 218700569
+            },
+            {
+              "value": "true",
+              "rows": 2102470
+            }
+          ]
+        },
+        "siren": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 28586411,
+          "distinct_is_approximate": true
+        },
+        "first_future_legal_event_date": {
+          "type": "DATE",
+          "nulls": 209329685,
+          "coverage_rate": 0.051962,
+          "distinct_values": 1900,
+          "distinct_is_approximate": true,
+          "min": "2018-01-03",
+          "max": "2025-12-31"
+        }
+      },
+      "sample_rows": [
+        {
+          "continuity_risk_12m_label": false,
+          "filing_anomaly_risk_12m_label": false,
+          "financial_weakness_risk_12m_label": false,
+          "legal_distress_risk_12m_label": false,
+          "prediction_date": "2017-12-31 00:00:00",
+          "prediction_year": 2017,
+          "radiation_risk_12m_label": false,
+          "siren": "831636485",
+          "first_future_legal_event_date": "NaT"
+        },
+        {
+          "continuity_risk_12m_label": false,
+          "filing_anomaly_risk_12m_label": false,
+          "financial_weakness_risk_12m_label": false,
+          "legal_distress_risk_12m_label": false,
+          "prediction_date": "2017-12-31 00:00:00",
+          "prediction_year": 2017,
+          "radiation_risk_12m_label": false,
+          "siren": "831636519",
+          "first_future_legal_event_date": "NaT"
+        }
+      ]
+    },
+    "features_company": {
+      "exists": true,
+      "root": "/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake/features/company_features",
+      "parquet_files": 1,
+      "manifest": {
+        "dataset": "company_features",
+        "rows": 29210896,
+        "source": "latest prediction year from company_year_features",
+        "generated_at": "2026-05-14T21:54:55.709684+00:00"
+      },
+      "rows": 29210896,
+      "columns": [
+        {
+          "name": "siren",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "prediction_year",
+          "type": "INTEGER"
+        },
+        {
+          "name": "prediction_date",
+          "type": "DATE"
+        },
+        {
+          "name": "company_name",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "activity_code",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "legal_category_code",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "employee_size_bracket",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "administrative_status_at_cutoff",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "company_age_years",
+          "type": "BIGINT"
+        },
+        {
+          "name": "legal_events_count_all",
+          "type": "BIGINT"
+        },
+        {
+          "name": "legal_events_count_12m",
+          "type": "BIGINT"
+        },
+        {
+          "name": "legal_risk_events_count_all",
+          "type": "BIGINT"
+        },
+        {
+          "name": "legal_risk_events_count_12m",
+          "type": "BIGINT"
+        },
+        {
+          "name": "legal_distress_events_count_all",
+          "type": "BIGINT"
+        },
+        {
+          "name": "radiation_events_count_all",
+          "type": "BIGINT"
+        },
+        {
+          "name": "days_since_last_legal_event",
+          "type": "BIGINT"
+        },
+        {
+          "name": "formalities_count_all",
+          "type": "BIGINT"
+        },
+        {
+          "name": "formalities_count_12m",
+          "type": "BIGINT"
+        },
+        {
+          "name": "cessation_formalities_count_all",
+          "type": "BIGINT"
+        },
+        {
+          "name": "annual_accounts_count_all",
+          "type": "BIGINT"
+        },
+        {
+          "name": "annual_accounts_count_24m",
+          "type": "BIGINT"
+        },
+        {
+          "name": "days_since_last_account_filing",
+          "type": "BIGINT"
+        },
+        {
+          "name": "latest_account_closing_year",
+          "type": "BIGINT"
+        },
+        {
+          "name": "latest_revenue",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "latest_net_result",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "latest_equity",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "latest_debt",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "latest_total_assets",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "latest_net_margin",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "latest_debt_to_assets",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "latest_equity_ratio",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "latest_debt_to_equity",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "has_negative_result_history",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "has_negative_equity_history",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "has_financial_data",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "financial_years_available",
+          "type": "BIGINT"
+        },
+        {
+          "name": "latest_financial_year",
+          "type": "INTEGER"
+        },
+        {
+          "name": "years_since_last_financial_statement",
+          "type": "INTEGER"
+        },
+        {
+          "name": "has_confidential_financials",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "revenue_growth_1y",
+          "type": "DOUBLE"
+        },
+        {
+          "name": "net_result_change_1y",
+          "type": "DOUBLE"
+        }
+      ],
+      "column_profile": {
+        "activity_code": {
+          "type": "VARCHAR",
+          "nulls": 84517,
+          "coverage_rate": 0.997107,
+          "distinct_values": 2691,
+          "distinct_is_approximate": true
+        },
+        "annual_accounts_count_24m": {
+          "type": "BIGINT",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 39,
+          "distinct_is_approximate": true,
+          "min": 0,
+          "max": 59,
+          "avg": 0.09342708967229214
+        },
+        "company_age_years": {
+          "type": "BIGINT",
+          "nulls": 1235110,
+          "coverage_rate": 0.957717,
+          "distinct_values": 128,
+          "distinct_is_approximate": true,
+          "min": 0,
+          "max": 125,
+          "avg": 19.453108877798822
+        },
+        "days_since_last_account_filing": {
+          "type": "BIGINT",
+          "nulls": 27631146,
+          "coverage_rate": 0.054081,
+          "distinct_values": 3694,
+          "distinct_is_approximate": true,
+          "min": 0,
+          "max": 4811,
+          "avg": 1065.8999056812786
+        },
+        "financial_years_available": {
+          "type": "BIGINT",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 26,
+          "distinct_is_approximate": true,
+          "min": 0,
+          "max": 26,
+          "avg": 0.218033469428668
+        },
+        "has_confidential_financials": {
+          "type": "BOOLEAN",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "false",
+              "rows": 27650659
+            },
+            {
+              "value": "true",
+              "rows": 1560237
+            }
+          ]
+        },
+        "has_financial_data": {
+          "type": "BOOLEAN",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "false",
+              "rows": 27650659
+            },
+            {
+              "value": "true",
+              "rows": 1560237
+            }
+          ]
+        },
+        "latest_financial_year": {
+          "type": "INTEGER",
+          "nulls": 27650659,
+          "coverage_rate": 0.053413,
+          "distinct_values": 20,
+          "distinct_is_approximate": true,
+          "min": 2009,
+          "max": 2025,
+          "avg": 2021.4768910107887
+        },
+        "legal_category_code": {
+          "type": "VARCHAR",
+          "nulls": 62994,
+          "coverage_rate": 0.997843,
+          "distinct_values": 253,
+          "distinct_is_approximate": true
+        },
+        "legal_distress_events_count_all": {
+          "type": "BIGINT",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 17,
+          "distinct_is_approximate": true,
+          "min": 0,
+          "max": 22,
+          "avg": 0.0336567902607301
+        },
+        "legal_events_count_12m": {
+          "type": "BIGINT",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 35,
+          "distinct_is_approximate": true,
+          "min": 0,
+          "max": 130,
+          "avg": 0.12991196846546577
+        },
+        "prediction_date": {
+          "type": "DATE",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 1,
+          "distinct_is_approximate": true,
+          "min": "2025-12-31",
+          "max": "2025-12-31"
+        },
+        "prediction_year": {
+          "type": "INTEGER",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 1,
+          "distinct_is_approximate": true,
+          "min": 2025,
+          "max": 2025,
+          "avg": 2025.0
+        },
+        "radiation_events_count_all": {
+          "type": "BIGINT",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 20,
+          "distinct_is_approximate": true,
+          "min": 0,
+          "max": 123,
+          "avg": 0.08133821023497534
+        },
+        "siren": {
+          "type": "VARCHAR",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 28586411,
+          "distinct_is_approximate": true
+        },
+        "years_since_last_financial_statement": {
+          "type": "INTEGER",
+          "nulls": 27650659,
+          "coverage_rate": 0.053413,
+          "distinct_values": 20,
+          "distinct_is_approximate": true,
+          "min": 0,
+          "max": 16,
+          "avg": 3.5231089892112544
+        },
+        "company_name": {
+          "type": "VARCHAR",
+          "nulls": 63708,
+          "coverage_rate": 0.997819,
+          "distinct_values": 9438428,
+          "distinct_is_approximate": true
+        },
+        "employee_size_bracket": {
+          "type": "VARCHAR",
+          "nulls": 62994,
+          "coverage_rate": 0.997843,
+          "distinct_values": 17,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "NN",
+              "rows": 27282141
+            },
+            {
+              "value": "01",
+              "rows": 843456
+            },
+            {
+              "value": "02",
+              "rows": 390784
+            },
+            {
+              "value": "03",
+              "rows": 199063
+            },
+            {
+              "value": "11",
+              "rows": 154336
+            },
+            {
+              "value": "00",
+              "rows": 118068
+            },
+            {
+              "value": "12",
+              "rows": 94584
+            },
+            {
+              "value": "21",
+              "rows": 34485
+            },
+            {
+              "value": "22",
+              "rows": 16017
+            },
+            {
+              "value": "32",
+              "rows": 6135
+            },
+            {
+              "value": "31",
+              "rows": 3185
+            },
+            {
+              "value": "41",
+              "rows": 3026
+            },
+            {
+              "value": "42",
+              "rows": 1498
+            },
+            {
+              "value": "51",
+              "rows": 856
+            },
+            {
+              "value": "52",
+              "rows": 177
+            },
+            {
+              "value": "53",
+              "rows": 91
+            }
+          ]
+        },
+        "administrative_status_at_cutoff": {
+          "type": "VARCHAR",
+          "nulls": 62994,
+          "coverage_rate": 0.997843,
+          "distinct_values": 2,
+          "distinct_is_approximate": true,
+          "top_values": [
+            {
+              "value": "A",
+              "rows": 16580013
+            },
+            {
+              "value": "C",
+              "rows": 12567889
+            }
+          ]
+        },
+        "legal_events_count_all": {
+          "type": "BIGINT",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 85,
+          "distinct_is_approximate": true,
+          "min": 0,
+          "max": 267,
+          "avg": 0.6070963725316745
+        },
+        "legal_risk_events_count_all": {
+          "type": "BIGINT",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 17,
+          "distinct_is_approximate": true,
+          "min": 0,
+          "max": 22,
+          "avg": 0.03452091986497093
+        },
+        "legal_risk_events_count_12m": {
+          "type": "BIGINT",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 6,
+          "distinct_is_approximate": true,
+          "min": 0,
+          "max": 5,
+          "avg": 0.004975814504286346
+        },
+        "days_since_last_legal_event": {
+          "type": "BIGINT",
+          "nulls": 22287484,
+          "coverage_rate": 0.237015,
+          "distinct_values": 2575,
+          "distinct_is_approximate": true,
+          "min": 0,
+          "max": 3284,
+          "avg": 873.0246878273314
+        },
+        "formalities_count_all": {
+          "type": "BIGINT",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 5,
+          "distinct_is_approximate": true,
+          "min": 0,
+          "max": 4,
+          "avg": 1.7759505904919863
+        },
+        "formalities_count_12m": {
+          "type": "BIGINT",
+          "nulls": 0,
+          "coverage_rate": 1.0,
+          "distinct_values": 5,
+          "distinct_is_approximate": true,
+          "min": 0,
+          "max": 4,
+          "avg": 0.3418502123317272
+        }
+      },
+      "sample_rows": [
+        {
+          "activity_code": "03.20",
+          "annual_accounts_count_24m": 0,
+          "company_age_years": 46,
+          "days_since_last_account_filing": NaN,
+          "financial_years_available": 0,
+          "has_confidential_financials": false,
+          "has_financial_data": false,
+          "latest_financial_year": NaN,
+          "legal_category_code": "1000",
+          "legal_distress_events_count_all": 0,
+          "legal_events_count_12m": 0,
+          "prediction_date": "2025-12-31 00:00:00",
+          "prediction_year": 2025,
+          "radiation_events_count_all": 0,
+          "siren": "315890467",
+          "years_since_last_financial_statement": NaN,
+          "company_name": "GUINOT",
+          "employee_size_bracket": "NN",
+          "administrative_status_at_cutoff": "C",
+          "legal_events_count_all": 0,
+          "legal_risk_events_count_all": 0,
+          "legal_risk_events_count_12m": 0,
+          "days_since_last_legal_event": NaN,
+          "formalities_count_all": 2,
+          "formalities_count_12m": 0
+        },
+        {
+          "activity_code": "43.99C",
+          "annual_accounts_count_24m": 0,
+          "company_age_years": 46,
+          "days_since_last_account_filing": NaN,
+          "financial_years_available": 0,
+          "has_confidential_financials": false,
+          "has_financial_data": false,
+          "latest_financial_year": NaN,
+          "legal_category_code": "1000",
+          "legal_distress_events_count_all": 0,
+          "legal_events_count_12m": 0,
+          "prediction_date": "2025-12-31 00:00:00",
+          "prediction_year": 2025,
+          "radiation_events_count_all": 0,
+          "siren": "315901694",
+          "years_since_last_financial_statement": NaN,
+          "company_name": "DURAND",
+          "employee_size_bracket": "NN",
+          "administrative_status_at_cutoff": "C",
+          "legal_events_count_all": 0,
+          "legal_risk_events_count_all": 0,
+          "legal_risk_events_count_12m": 0,
+          "days_since_last_legal_event": NaN,
+          "formalities_count_all": 2,
+          "formalities_count_12m": 0
+        }
+      ]
+    }
+  },
+  "quality_checks": {
+    "feature_duplicate_company_year": {
+      "key": [
+        "siren",
+        "prediction_year"
+      ],
+      "duplicate_keys": 0,
+      "duplicate_rows": 0,
+      "ok": true
+    },
+    "feature_siren_quality": {
+      "rows": 220803039,
+      "valid_siren": 220803039,
+      "null_siren": 0,
+      "valid_rate": 1.0,
+      "ok": true
+    },
+    "label_duplicate_company_year": {
+      "key": [
+        "siren",
+        "prediction_year"
+      ],
+      "duplicate_keys": 0,
+      "duplicate_rows": 0,
+      "ok": true
+    },
+    "label_balance_by_year": [
+      {
+        "prediction_year": 2017,
+        "rows": 20335854,
+        "continuity_risk_12m_label_positive": 267724,
+        "continuity_risk_12m_label_rate": 0.013165,
+        "legal_distress_risk_12m_label_positive": 98385,
+        "legal_distress_risk_12m_label_rate": 0.004838,
+        "radiation_risk_12m_label_positive": 183011,
+        "radiation_risk_12m_label_rate": 0.008999,
+        "financial_weakness_risk_12m_label_positive": 126013,
+        "financial_weakness_risk_12m_label_rate": 0.006197,
+        "filing_anomaly_risk_12m_label_positive": 183456,
+        "filing_anomaly_risk_12m_label_rate": 0.009021
+      },
+      {
+        "prediction_year": 2018,
+        "rows": 21182127,
+        "continuity_risk_12m_label_positive": 305713,
+        "continuity_risk_12m_label_rate": 0.014433,
+        "legal_distress_risk_12m_label_positive": 97381,
+        "legal_distress_risk_12m_label_rate": 0.004597,
+        "radiation_risk_12m_label_positive": 226507,
+        "radiation_risk_12m_label_rate": 0.010693,
+        "financial_weakness_risk_12m_label_positive": 122314,
+        "financial_weakness_risk_12m_label_rate": 0.005774,
+        "filing_anomaly_risk_12m_label_positive": 311184,
+        "filing_anomaly_risk_12m_label_rate": 0.014691
+      },
+      {
+        "prediction_year": 2019,
+        "rows": 22168852,
+        "continuity_risk_12m_label_positive": 261502,
+        "continuity_risk_12m_label_rate": 0.011796,
+        "legal_distress_risk_12m_label_positive": 78601,
+        "legal_distress_risk_12m_label_rate": 0.003546,
+        "radiation_risk_12m_label_positive": 205961,
+        "radiation_risk_12m_label_rate": 0.009291,
+        "financial_weakness_risk_12m_label_positive": 137819,
+        "financial_weakness_risk_12m_label_rate": 0.006217,
+        "filing_anomaly_risk_12m_label_positive": 293788,
+        "filing_anomaly_risk_12m_label_rate": 0.013252
+      },
+      {
+        "prediction_year": 2020,
+        "rows": 23178651,
+        "continuity_risk_12m_label_positive": 307792,
+        "continuity_risk_12m_label_rate": 0.013279,
+        "legal_distress_risk_12m_label_positive": 68244,
+        "legal_distress_risk_12m_label_rate": 0.002944,
+        "radiation_risk_12m_label_positive": 248837,
+        "radiation_risk_12m_label_rate": 0.010736,
+        "financial_weakness_risk_12m_label_positive": 116197,
+        "financial_weakness_risk_12m_label_rate": 0.005013,
+        "filing_anomaly_risk_12m_label_positive": 253426,
+        "filing_anomaly_risk_12m_label_rate": 0.010934
+      },
+      {
+        "prediction_year": 2021,
+        "rows": 24391406,
+        "continuity_risk_12m_label_positive": 366175,
+        "continuity_risk_12m_label_rate": 0.015012,
+        "legal_distress_risk_12m_label_positive": 73980,
+        "legal_distress_risk_12m_label_rate": 0.003033,
+        "radiation_risk_12m_label_positive": 309982,
+        "radiation_risk_12m_label_rate": 0.012709,
+        "financial_weakness_risk_12m_label_positive": 120467,
+        "financial_weakness_risk_12m_label_rate": 0.004939,
+        "filing_anomaly_risk_12m_label_positive": 264093,
+        "filing_anomaly_risk_12m_label_rate": 0.010827
+      },
+      {
+        "prediction_year": 2022,
+        "rows": 25592352,
+        "continuity_risk_12m_label_positive": 335820,
+        "continuity_risk_12m_label_rate": 0.013122,
+        "legal_distress_risk_12m_label_positive": 91317,
+        "legal_distress_risk_12m_label_rate": 0.003568,
+        "radiation_risk_12m_label_positive": 263689,
+        "radiation_risk_12m_label_rate": 0.010303,
+        "financial_weakness_risk_12m_label_positive": 119991,
+        "financial_weakness_risk_12m_label_rate": 0.004689,
+        "filing_anomaly_risk_12m_label_positive": 294704,
+        "filing_anomaly_risk_12m_label_rate": 0.011515
+      },
+      {
+        "prediction_year": 2023,
+        "rows": 26772040,
+        "continuity_risk_12m_label_positive": 364494,
+        "continuity_risk_12m_label_rate": 0.013615,
+        "legal_distress_risk_12m_label_positive": 107413,
+        "legal_distress_risk_12m_label_rate": 0.004012,
+        "radiation_risk_12m_label_positive": 279698,
+        "radiation_risk_12m_label_rate": 0.010447,
+        "financial_weakness_risk_12m_label_positive": 105978,
+        "financial_weakness_risk_12m_label_rate": 0.003959,
+        "filing_anomaly_risk_12m_label_positive": 262362,
+        "filing_anomaly_risk_12m_label_rate": 0.0098
+      },
+      {
+        "prediction_year": 2024,
+        "rows": 27970861,
+        "continuity_risk_12m_label_positive": 478464,
+        "continuity_risk_12m_label_rate": 0.017106,
+        "legal_distress_risk_12m_label_positive": 118922,
+        "legal_distress_risk_12m_label_rate": 0.004252,
+        "radiation_risk_12m_label_positive": 384481,
+        "radiation_risk_12m_label_rate": 0.013746,
+        "financial_weakness_risk_12m_label_positive": 10043,
+        "financial_weakness_risk_12m_label_rate": 0.000359,
+        "filing_anomaly_risk_12m_label_positive": 297161,
+        "filing_anomaly_risk_12m_label_rate": 0.010624
+      },
+      {
+        "prediction_year": 2025,
+        "rows": 29210896,
+        "continuity_risk_12m_label_positive": 304,
+        "continuity_risk_12m_label_rate": 1e-05,
+        "legal_distress_risk_12m_label_positive": 0,
+        "legal_distress_risk_12m_label_rate": 0.0,
+        "radiation_risk_12m_label_positive": 304,
+        "radiation_risk_12m_label_rate": 1e-05,
+        "financial_weakness_risk_12m_label_positive": 0,
+        "financial_weakness_risk_12m_label_rate": 0.0,
+        "filing_anomaly_risk_12m_label_positive": 774215,
+        "filing_anomaly_risk_12m_label_rate": 0.026504
+      }
+    ],
+    "label_siren_quality": {
+      "rows": 220803039,
+      "valid_siren": 220803039,
+      "null_siren": 0,
+      "valid_rate": 1.0,
+      "ok": true
+    }
+  },
+  "readiness": {
+    "training_ready": true,
+    "checks": [
+      {
+        "name": "insee_raw",
+        "ok": true,
+        "summary": "INSEE raw data is required for company identity and administrative status."
+      },
+      {
+        "name": "financials",
+        "ok": true,
+        "summary": "Financial raw or clean data is required for accounting features."
+      },
+      {
+        "name": "bodacc",
+        "ok": true,
+        "summary": "BODACC raw data is required for legal distress and radiation labels."
+      },
+      {
+        "name": "features",
+        "ok": true,
+        "summary": "Feature and label tables are required before training."
+      },
+      {
+        "name": "continuity_label_column",
+        "ok": true,
+        "summary": "The primary continuity-risk label must exist."
+      }
+    ],
+    "blockers": []
+  },
+  "insights": [
+    "raw_insee: available with 246,453,008 rows and 110 columns.",
+    "raw_insee: siren coverage is 0.960964; this controls join reliability.",
+    "raw_financials: available with 6,368,964 rows and 5 columns.",
+    "raw_financials: siren coverage is 1.0; this controls join reliability.",
+    "raw_inpi: available with 66,141,121 rows and 14 columns.",
+    "raw_inpi: siren coverage is 1.0; this controls join reliability.",
+    "raw_bodacc: available with 17,923,111 rows and 41 columns.",
+    "raw_bodacc: siren coverage is 0.989745; this controls join reliability.",
+    "clean_company_identity: available with 29,572,772 rows and 14 columns.",
+    "clean_company_identity: siren coverage is 1.0; this controls join reliability.",
+    "clean_financials: available with 6,368,963 rows and 23 columns.",
+    "clean_financials: siren coverage is 1.0; this controls join reliability.",
+    "clean_legal_events: available with 17,739,313 rows and 17 columns.",
+    "clean_legal_events: siren coverage is 1.0; this controls join reliability.",
+    "clean_formalities_events: available with 53,544,636 rows and 10 columns.",
+    "clean_formalities_events: siren coverage is 1.0; this controls join reliability.",
+    "clean_annual_accounts: available with 12,596,485 rows and 12 columns.",
+    "clean_annual_accounts: siren coverage is 1.0; this controls join reliability.",
+    "features_company_year: available with 220,803,039 rows and 41 columns.",
+    "features_company_year: siren coverage is 1.0; this controls join reliability.",
+    "features_risk_labels: available with 220,803,039 rows and 9 columns.",
+    "features_risk_labels: siren coverage is 1.0; this controls join reliability.",
+    "features_risk_labels: continuity_risk_12m_label coverage is 1.0.",
+    "features_risk_labels: legal_distress_risk_12m_label coverage is 1.0.",
+    "features_risk_labels: radiation_risk_12m_label coverage is 1.0.",
+    "features_company: available with 29,210,896 rows and 41 columns.",
+    "features_company: siren coverage is 1.0; this controls join reliability."
+  ]
+}

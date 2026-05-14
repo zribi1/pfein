@@ -1,0 +1,83 @@
+{
+  "steps": [
+    {
+      "step": "export_raw_bodacc",
+      "status": "started",
+      "timestamp": "2026-05-14T19:07:42.028972+00:00",
+      "command": [
+        "/usr/bin/python3",
+        "collabs/download_bodacc.py",
+        "--drive-root=/content/drive/MyDrive/PFE ML Data/pfe_data",
+        "--repo-dir=/content/pfein/back_end",
+        "--work-dir=/content/pfe_work",
+        "--mode=historical",
+        "--families=PCL,RCS-B",
+        "--no-download",
+        "--export",
+        "--start-year",
+        "2017",
+        "--end-year",
+        "2025",
+        "--overwrite-raw"
+      ]
+    },
+    {
+      "step": "export_raw_bodacc",
+      "status": "succeeded",
+      "timestamp": "2026-05-14T21:14:49.065517+00:00",
+      "command": [
+        "/usr/bin/python3",
+        "collabs/download_bodacc.py",
+        "--drive-root=/content/drive/MyDrive/PFE ML Data/pfe_data",
+        "--repo-dir=/content/pfein/back_end",
+        "--work-dir=/content/pfe_work",
+        "--mode=historical",
+        "--families=PCL,RCS-B",
+        "--no-download",
+        "--export",
+        "--start-year",
+        "2017",
+        "--end-year",
+        "2025",
+        "--overwrite-raw"
+      ]
+    },
+    {
+      "step": "build_ml_data",
+      "status": "started",
+      "timestamp": "2026-05-14T21:14:49.372498+00:00",
+      "command": [
+        "/usr/bin/python3",
+        "collabs/build_ml_data.py",
+        "--drive-root=/content/drive/MyDrive/PFE ML Data/pfe_data",
+        "--repo-dir=/content/pfein/back_end",
+        "--work-dir=/content/pfe_work",
+        "--start-year",
+        "2017",
+        "--end-year",
+        "2025",
+        "--year-batch-size",
+        "2"
+      ]
+    },
+    {
+      "step": "build_ml_data",
+      "status": "succeeded",
+      "timestamp": "2026-05-14T21:55:47.512193+00:00",
+      "command": [
+        "/usr/bin/python3",
+        "collabs/build_ml_data.py",
+        "--drive-root=/content/drive/MyDrive/PFE ML Data/pfe_data",
+        "--repo-dir=/content/pfein/back_end",
+        "--work-dir=/content/pfe_work",
+        "--start-year",
+        "2017",
+        "--end-year",
+        "2025",
+        "--year-batch-size",
+        "2"
+      ]
+    }
+  ],
+  "updated_at": "2026-05-14T21:55:47.512193+00:00"
+}
