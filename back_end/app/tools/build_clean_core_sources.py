@@ -196,6 +196,8 @@ def _build_legal_events(
             FROM read_parquet('{_sql_string(path)}', union_by_name=true, filename=true)
             WHERE {siren} IS NOT NULL
               AND {event_date} IS NOT NULL
+              AND {event_date} BETWEEN DATE '{MIN_REASONABLE_DATE}'
+                  AND CAST(CURRENT_DATE + INTERVAL {FUTURE_DATE_SLACK_DAYS} DAY AS DATE)
             {limit_sql}
         )
         TO '{_sql_string(str(output_dir).replace("\\", "/"))}'

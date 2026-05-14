@@ -47,7 +47,7 @@ def main() -> None:
             for name in ("company_identity", "legal_events", "formalities_events", "annual_accounts"):
                 output = p["data_lake"] / "clean" / name
                 if output.exists():
-                    sync_tree_to_drive(output, p["drive_root"], drive_p["drive_root"])
+                    sync_tree_to_drive(output, p["drive_root"], drive_p["drive_root"], replace=True)
 
     if args.clean_financials:
         run(
@@ -64,7 +64,12 @@ def main() -> None:
         )
         if args.work_dir and (p["data_lake"] / "clean" / "financials").exists():
             print("[build] syncing clean financials output to Drive")
-            sync_tree_to_drive(p["data_lake"] / "clean" / "financials", p["drive_root"], drive_p["drive_root"])
+            sync_tree_to_drive(
+                p["data_lake"] / "clean" / "financials",
+                p["drive_root"],
+                drive_p["drive_root"],
+                replace=True,
+            )
 
     feature_command = [
         sys.executable,
@@ -88,7 +93,7 @@ def main() -> None:
         for name in ("company_year_features", "risk_labels", "company_features"):
             output = p["data_lake"] / "features" / name
             if output.exists():
-                sync_tree_to_drive(output, p["drive_root"], drive_p["drive_root"])
+                sync_tree_to_drive(output, p["drive_root"], drive_p["drive_root"], replace=True)
 
     if args.train:
         train_command = [
@@ -109,7 +114,7 @@ def main() -> None:
         run(train_command, repo_dir, env=env)
         if args.work_dir and p["artifacts"].exists():
             print("[build] syncing ML artifacts to Drive")
-            sync_tree_to_drive(p["artifacts"], p["drive_root"], drive_p["drive_root"])
+            sync_tree_to_drive(p["artifacts"], p["drive_root"], drive_p["drive_root"], replace=True)
 
     if args.audit:
         audit_command = [

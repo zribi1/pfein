@@ -51,8 +51,14 @@ def sync_file_to_drive(local_path: Path, local_root: Path, drive_root: Path) -> 
     return target
 
 
-def sync_tree_to_drive(local_path: Path, local_root: Path, drive_root: Path) -> Path:
+def sync_tree_to_drive(local_path: Path, local_root: Path, drive_root: Path, *, replace: bool = False) -> Path:
     target = drive_root / local_path.relative_to(local_root)
+    if replace and target.exists():
+        resolved = target.resolve()
+        root = drive_root.resolve()
+        if resolved == root or root not in resolved.parents:
+            raise RuntimeError(f"refusing to replace output outside Drive root: {target}")
+        shutil.rmtree(target)
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(local_path, target, dirs_exist_ok=True)
     return target
