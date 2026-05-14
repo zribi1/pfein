@@ -167,7 +167,7 @@ def _build_legal_events(
     available = _parquet_columns(con, path)
     limit_sql = f"LIMIT {int(max_rows)}" if max_rows else ""
     siren = _coalesce_expr(available, ("siren",), "VARCHAR")
-    event_date = _coalesce_expr(available, ("event_date", "eventDate", "date_parution", "dateParution"), "DATE")
+    event_date = _coalesce_expr(available, ("date_parution", "dateParution", "event_date", "eventDate"), "DATE")
     event_category = _coalesce_expr(available, ("event_category", "eventCategory", "bodacc_family", "bodaccFamily"), "VARCHAR")
     logger.info("clean dataset=legal_events reading raw_root=%s", raw_root)
 

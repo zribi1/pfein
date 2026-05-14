@@ -2,7 +2,7 @@
 
 | Élément | Valeur |
 |---|---|
-| Généré le | `2026-05-14T04:27:35.254362+00:00` |
+| Généré le | `2026-05-14T16:20:47.876242+00:00` |
 | Data lake | `/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake` |
 
 ## Objectif

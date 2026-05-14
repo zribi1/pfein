@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-14T04:27:35.254362+00:00",
+  "generated_at": "2026-05-14T16:20:47.876242+00:00",
   "data_lake_dir": "/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake",
   "datasets": {
     "company_year_features": {
@@ -20,7 +20,7 @@
     "legal_events": {
       "path": "/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake/clean/legal_events",
       "available": true,
-      "parquet_files": 3894
+      "parquet_files": 3135
     },
     "formalities_events": {
       "path": "/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake/clean/formalities_events",
@@ -43,156 +43,156 @@
     "by_year": [
       {
         "prediction_year": 2017,
-        "rows": 29635766,
-        "continuity_positive": 275401,
-        "continuity_rate": 0.009292859175632578,
-        "legal_distress_positive": 97980,
-        "radiation_positive": 190954,
-        "financial_weakness_positive": 131125,
-        "filing_anomaly_positive": 183470
+        "rows": 20335854,
+        "continuity_positive": 264638,
+        "continuity_rate": 0.01301337037529872,
+        "legal_distress_positive": 97714,
+        "radiation_positive": 180455,
+        "financial_weakness_positive": 126013,
+        "filing_anomaly_positive": 183456
       },
       {
         "prediction_year": 2018,
-        "rows": 29635766,
-        "continuity_positive": 309626,
-        "continuity_rate": 0.010447713752362602,
-        "legal_distress_positive": 97429,
-        "radiation_positive": 230214,
-        "financial_weakness_positive": 127294,
-        "filing_anomaly_positive": 311206
+        "rows": 21182127,
+        "continuity_positive": 297946,
+        "continuity_rate": 0.014065915099083297,
+        "legal_distress_positive": 97167,
+        "radiation_positive": 218788,
+        "financial_weakness_positive": 122314,
+        "filing_anomaly_positive": 311184
       },
       {
         "prediction_year": 2019,
-        "rows": 29635766,
-        "continuity_positive": 270443,
-        "continuity_rate": 0.009125561323436013,
-        "legal_distress_positive": 78353,
-        "radiation_positive": 215089,
-        "financial_weakness_positive": 142038,
-        "filing_anomaly_positive": 293812
+        "rows": 22168852,
+        "continuity_positive": 260031,
+        "continuity_rate": 0.011729565428106065,
+        "legal_distress_positive": 78243,
+        "radiation_positive": 204787,
+        "financial_weakness_positive": 137819,
+        "filing_anomaly_positive": 293788
       },
       {
         "prediction_year": 2020,
-        "rows": 29635766,
-        "continuity_positive": 320376,
-        "continuity_rate": 0.01081045112854515,
-        "legal_distress_positive": 67789,
-        "radiation_positive": 261719,
-        "financial_weakness_positive": 121629,
-        "filing_anomaly_positive": 253448
+        "rows": 23178651,
+        "continuity_positive": 302600,
+        "continuity_rate": 0.013055116969490589,
+        "legal_distress_positive": 67637,
+        "radiation_positive": 244094,
+        "financial_weakness_positive": 116197,
+        "filing_anomaly_positive": 253426
       },
       {
         "prediction_year": 2021,
-        "rows": 29635766,
-        "continuity_positive": 372693,
-        "continuity_rate": 0.012575784273637468,
-        "legal_distress_positive": 74528,
-        "radiation_positive": 315864,
-        "financial_weakness_positive": 125707,
-        "filing_anomaly_positive": 264115
+        "rows": 24391406,
+        "continuity_positive": 359387,
+        "continuity_rate": 0.014734164975975555,
+        "legal_distress_positive": 74319,
+        "radiation_positive": 302764,
+        "financial_weakness_positive": 120467,
+        "filing_anomaly_positive": 264093
       },
       {
         "prediction_year": 2022,
-        "rows": 29635766,
-        "continuity_positive": 340835,
-        "continuity_rate": 0.011500799405691082,
-        "legal_distress_positive": 91736,
-        "radiation_positive": 268213,
-        "financial_weakness_positive": 124562,
-        "filing_anomaly_positive": 294726
+        "rows": 25592352,
+        "continuity_positive": 328742,
+        "continuity_rate": 0.012845321914922082,
+        "legal_distress_positive": 91504,
+        "radiation_positive": 256350,
+        "financial_weakness_positive": 119991,
+        "filing_anomaly_positive": 294704
       },
       {
         "prediction_year": 2023,
-        "rows": 29635766,
-        "continuity_positive": 369420,
-        "continuity_rate": 0.012465343396219285,
-        "legal_distress_positive": 108568,
-        "radiation_positive": 283267,
-        "financial_weakness_positive": 109635,
-        "filing_anomaly_positive": 262385
+        "rows": 26772040,
+        "continuity_positive": 354658,
+        "continuity_rate": 0.013247328182686115,
+        "legal_distress_positive": 108307,
+        "radiation_positive": 268762,
+        "financial_weakness_positive": 105978,
+        "filing_anomaly_positive": 262362
       },
       {
         "prediction_year": 2024,
-        "rows": 29635766,
-        "continuity_positive": 460496,
-        "continuity_rate": 0.015538521933261317,
-        "legal_distress_positive": 116583,
-        "radiation_positive": 368599,
-        "financial_weakness_positive": 10113,
-        "filing_anomaly_positive": 297165
+        "rows": 27970861,
+        "continuity_positive": 446691,
+        "continuity_rate": 0.01596986950097818,
+        "legal_distress_positive": 116302,
+        "radiation_positive": 355038,
+        "financial_weakness_positive": 10043,
+        "filing_anomaly_positive": 297161
       },
       {
         "prediction_year": 2025,
-        "rows": 29635766,
-        "continuity_positive": 371,
-        "continuity_rate": 1.2518657354765184e-05,
+        "rows": 29210896,
+        "continuity_positive": 356,
+        "continuity_rate": 1.218723314752139e-05,
         "legal_distress_positive": 3,
-        "radiation_positive": 368,
+        "radiation_positive": 353,
         "financial_weakness_positive": 0,
-        "filing_anomaly_positive": 774219
+        "filing_anomaly_positive": 774215
       }
     ],
     "source_breakdown": [
       {
         "prediction_year": 2017,
-        "bodacc_events": 307839,
+        "bodacc_events": 296977,
         "inpi_events": 0,
         "insee_events": 0,
-        "financial_events": 131349
+        "financial_events": 126225
       },
       {
         "prediction_year": 2018,
-        "bodacc_events": 347933,
+        "bodacc_events": 336153,
         "inpi_events": 0,
         "insee_events": 0,
-        "financial_events": 127555
+        "financial_events": 122552
       },
       {
         "prediction_year": 2019,
-        "bodacc_events": 309030,
+        "bodacc_events": 298502,
         "inpi_events": 0,
         "insee_events": 0,
-        "financial_events": 142335
+        "financial_events": 138110
       },
       {
         "prediction_year": 2020,
-        "bodacc_events": 345882,
+        "bodacc_events": 327950,
         "inpi_events": 0,
         "insee_events": 0,
-        "financial_events": 121849
+        "financial_events": 116401
       },
       {
         "prediction_year": 2021,
-        "bodacc_events": 408766,
+        "bodacc_events": 394961,
         "inpi_events": 0,
         "insee_events": 0,
-        "financial_events": 125884
+        "financial_events": 120634
       },
       {
         "prediction_year": 2022,
-        "bodacc_events": 381152,
+        "bodacc_events": 368940,
         "inpi_events": 0,
         "insee_events": 0,
-        "financial_events": 124773
+        "financial_events": 120193
       },
       {
         "prediction_year": 2023,
-        "bodacc_events": 675128,
-        "inpi_events": 7674,
+        "bodacc_events": 396940,
+        "inpi_events": 7509,
         "insee_events": 0,
-        "financial_events": 109812
+        "financial_events": 106148
       },
       {
         "prediction_year": 2024,
-        "bodacc_events": 557866,
-        "inpi_events": 4979,
+        "bodacc_events": 497532,
+        "inpi_events": 4809,
         "insee_events": 0,
-        "financial_events": 10121
+        "financial_events": 10049
       },
       {
         "prediction_year": 2025,
-        "bodacc_events": 54,
-        "inpi_events": 317,
+        "bodacc_events": 52,
+        "inpi_events": 304,
         "insee_events": 0,
         "financial_events": 0
       }
@@ -201,37 +201,37 @@
       {
         "event_family": "liquidation",
         "source": "BODACC",
-        "event_count": 729444
+        "event_count": 727780
       },
       {
         "event_family": "procedure_collective",
         "source": "BODACC",
-        "event_count": 861077
+        "event_count": 859211
       },
       {
         "event_family": "radiation",
         "source": "BODACC",
-        "event_count": 2472573
+        "event_count": 2058796
       },
       {
         "event_family": "redressement",
         "source": "BODACC",
-        "event_count": 119600
+        "event_count": 119432
       },
       {
         "event_family": "sauvegarde",
         "source": "BODACC",
-        "event_count": 22208
+        "event_count": 22167
       },
       {
         "event_family": "cessation_radiation_fermeture",
         "source": "INPI formalites",
-        "event_count": 12970
+        "event_count": 12622
       },
       {
         "event_family": "negative_result_or_equity",
         "source": "financials",
-        "event_count": 893678
+        "event_count": 860312
       }
     ],
     "positive_examples": [

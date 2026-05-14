@@ -131,6 +131,12 @@ def _parse_annonce(
     flags = extract_risk_flags(risk_text)
     now = datetime.now(timezone.utc)
 
+    # For ML cutoffs, the safest legal-event timestamp is when the notice was
+    # published/observable. Business-effective dates such as activity start or
+    # immatriculation can be decades older than the BODACC notice and should
+    # stay as descriptive fields, not drive feature/label timing.
+    event_date = date_parution or jugement_date or date_cessation_activite or date_immatriculation or modification_date_commencement
+
     return {
         "nojo": _first_text(element, ("nojo",)),
         "numeroAnnonce": _first_text(element, ("numeroAnnonce", "numero")),
@@ -156,7 +162,7 @@ def _parse_annonce(
         "jugementText": jugement_text,
         "flags": flags,
         "dateCessationPaiement": extract_cessation_paiement_date(risk_text),
-        "eventDate": jugement_date or date_cessation_activite or date_immatriculation or modification_date_commencement or date_parution,
+        "eventDate": event_date,
         "bodaccFamily": family,
         "bodaccEdition": _bodacc_edition_for_family(family),
         "eventCategory": _event_category_for(family, jugement_nature, jugement_text, is_radiation),

@@ -6,11 +6,11 @@
 
 | Item | Value |
 |---|---:|
-| Generated at | `2026-05-14T03:15:20.157966+00:00` |
+| Generated at | `2026-05-14T16:20:28.413705+00:00` |
 | Data lake | `/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake` |
 | Datasets available | 12 / 12 |
 | Datasets missing | 0 |
-| Total profiled rows | 1,026,848,823 |
+| Total profiled rows | 927,525,347 |
 | Training ready | **yes** |
 
 ## Purpose
@@ -32,23 +32,23 @@ This report profiles raw, clean, and feature Parquet datasets before final model
 ## Quality Checks
 
 - `feature_duplicate_company_year`: **pass** `{"key": ["siren", "prediction_year"], "duplicate_keys": 0, "duplicate_rows": 0, "ok": true}`
-- `feature_siren_quality`: **pass** `{"rows": 266721894, "valid_siren": 266721894, "null_siren": 0, "valid_rate": 1.0, "ok": true}`
+- `feature_siren_quality`: **pass** `{"rows": 220803039, "valid_siren": 220803039, "null_siren": 0, "valid_rate": 1.0, "ok": true}`
 - `label_duplicate_company_year`: **pass** `{"key": ["siren", "prediction_year"], "duplicate_keys": 0, "duplicate_rows": 0, "ok": true}`
 
 ### Label Balance By Year
 
 | prediction_year | rows | continuity_risk_12m_label_positive | continuity_risk_12m_label_rate | legal_distress_risk_12m_label_positive | legal_distress_risk_12m_label_rate | radiation_risk_12m_label_positive | radiation_risk_12m_label_rate | financial_weakness_risk_12m_label_positive | financial_weakness_risk_12m_label_rate | filing_anomaly_risk_12m_label_positive | filing_anomaly_risk_12m_label_rate |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 2017 | 29635766 | 275401 | 0.009293 | 97980 | 0.003306 | 190954 | 0.006443 | 131125 | 0.004425 | 183470 | 0.006191 |
-| 2018 | 29635766 | 309626 | 0.010448 | 97429 | 0.003288 | 230214 | 0.007768 | 127294 | 0.004295 | 311206 | 0.010501 |
-| 2019 | 29635766 | 270443 | 0.009126 | 78353 | 0.002644 | 215089 | 0.007258 | 142038 | 0.004793 | 293812 | 0.009914 |
-| 2020 | 29635766 | 320376 | 0.01081 | 67789 | 0.002287 | 261719 | 0.008831 | 121629 | 0.004104 | 253448 | 0.008552 |
-| 2021 | 29635766 | 372693 | 0.012576 | 74528 | 0.002515 | 315864 | 0.010658 | 125707 | 0.004242 | 264115 | 0.008912 |
-| 2022 | 29635766 | 340835 | 0.011501 | 91736 | 0.003095 | 268213 | 0.00905 | 124562 | 0.004203 | 294726 | 0.009945 |
-| 2023 | 29635766 | 369420 | 0.012465 | 108568 | 0.003663 | 283267 | 0.009558 | 109635 | 0.003699 | 262385 | 0.008854 |
-| 2024 | 29635766 | 460496 | 0.015539 | 116583 | 0.003934 | 368599 | 0.012438 | 10113 | 0.000341 | 297165 | 0.010027 |
-| 2025 | 29635766 | 371 | 1.3e-05 | 3 | 0.0 | 368 | 1.2e-05 | 0 | 0.0 | 774219 | 0.026124 |
-- `label_siren_quality`: **pass** `{"rows": 266721894, "valid_siren": 266721894, "null_siren": 0, "valid_rate": 1.0, "ok": true}`
+| 2017 | 20335854 | 264638 | 0.013013 | 97714 | 0.004805 | 180455 | 0.008874 | 126013 | 0.006197 | 183456 | 0.009021 |
+| 2018 | 21182127 | 297946 | 0.014066 | 97167 | 0.004587 | 218788 | 0.010329 | 122314 | 0.005774 | 311184 | 0.014691 |
+| 2019 | 22168852 | 260031 | 0.01173 | 78243 | 0.003529 | 204787 | 0.009238 | 137819 | 0.006217 | 293788 | 0.013252 |
+| 2020 | 23178651 | 302600 | 0.013055 | 67637 | 0.002918 | 244094 | 0.010531 | 116197 | 0.005013 | 253426 | 0.010934 |
+| 2021 | 24391406 | 359387 | 0.014734 | 74319 | 0.003047 | 302764 | 0.012413 | 120467 | 0.004939 | 264093 | 0.010827 |
+| 2022 | 25592352 | 328742 | 0.012845 | 91504 | 0.003575 | 256350 | 0.010017 | 119991 | 0.004689 | 294704 | 0.011515 |
+| 2023 | 26772040 | 354658 | 0.013247 | 108307 | 0.004046 | 268762 | 0.010039 | 105978 | 0.003959 | 262362 | 0.0098 |
+| 2024 | 27970861 | 446691 | 0.01597 | 116302 | 0.004158 | 355038 | 0.012693 | 10043 | 0.000359 | 297161 | 0.010624 |
+| 2025 | 29210896 | 356 | 1.2e-05 | 3 | 0.0 | 353 | 1.2e-05 | 0 | 0.0 | 774215 | 0.026504 |
+- `label_siren_quality`: **pass** `{"rows": 220803039, "valid_siren": 220803039, "null_siren": 0, "valid_rate": 1.0, "ok": true}`
 
 ## Dataset Summary
 
@@ -59,13 +59,13 @@ This report profiles raw, clean, and feature Parquet datasets before final model
 | `raw_inpi` | **available** | 66,141,121 | 663 | 14 | registry source |
 | `raw_bodacc` | **available** | 17,923,111 | 2660 | 41 | legal event source |
 | `clean_company_identity` | **available** | 29,572,772 | 1 | 14 | normalized identity |
-| `clean_financials` | **available** | 6,368,964 | 1 | 23 | normalized financials |
-| `clean_legal_events` | **available** | 24,800,208 | 3894 | 17 | normalized legal events |
+| `clean_financials` | **available** | 6,368,963 | 1 | 23 | normalized financials |
+| `clean_legal_events` | **available** | 17,739,313 | 3135 | 17 | normalized legal events |
 | `clean_formalities_events` | **available** | 53,544,636 | 5 | 10 | normalized registry events |
 | `clean_annual_accounts` | **available** | 12,596,485 | 29 | 12 | normalized filings |
-| `features_company_year` | **available** | 266,721,894 | 9 | 41 | model features |
-| `features_risk_labels` | **available** | 266,721,894 | 9 | 9 | model labels |
-| `features_company` | **available** | 29,635,766 | 1 | 41 | latest company snapshot |
+| `features_company_year` | **available** | 220,803,039 | 9 | 41 | model features |
+| `features_risk_labels` | **available** | 220,803,039 | 9 | 9 | model labels |
+| `features_company` | **available** | 29,210,896 | 1 | 41 | latest company snapshot |
 
 ## raw_insee
 
@@ -281,7 +281,7 @@ This report profiles raw, clean, and feature Parquet datasets before final model
 | Column | Type | Coverage | Distinct | Min | Max | Avg |
 |---|---|---:|---:|---|---|---:|
 | `date_parution` | `TIMESTAMP WITH TIME ZONE` | 1.0 | 3132 | 2017-01-03 00:00:00+00:00 | 2025-12-31 00:00:00+00:00 |  |
-| `event_date` | `TIMESTAMP WITH TIME ZONE` | 1.0 | 19613 | 0017-08-03 00:00:00+00:00 | 9970-01-13 00:00:00+00:00 |  |
+| `event_date` | `TIMESTAMP WITH TIME ZONE` | 1.0 | 18419 | 1900-05-28 00:00:00+00:00 | 2027-07-26 00:00:00+00:00 |  |
 | `siren` | `VARCHAR` | 0.989745 | 7108938 |  |  |  |
 | `record_key` | `VARCHAR` | 1.0 | 13070699 |  |  |  |
 | `nojo` | `VARCHAR` | 1.0 | 13070699 |  |  |  |
@@ -293,8 +293,8 @@ This report profiles raw, clean, and feature Parquet datasets before final model
 | `bodacc_edition` | `VARCHAR` | 1.0 | 3 |  |  |  |
 | `event_category` | `VARCHAR` | 1.0 | 5 |  |  |  |
 | `event_type` | `VARCHAR` | 0.999932 | 48 |  |  |  |
-| `jugement_date` | `TIMESTAMP WITH TIME ZONE` | 0.080456 | 4911 | 0017-08-03 00:00:00+00:00 | 5202-05-14 00:00:00+00:00 |  |
-| `date_cessation_paiement` | `TIMESTAMP WITH TIME ZONE` | 0.022338 | 5345 | 0017-01-15 00:00:00+00:00 | 6202-06-15 00:00:00+00:00 |  |
+| `jugement_date` | `TIMESTAMP WITH TIME ZONE` | 0.080454 | 4698 | 1930-03-29 00:00:00+00:00 | 2026-08-16 00:00:00+00:00 |  |
+| `date_cessation_paiement` | `TIMESTAMP WITH TIME ZONE` | 0.022334 | 5345 | 1917-10-16 00:00:00+00:00 | 2026-11-30 00:00:00+00:00 |  |
 | `date_cloture_comptes` | `TIMESTAMP WITH TIME ZONE` | 0.412559 | 1307 | 1993-12-31 00:00:00+00:00 | 2025-11-30 00:00:00+00:00 |  |
 | `numero_annonce` | `VARCHAR` | 1.0 | 34779 |  |  |  |
 | `numero_departement` | `VARCHAR` | 1.0 | 99 |  |  |  |
@@ -384,7 +384,7 @@ This report profiles raw, clean, and feature Parquet datasets before final model
 | `legal_category_code` | `VARCHAR` | 1.0 | 253 |  |  |  |
 | `siren` | `VARCHAR` | 1.0 | 28586411 |  |  |  |
 | `company_name` | `VARCHAR` | 0.999976 | 10457938 |  |  |  |
-| `creation_date` | `DATE` | 0.960367 | 32187 | 0001-01-16 | 2028-01-01 |  |
+| `creation_date` | `DATE` | 0.960365 | 32187 | 1900-01-01 | 2027-04-20 |  |
 | `closure_date` | `DATE` | 0.0 | 0 |  |  |  |
 | `status_period_start` | `DATE` | 0.0 | 0 |  |  |  |
 | `employee_size_bracket` | `VARCHAR` | 1.0 | 17 |  |  |  |
@@ -399,34 +399,34 @@ This report profiles raw, clean, and feature Parquet datasets before final model
 ```json
 [
   {
-    "activity_code": "32.20Z",
-    "administrative_status": "A",
+    "activity_code": "47.99A",
+    "administrative_status": "C",
     "legal_category_code": "1000",
-    "siren": "801619156",
-    "company_name": "BOIVIN",
-    "creation_date": "2014-04-11 00:00:00",
+    "siren": "894437649",
+    "company_name": "[ND]",
+    "creation_date": "2020-11-19 00:00:00",
     "closure_date": "NaT",
     "status_period_start": "NaT",
     "employee_size_bracket": "NN",
     "employee_size_year": NaN,
-    "head_office_siret": "80161915600012",
-    "source_updated_at": "2025-12-06 10:36:59",
+    "head_office_siret": "89443764900011",
+    "source_updated_at": "2024-03-22 14:26:06",
     "source_file": "/content/pfe_work/data-lake/raw/insee/bulk/stock_unite_legale/StockUniteLegale_utf8/part-00001.parquet",
     "exported_at": "NaT"
   },
   {
-    "activity_code": "74.10Z",
+    "activity_code": "53.20Z",
     "administrative_status": "C",
     "legal_category_code": "1000",
-    "siren": "801619560",
-    "company_name": "[ND]",
-    "creation_date": "2014-04-10 00:00:00",
+    "siren": "894438100",
+    "company_name": "ALHAMDOU",
+    "creation_date": "2021-02-25 00:00:00",
     "closure_date": "NaT",
     "status_period_start": "NaT",
     "employee_size_bracket": "NN",
     "employee_size_year": NaN,
-    "head_office_siret": "80161956000031",
-    "source_updated_at": "2024-03-22 14:26:06",
+    "head_office_siret": "89443810000014",
+    "source_updated_at": "2024-07-04 09:31:11",
     "source_file": "/content/pfe_work/data-lake/raw/insee/bulk/stock_unite_legale/StockUniteLegale_utf8/part-00001.parquet",
     "exported_at": "NaT"
   }
@@ -437,7 +437,7 @@ This report profiles raw, clean, and feature Parquet datasets before final model
 
 **Path:** `/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake/clean/financials`
 
-**Rows:** 6,368,964
+**Rows:** 6,368,963
 
 **Files:** 1
 
@@ -445,10 +445,10 @@ This report profiles raw, clean, and feature Parquet datasets before final model
 
 | Column | Type | Coverage | Distinct | Min | Max | Avg |
 |---|---|---:|---:|---|---|---:|
-| `closing_date` | `DATE` | 1.0 | 1483 | 1919-09-30 | 2029-12-31 |  |
+| `closing_date` | `DATE` | 1.0 | 1483 | 1919-09-30 | 2026-01-10 |  |
 | `debt` | `DOUBLE` | 0.754473 | 2404882 | -9.73595e+08 | 2.14748e+09 | 6.78954e+06 |
 | `equity` | `DOUBLE` | 0.756781 | 2015394 | -2.14748e+09 | 2.14748e+09 | 5.34646e+06 |
-| `financial_year` | `INTEGER` | 1.0 | 26 | 1919 | 2029 | 2019.84 |
+| `financial_year` | `INTEGER` | 1.0 | 24 | 1919 | 2026 | 2019.84 |
 | `net_result` | `DOUBLE` | 0.549422 | 1368891 | -2.14748e+09 | 2.14748e+09 | 532682 |
 | `revenue` | `DOUBLE` | 0.474076 | 2000388 | -1.07345e+09 | 2.14748e+09 | 1.08105e+07 |
 | `siren` | `VARCHAR` | 1.0 | 1798383 |  |  |  |
@@ -457,9 +457,9 @@ This report profiles raw, clean, and feature Parquet datasets before final model
 | `confidentiality` | `VARCHAR` | 1.0 | 3 |  |  |  |
 | `total_liabilities_and_equity` | `DOUBLE` | 0.757054 | 2717464 | -1.866e+09 | 2.14748e+09 | 1.12723e+07 |
 | `share_capital` | `DOUBLE` | 0.755581 | 145741 | -2.14748e+09 | 2.14748e+09 | 2.26476e+06 |
-| `goods_sales` | `DOUBLE` | 0.474076 | 1849892 | -1.07345e+09 | 2.14748e+09 | 5.49374e+06 |
+| `goods_sales` | `DOUBLE` | 0.474076 | 1849892 | -1.07345e+09 | 2.14748e+09 | 5.49375e+06 |
 | `services_sales` | `DOUBLE` | 0.474076 | 319596 | -5.25e+07 | 2.14748e+09 | 1.07465e+06 |
-| `net_margin` | `DOUBLE` | 0.462366 | 3571757 | -1.14478e+08 | 9.07618e+07 | -33.2725 |
+| `net_margin` | `DOUBLE` | 0.462366 | 3571757 | -1.14478e+08 | 9.07618e+07 | -33.2726 |
 | `debt_to_assets` | `DOUBLE` | 0.738798 | 5155015 | -8.49348e+08 | 2.14748e+09 | 272.08 |
 | `equity_ratio` | `DOUBLE` | 0.740834 | 4797776 | -1.3978e+07 | 2.14748e+09 | 472.715 |
 | `debt_to_equity` | `DOUBLE` | 0.754178 | 4196633 | -1.74633e+07 | 1.79101e+07 | 27.5461 |
@@ -467,7 +467,7 @@ This report profiles raw, clean, and feature Parquet datasets before final model
 | `has_negative_equity` | `BOOLEAN` | 0.756781 | 2 |  |  |  |
 | `source` | `VARCHAR` | 1.0 | 1 |  |  |  |
 | `source_file` | `VARCHAR` | 1.0 | 1 |  |  |  |
-| `exported_at` | `TIMESTAMP WITH TIME ZONE` | 1.0 | 1 | 2026-05-14 01:19:09.056000+00:00 | 2026-05-14 01:19:09.056000+00:00 |  |
+| `exported_at` | `TIMESTAMP WITH TIME ZONE` | 1.0 | 1 | 2026-05-14 14:49:48.468000+00:00 | 2026-05-14 14:49:48.468000+00:00 |  |
 
 ### Sample Rows
 
@@ -496,7 +496,7 @@ This report profiles raw, clean, and feature Parquet datasets before final model
     "has_negative_equity": false,
     "source": "data_gouv_financial_parquet",
     "source_file": "/content/pfe_work/data-lake/raw/financials/export-detail-bilan/export-detail-bilan.parquet",
-    "exported_at": "2026-05-14 01:19:09.056000+00:00"
+    "exported_at": "2026-05-14 14:49:48.468000+00:00"
   },
   {
     "closing_date": "2018-03-31 00:00:00",
@@ -521,7 +521,7 @@ This report profiles raw, clean, and feature Parquet datasets before final model
     "has_negative_equity": false,
     "source": "data_gouv_financial_parquet",
     "source_file": "/content/pfe_work/data-lake/raw/financials/export-detail-bilan/export-detail-bilan.parquet",
-    "exported_at": "2026-05-14 01:19:09.056000+00:00"
+    "exported_at": "2026-05-14 14:49:48.468000+00:00"
   }
 ]
 ```
@@ -530,17 +530,17 @@ This report profiles raw, clean, and feature Parquet datasets before final model
 
 **Path:** `/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake/clean/legal_events`
 
-**Rows:** 24,800,208
+**Rows:** 17,739,313
 
-**Files:** 3894
+**Files:** 3135
 
 ### Column Coverage
 
 | Column | Type | Coverage | Distinct | Min | Max | Avg |
 |---|---|---:|---:|---|---|---:|
-| `event_date` | `DATE` | 1.0 | 17810 | 0017-08-03 | 9970-01-13 |  |
+| `event_date` | `DATE` | 1.0 | 17810 | 1900-05-28 | 2027-02-21 |  |
 | `siren` | `VARCHAR` | 1.0 | 7108938 |  |  |  |
-| `event_type` | `VARCHAR` | 0.999961 | 48 |  |  |  |
+| `event_type` | `VARCHAR` | 0.999945 | 48 |  |  |  |
 | `is_risk_event` | `BOOLEAN` | 1.0 | 2 |  |  |  |
 | `is_radiation` | `BOOLEAN` | 1.0 | 2 |  |  |  |
 | `flag_liquidation` | `BOOLEAN` | 1.0 | 2 |  |  |  |
@@ -549,40 +549,21 @@ This report profiles raw, clean, and feature Parquet datasets before final model
 | `flag_procedure_collective` | `BOOLEAN` | 1.0 | 2 |  |  |  |
 | `flag_cessation_paiement` | `BOOLEAN` | 1.0 | 2 |  |  |  |
 | `nojo` | `VARCHAR` | 1.0 | 13070699 |  |  |  |
-| `denomination` | `VARCHAR` | 0.898124 | 3800263 |  |  |  |
+| `denomination` | `VARCHAR` | 0.86922 | 3800263 |  |  |  |
 | `source_file` | `VARCHAR` | 1.0 | 2657 |  |  |  |
 | `source_member` | `VARCHAR` | 1.0 | 5953 |  |  |  |
-| `exported_at` | `TIMESTAMP` | 1.0 | 18688265 | 2026-05-13 18:02:55.963249 | 2026-05-13 20:21:36.908661 |  |
+| `exported_at` | `TIMESTAMP` | 1.0 | 21468438 | 2026-05-14 12:24:09.122464 | 2026-05-14 14:25:56.342991 |  |
 | `event_category` | `VARCHAR` | 1.0 | 4 |  |  |  |
-| `event_year` | `BIGINT` | 1.0 | 175 | 17 | 9970 | 2022.7 |
+| `event_year` | `BIGINT` | 1.0 | 137 | 1900 | 2027 | 2022.3 |
 
 ### Sample Rows
 
 ```json
 [
   {
-    "event_date": "1198-11-11 00:00:00",
-    "siren": "420291221",
-    "event_type": "radiation_rcs",
-    "is_risk_event": false,
-    "is_radiation": true,
-    "flag_liquidation": false,
-    "flag_redressement": false,
-    "flag_sauvegarde": false,
-    "flag_procedure_collective": false,
-    "flag_cessation_paiement": false,
-    "nojo": "000005002153105",
-    "denomination": null,
-    "source_file": "RCS-B_BXB20180249.taz",
-    "source_member": "RCS-B_BXB20180249.xml",
-    "exported_at": "2026-05-13 18:13:56.978866",
-    "event_category": "radiation",
-    "event_year": 1198
-  },
-  {
-    "event_date": "0017-08-03 00:00:00",
-    "siren": "504988924",
-    "event_type": "depot_de_l_etat_des_creances_et_du_projet_de_repartition",
+    "event_date": "1900-05-28 00:00:00",
+    "siren": "057803504",
+    "event_type": "modification_rcs",
     "is_risk_event": false,
     "is_radiation": false,
     "flag_liquidation": false,
@@ -590,13 +571,32 @@ This report profiles raw, clean, and feature Parquet datasets before final model
     "flag_sauvegarde": false,
     "flag_procedure_collective": false,
     "flag_cessation_paiement": false,
-    "nojo": "860218602400280",
-    "denomination": null,
-    "source_file": "PCL_BXA20170163.taz",
-    "source_member": "PCL_BXA20170163.xml",
-    "exported_at": "2026-05-13 18:04:07.977410",
-    "event_category": "procedure_collective",
-    "event_year": 17
+    "nojo": "001380MYG993335",
+    "denomination": "ROMAIN BOYER",
+    "source_file": "2025.tar.gz",
+    "source_member": "2025/RCS-B_BXB20250109.taz!RCS-B_BXB20250109.xml",
+    "exported_at": "2026-05-14 14:09:40.098500",
+    "event_category": "rcs_modification",
+    "event_year": 1900
+  },
+  {
+    "event_date": "1904-11-09 00:00:00",
+    "siren": "572141182",
+    "event_type": "modification_rcs",
+    "is_risk_event": false,
+    "is_radiation": false,
+    "flag_liquidation": false,
+    "flag_redressement": false,
+    "flag_sauvegarde": false,
+    "flag_procedure_collective": false,
+    "flag_cessation_paiement": false,
+    "nojo": "7501BP1957B1411",
+    "denomination": "SOCIETE DES HOTELS REUNIS",
+    "source_file": "RCS-B_BXB20170084.taz",
+    "source_member": "RCS-B_BXB20170084.xml",
+    "exported_at": "2026-05-14 12:26:41.134340",
+    "event_category": "rcs_modification",
+    "event_year": 1904
   }
 ]
 ```
@@ -630,25 +630,25 @@ This report profiles raw, clean, and feature Parquet datasets before final model
 [
   {
     "event_date": "2024-12-26 00:00:00",
-    "siren": "000391216",
+    "siren": "124246592",
     "event_type": "formalites",
     "event_text": "formalites",
-    "record_key": "d9dbe4732d483f88825b9ec8df74b86afa404ab70b7a4d2960a1344784b88db2",
-    "inpi_id": "63f860316379117d0f0c70b3",
+    "record_key": "df3972422b30bcfb0a0f183299828c725b0cfd1092d78f5ad8b79aae39e7040e",
+    "inpi_id": "63f85db83b1ab58cf40a5f57",
     "source_file": "stock_RNE_formalites_NIVEAU1_20260304_1400.zip",
-    "exported_at": "2026-05-13 10:59:23.057822",
+    "exported_at": "2026-05-13 11:00:31.572767",
     "event_year": 2024,
     "niveau": "niveau1"
   },
   {
-    "event_date": "2024-05-19 00:00:00",
-    "siren": "001303346",
+    "event_date": "2024-03-05 00:00:00",
+    "siren": "130002082",
     "event_type": "formalites",
-    "event_text": "KATCHIT",
-    "record_key": "4f9cd8ccd4fd33f9dae4a8da531bd050fe63ca5b2bf53dd00efa513bdeb1cb95",
-    "inpi_id": "64060b4c363a4f0cd40a5d33",
+    "event_text": "LABOCEA",
+    "record_key": "b6f2060a8c1aad964fa291aec40273acd7b3bfc00c85f24cca231ee56ab1aa18",
+    "inpi_id": "6596d7dd5204c1e91107be1c",
     "source_file": "stock_RNE_formalites_NIVEAU1_20260304_1400.zip",
-    "exported_at": "2026-05-13 10:59:23.057995",
+    "exported_at": "2026-05-13 11:00:31.573393",
     "event_year": 2024,
     "niveau": "niveau1"
   }
@@ -667,7 +667,7 @@ This report profiles raw, clean, and feature Parquet datasets before final model
 
 | Column | Type | Coverage | Distinct | Min | Max | Avg |
 |---|---|---:|---:|---|---|---:|
-| `closing_date` | `DATE` | 1.0 | 1964 | 1919-09-30 | 2029-12-31 |  |
+| `closing_date` | `DATE` | 1.0 | 1964 | 1919-09-30 | 2026-02-28 |  |
 | `filing_date` | `DATE` | 1.0 | 4172 | 2012-09-06 | 2026-03-13 |  |
 | `siren` | `VARCHAR` | 1.0 | 1823790 |  |  |  |
 | `account_type` | `VARCHAR` | 1.0 | 9 |  |  |  |
@@ -685,6 +685,20 @@ This report profiles raw, clean, and feature Parquet datasets before final model
 ```json
 [
   {
+    "closing_date": "2011-12-31 00:00:00",
+    "filing_date": "2012-09-19 00:00:00",
+    "siren": "312261522",
+    "account_type": "C",
+    "confidentiality": "Public",
+    "record_key": "21176b1f87627a2ceb3f88ab6facf5acb27037b56b125b6f502a34a9a6c33dc9",
+    "inpi_id": "64974951a708644c1c093782",
+    "deleted": false,
+    "source_file": "stock_RNE_comptes_annuels_NIVEAU1_20260320_1400.zip",
+    "exported_at": "2026-05-13 08:23:50.310400",
+    "filing_year": 2012,
+    "niveau": "niveau1"
+  },
+  {
     "closing_date": "2012-06-30 00:00:00",
     "filing_date": "2012-11-27 00:00:00",
     "siren": "409144177",
@@ -697,20 +711,6 @@ This report profiles raw, clean, and feature Parquet datasets before final model
     "exported_at": "2026-05-13 08:30:04.522670",
     "filing_year": 2012,
     "niveau": "niveau1"
-  },
-  {
-    "closing_date": "2012-03-31 00:00:00",
-    "filing_date": "2012-10-05 00:00:00",
-    "siren": "411652977",
-    "account_type": "S",
-    "confidentiality": "Public",
-    "record_key": "b6ffaeaff268e4b811a4ae676c2915d015f5952f00ac7c0f1460dfb0aff733d1",
-    "inpi_id": "63e62e1a54febda17c088bda",
-    "deleted": false,
-    "source_file": "stock_RNE_comptes_annuels_NIVEAU1_20260320_1400.zip",
-    "exported_at": "2026-05-13 08:30:24.758349",
-    "filing_year": 2012,
-    "niveau": "niveau1"
   }
 ]
 ```
@@ -719,7 +719,7 @@ This report profiles raw, clean, and feature Parquet datasets before final model
 
 **Path:** `/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake/features/company_year_features`
 
-**Rows:** 266,721,894
+**Rows:** 220,803,039
 
 **Files:** 9
 
@@ -727,40 +727,40 @@ This report profiles raw, clean, and feature Parquet datasets before final model
 
 | Column | Type | Coverage | Distinct | Min | Max | Avg |
 |---|---|---:|---:|---|---|---:|
-| `activity_code` | `VARCHAR` | 0.997148 | 2691 |  |  |  |
-| `annual_accounts_count_24m` | `BIGINT` | 1.0 | 43 | 0 | 59 | 0.0891083 |
-| `company_age_years` | `BIGINT` | 0.958326 | 257 | -11 | 2024 | 15.1512 |
-| `days_since_last_account_filing` | `BIGINT` | 0.039546 | 4023 | 0 | 4811 | 657.414 |
-| `financial_years_available` | `BIGINT` | 1.0 | 26 | 0 | 26 | 0.143097 |
+| `activity_code` | `VARCHAR` | 0.996555 | 2691 |  |  |  |
+| `annual_accounts_count_24m` | `BIGINT` | 1.0 | 43 | 0 | 59 | 0.107632 |
+| `company_age_years` | `BIGINT` | 0.949657 | 128 | 0 | 125 | 19.2373 |
+| `days_since_last_account_filing` | `BIGINT` | 0.047768 | 4023 | 0 | 4811 | 657.432 |
+| `financial_years_available` | `BIGINT` | 1.0 | 26 | 0 | 26 | 0.172845 |
 | `has_confidential_financials` | `BOOLEAN` | 1.0 | 2 |  |  |  |
 | `has_financial_data` | `BOOLEAN` | 1.0 | 2 |  |  |  |
-| `latest_financial_year` | `INTEGER` | 0.043386 | 20 | 2004 | 2025 | 2019.72 |
-| `legal_category_code` | `VARCHAR` | 0.997874 | 253 |  |  |  |
-| `legal_distress_events_count_all` | `BIGINT` | 1.0 | 17 | 0 | 22 | 0.0180943 |
-| `legal_events_count_12m` | `BIGINT` | 1.0 | 59 | 0 | 142 | 0.0655747 |
+| `latest_financial_year` | `INTEGER` | 0.052405 | 20 | 2004 | 2025 | 2019.72 |
+| `legal_category_code` | `VARCHAR` | 0.997432 | 253 |  |  |  |
+| `legal_distress_events_count_all` | `BIGINT` | 1.0 | 17 | 0 | 22 | 0.0218575 |
+| `legal_events_count_12m` | `BIGINT` | 1.0 | 59 | 0 | 142 | 0.0790973 |
 | `prediction_date` | `DATE` | 1.0 | 10 | 2017-12-31 | 2025-12-31 |  |
-| `prediction_year` | `BIGINT` | 1.0 | 10 | 2017 | 2025 | 2021 |
-| `radiation_events_count_all` | `BIGINT` | 1.0 | 25 | 0 | 123 | 0.0404523 |
+| `prediction_year` | `BIGINT` | 1.0 | 10 | 2017 | 2025 | 2021.31 |
+| `radiation_events_count_all` | `BIGINT` | 1.0 | 25 | 0 | 123 | 0.0488636 |
 | `siren` | `VARCHAR` | 1.0 | 28586411 |  |  |  |
-| `years_since_last_financial_statement` | `INTEGER` | 0.043386 | 21 | 0 | 18 | 1.72061 |
-| `company_name` | `VARCHAR` | 0.99785 | 10457938 |  |  |  |
-| `employee_size_bracket` | `VARCHAR` | 0.997874 | 17 |  |  |  |
-| `administrative_status_at_cutoff` | `VARCHAR` | 0.997874 | 2 |  |  |  |
-| `legal_events_count_all` | `BIGINT` | 1.0 | 124 | 0 | 267 | 0.236628 |
-| `legal_risk_events_count_all` | `BIGINT` | 1.0 | 17 | 0 | 22 | 0.0185608 |
-| `legal_risk_events_count_12m` | `BIGINT` | 1.0 | 10 | 0 | 21 | 0.00377186 |
-| `days_since_last_legal_event` | `BIGINT` | 0.11736 | 23008 | 0 | 733163 | 875.302 |
-| `formalities_count_all` | `BIGINT` | 1.0 | 5 | 0 | 4 | 0.351644 |
-| `formalities_count_12m` | `BIGINT` | 1.0 | 5 | 0 | 4 | 0.194582 |
+| `years_since_last_financial_statement` | `INTEGER` | 0.052405 | 21 | 0 | 18 | 1.7207 |
+| `company_name` | `VARCHAR` | 0.997403 | 9438428 |  |  |  |
+| `employee_size_bracket` | `VARCHAR` | 0.997432 | 17 |  |  |  |
+| `administrative_status_at_cutoff` | `VARCHAR` | 0.997432 | 2 |  |  |  |
+| `legal_events_count_all` | `BIGINT` | 1.0 | 124 | 0 | 267 | 0.285718 |
+| `legal_risk_events_count_all` | `BIGINT` | 1.0 | 17 | 0 | 22 | 0.022421 |
+| `legal_risk_events_count_12m` | `BIGINT` | 1.0 | 10 | 0 | 21 | 0.0045563 |
+| `days_since_last_legal_event` | `BIGINT` | 0.14165 | 23008 | 0 | 42003 | 874.206 |
+| `formalities_count_all` | `BIGINT` | 1.0 | 5 | 0 | 4 | 0.42451 |
+| `formalities_count_12m` | `BIGINT` | 1.0 | 5 | 0 | 4 | 0.234788 |
 
 ### Sample Rows
 
 ```json
 [
   {
-    "activity_code": "74.30Z",
+    "activity_code": "43.33Z",
     "annual_accounts_count_24m": 0,
-    "company_age_years": 25,
+    "company_age_years": 12,
     "days_since_last_account_filing": NaN,
     "financial_years_available": 0,
     "has_confidential_financials": false,
@@ -772,9 +772,9 @@ This report profiles raw, clean, and feature Parquet datasets before final model
     "prediction_date": "2017-12-31 00:00:00",
     "prediction_year": 2017,
     "radiation_events_count_all": 0,
-    "siren": "388482150",
+    "siren": "483097622",
     "years_since_last_financial_statement": NaN,
-    "company_name": "SVESS",
+    "company_name": "[ND]",
     "employee_size_bracket": "NN",
     "administrative_status_at_cutoff": "A",
     "legal_events_count_all": 0,
@@ -785,9 +785,9 @@ This report profiles raw, clean, and feature Parquet datasets before final model
     "formalities_count_12m": 0
   },
   {
-    "activity_code": "47.52A",
+    "activity_code": "50.1Z",
     "annual_accounts_count_24m": 0,
-    "company_age_years": 25,
+    "company_age_years": 12,
     "days_since_last_account_filing": NaN,
     "financial_years_available": 0,
     "has_confidential_financials": false,
@@ -799,9 +799,9 @@ This report profiles raw, clean, and feature Parquet datasets before final model
     "prediction_date": "2017-12-31 00:00:00",
     "prediction_year": 2017,
     "radiation_events_count_all": 0,
-    "siren": "388505463",
+    "siren": "482390416",
     "years_since_last_financial_statement": NaN,
-    "company_name": "ROGIER",
+    "company_name": "IOVANOVITCH",
     "employee_size_bracket": "NN",
     "administrative_status_at_cutoff": "C",
     "legal_events_count_all": 0,
@@ -818,7 +818,7 @@ This report profiles raw, clean, and feature Parquet datasets before final model
 
 **Path:** `/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake/features/risk_labels`
 
-**Rows:** 266,721,894
+**Rows:** 220,803,039
 
 **Files:** 9
 
@@ -831,10 +831,10 @@ This report profiles raw, clean, and feature Parquet datasets before final model
 | `financial_weakness_risk_12m_label` | `BOOLEAN` | 1.0 | 2 |  |  |  |
 | `legal_distress_risk_12m_label` | `BOOLEAN` | 1.0 | 2 |  |  |  |
 | `prediction_date` | `DATE` | 1.0 | 10 | 2017-12-31 | 2025-12-31 |  |
-| `prediction_year` | `BIGINT` | 1.0 | 10 | 2017 | 2025 | 2021 |
+| `prediction_year` | `BIGINT` | 1.0 | 10 | 2017 | 2025 | 2021.31 |
 | `radiation_risk_12m_label` | `BOOLEAN` | 1.0 | 2 |  |  |  |
 | `siren` | `VARCHAR` | 1.0 | 28586411 |  |  |  |
-| `first_future_legal_event_date` | `DATE` | 0.048547 | 3022 | 2018-01-01 | 2026-12-08 |  |
+| `first_future_legal_event_date` | `DATE` | 0.050652 | 3022 | 2018-01-01 | 2026-12-08 |  |
 
 ### Sample Rows
 
@@ -848,7 +848,7 @@ This report profiles raw, clean, and feature Parquet datasets before final model
     "prediction_date": "2017-12-31 00:00:00",
     "prediction_year": 2017,
     "radiation_risk_12m_label": false,
-    "siren": "303454300",
+    "siren": "324010644",
     "first_future_legal_event_date": "NaT"
   },
   {
@@ -859,7 +859,7 @@ This report profiles raw, clean, and feature Parquet datasets before final model
     "prediction_date": "2017-12-31 00:00:00",
     "prediction_year": 2017,
     "radiation_risk_12m_label": false,
-    "siren": "303454334",
+    "siren": "324010669",
     "first_future_legal_event_date": "NaT"
   }
 ]
@@ -869,7 +869,7 @@ This report profiles raw, clean, and feature Parquet datasets before final model
 
 **Path:** `/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake/features/company_features`
 
-**Rows:** 29,635,766
+**Rows:** 29,210,896
 
 **Files:** 1
 
@@ -877,40 +877,40 @@ This report profiles raw, clean, and feature Parquet datasets before final model
 
 | Column | Type | Coverage | Distinct | Min | Max | Avg |
 |---|---|---:|---:|---|---|---:|
-| `activity_code` | `VARCHAR` | 0.997148 | 2691 |  |  |  |
-| `annual_accounts_count_24m` | `BIGINT` | 1.0 | 39 | 0 | 59 | 0.0920881 |
-| `company_age_years` | `BIGINT` | 0.958326 | 175 | -3 | 2024 | 19.1512 |
-| `days_since_last_account_filing` | `BIGINT` | 0.053306 | 3694 | 0 | 4811 | 1065.9 |
-| `financial_years_available` | `BIGINT` | 1.0 | 26 | 0 | 26 | 0.214908 |
+| `activity_code` | `VARCHAR` | 0.997107 | 2691 |  |  |  |
+| `annual_accounts_count_24m` | `BIGINT` | 1.0 | 39 | 0 | 59 | 0.0934271 |
+| `company_age_years` | `BIGINT` | 0.957717 | 128 | 0 | 125 | 19.4531 |
+| `days_since_last_account_filing` | `BIGINT` | 0.054081 | 3694 | 0 | 4811 | 1065.9 |
+| `financial_years_available` | `BIGINT` | 1.0 | 26 | 0 | 26 | 0.218033 |
 | `has_confidential_financials` | `BOOLEAN` | 1.0 | 2 |  |  |  |
 | `has_financial_data` | `BOOLEAN` | 1.0 | 2 |  |  |  |
-| `latest_financial_year` | `INTEGER` | 0.052647 | 20 | 2009 | 2025 | 2021.48 |
-| `legal_category_code` | `VARCHAR` | 0.997874 | 253 |  |  |  |
-| `legal_distress_events_count_all` | `BIGINT` | 1.0 | 17 | 0 | 22 | 0.0331737 |
-| `legal_events_count_12m` | `BIGINT` | 1.0 | 35 | 0 | 130 | 0.12494 |
+| `latest_financial_year` | `INTEGER` | 0.053413 | 20 | 2009 | 2025 | 2021.48 |
+| `legal_category_code` | `VARCHAR` | 0.997843 | 253 |  |  |  |
+| `legal_distress_events_count_all` | `BIGINT` | 1.0 | 17 | 0 | 22 | 0.0336567 |
+| `legal_events_count_12m` | `BIGINT` | 1.0 | 35 | 0 | 130 | 0.126572 |
 | `prediction_date` | `DATE` | 1.0 | 1 | 2025-12-31 | 2025-12-31 |  |
 | `prediction_year` | `INTEGER` | 1.0 | 1 | 2025 | 2025 | 2025 |
-| `radiation_events_count_all` | `BIGINT` | 1.0 | 20 | 0 | 123 | 0.0801703 |
+| `radiation_events_count_all` | `BIGINT` | 1.0 | 20 | 0 | 123 | 0.0813365 |
 | `siren` | `VARCHAR` | 1.0 | 28586411 |  |  |  |
-| `years_since_last_financial_statement` | `INTEGER` | 0.052647 | 20 | 0 | 16 | 3.5231 |
-| `company_name` | `VARCHAR` | 0.99785 | 10457938 |  |  |  |
-| `employee_size_bracket` | `VARCHAR` | 0.997874 | 17 |  |  |  |
-| `administrative_status_at_cutoff` | `VARCHAR` | 0.997874 | 2 |  |  |  |
-| `legal_events_count_all` | `BIGINT` | 1.0 | 85 | 0 | 267 | 0.598572 |
-| `legal_risk_events_count_all` | `BIGINT` | 1.0 | 17 | 0 | 22 | 0.0340254 |
-| `legal_risk_events_count_12m` | `BIGINT` | 1.0 | 6 | 0 | 5 | 0.00478108 |
-| `days_since_last_legal_event` | `BIGINT` | 0.233796 | 12541 | 0 | 733163 | 951.426 |
-| `formalities_count_all` | `BIGINT` | 1.0 | 5 | 0 | 4 | 1.75124 |
-| `formalities_count_12m` | `BIGINT` | 1.0 | 5 | 0 | 4 | 0.337686 |
+| `years_since_last_financial_statement` | `INTEGER` | 0.053413 | 20 | 0 | 16 | 3.52311 |
+| `company_name` | `VARCHAR` | 0.997819 | 9438428 |  |  |  |
+| `employee_size_bracket` | `VARCHAR` | 0.997843 | 17 |  |  |  |
+| `administrative_status_at_cutoff` | `VARCHAR` | 0.997843 | 2 |  |  |  |
+| `legal_events_count_all` | `BIGINT` | 1.0 | 85 | 0 | 267 | 0.607093 |
+| `legal_risk_events_count_all` | `BIGINT` | 1.0 | 17 | 0 | 22 | 0.0345208 |
+| `legal_risk_events_count_12m` | `BIGINT` | 1.0 | 6 | 0 | 5 | 0.00485076 |
+| `days_since_last_legal_event` | `BIGINT` | 0.237014 | 12541 | 0 | 39446 | 951.288 |
+| `formalities_count_all` | `BIGINT` | 1.0 | 5 | 0 | 4 | 1.77595 |
+| `formalities_count_12m` | `BIGINT` | 1.0 | 5 | 0 | 4 | 0.34185 |
 
 ### Sample Rows
 
 ```json
 [
   {
-    "activity_code": "90.01Z",
+    "activity_code": "97.23",
     "annual_accounts_count_24m": 0,
-    "company_age_years": 7,
+    "company_age_years": NaN,
     "days_since_last_account_filing": NaN,
     "financial_years_available": 0,
     "has_confidential_financials": false,
@@ -922,11 +922,11 @@ This report profiles raw, clean, and feature Parquet datasets before final model
     "prediction_date": "2025-12-31 00:00:00",
     "prediction_year": 2025,
     "radiation_events_count_all": 0,
-    "siren": "845200740",
+    "siren": "784206195",
     "years_since_last_financial_statement": NaN,
-    "company_name": "YOKATTA RECORDS",
+    "company_name": "ASS ALTERNATIV DEMOCRA PROGRES",
     "employee_size_bracket": "NN",
-    "administrative_status_at_cutoff": "A",
+    "administrative_status_at_cutoff": "C",
     "legal_events_count_all": 0,
     "legal_risk_events_count_all": 0,
     "legal_risk_events_count_12m": 0,
@@ -935,9 +935,9 @@ This report profiles raw, clean, and feature Parquet datasets before final model
     "formalities_count_12m": 0
   },
   {
-    "activity_code": "43.22A",
+    "activity_code": "62.11",
     "annual_accounts_count_24m": 0,
-    "company_age_years": 6,
+    "company_age_years": NaN,
     "days_since_last_account_filing": NaN,
     "financial_years_available": 0,
     "has_confidential_financials": false,
@@ -949,11 +949,11 @@ This report profiles raw, clean, and feature Parquet datasets before final model
     "prediction_date": "2025-12-31 00:00:00",
     "prediction_year": 2025,
     "radiation_events_count_all": 0,
-    "siren": "845202795",
+    "siren": "784219867",
     "years_since_last_financial_statement": NaN,
-    "company_name": "YAHIA BENATTIA",
+    "company_name": "MAGUY",
     "employee_size_bracket": "NN",
-    "administrative_status_at_cutoff": "A",
+    "administrative_status_at_cutoff": "C",
     "legal_events_count_all": 0,
     "legal_risk_events_count_all": 0,
     "legal_risk_events_count_12m": 0,
@@ -976,22 +976,22 @@ This report profiles raw, clean, and feature Parquet datasets before final model
 - raw_bodacc: siren coverage is 0.989745; this controls join reliability.
 - clean_company_identity: available with 29,572,772 rows and 14 columns.
 - clean_company_identity: siren coverage is 1.0; this controls join reliability.
-- clean_financials: available with 6,368,964 rows and 23 columns.
+- clean_financials: available with 6,368,963 rows and 23 columns.
 - clean_financials: siren coverage is 1.0; this controls join reliability.
-- clean_legal_events: available with 24,800,208 rows and 17 columns.
+- clean_legal_events: available with 17,739,313 rows and 17 columns.
 - clean_legal_events: siren coverage is 1.0; this controls join reliability.
 - clean_formalities_events: available with 53,544,636 rows and 10 columns.
 - clean_formalities_events: siren coverage is 1.0; this controls join reliability.
 - clean_annual_accounts: available with 12,596,485 rows and 12 columns.
 - clean_annual_accounts: siren coverage is 1.0; this controls join reliability.
-- features_company_year: available with 266,721,894 rows and 41 columns.
+- features_company_year: available with 220,803,039 rows and 41 columns.
 - features_company_year: siren coverage is 1.0; this controls join reliability.
-- features_risk_labels: available with 266,721,894 rows and 9 columns.
+- features_risk_labels: available with 220,803,039 rows and 9 columns.
 - features_risk_labels: siren coverage is 1.0; this controls join reliability.
 - features_risk_labels: continuity_risk_12m_label coverage is 1.0.
 - features_risk_labels: legal_distress_risk_12m_label coverage is 1.0.
 - features_risk_labels: radiation_risk_12m_label coverage is 1.0.
-- features_company: available with 29,635,766 rows and 41 columns.
+- features_company: available with 29,210,896 rows and 41 columns.
 - features_company: siren coverage is 1.0; this controls join reliability.
 
 ## Recommendations

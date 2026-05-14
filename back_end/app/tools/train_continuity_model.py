@@ -22,6 +22,7 @@ EXCLUDE_COLUMNS = {
     "siren",
     "prediction_date",
     "first_future_legal_event_date",
+    "company_name",
     "continuity_risk_12m_label",
     "legal_distress_risk_12m_label",
     "radiation_risk_12m_label",

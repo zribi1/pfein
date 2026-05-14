@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from common import DEFAULT_DRIVE_ROOT, install_deps, paths
+from app.tools.train_continuity_model import EXCLUDE_COLUMNS
 
 
 LABEL_COLUMNS = [
@@ -22,6 +23,10 @@ FORBIDDEN_MODEL_COLUMNS = {
     "prediction_date",
     "first_future_legal_event_date",
     *LABEL_COLUMNS,
+}
+
+DISPLAY_ONLY_COLUMNS = {
+    "company_name",
 }
 
 FEATURE_SAFETY = [
@@ -413,7 +418,11 @@ def diagnose_label_distribution(by_year: list[dict[str, Any]], source_breakdown:
 
 
 def build_leakage_audit(con: Any, feature_columns: list[str], label_columns: list[str]) -> dict[str, Any]:
-    forbidden_in_features = sorted(set(feature_columns) & FORBIDDEN_MODEL_COLUMNS)
+    feature_set = set(feature_columns)
+    model_columns = feature_set - set(EXCLUDE_COLUMNS)
+    forbidden_in_features = sorted(feature_set & FORBIDDEN_MODEL_COLUMNS)
+    forbidden_in_model = sorted(model_columns & FORBIDDEN_MODEL_COLUMNS)
+    display_only_in_model = sorted(model_columns & DISPLAY_ONLY_COLUMNS)
     label_date_violations = scalar(
         con,
         """
@@ -437,10 +446,15 @@ def build_leakage_audit(con: Any, feature_columns: list[str], label_columns: lis
     ) if "latest_financial_year" in feature_columns else None
 
     checks = [
-        check("Forbidden columns absent from feature table", not forbidden_in_features, {"forbidden_found": forbidden_in_features}),
+        check(
+            "Forbidden columns excluded from model inputs",
+            not forbidden_in_model,
+            {"stored_in_feature_table": forbidden_in_features, "still_in_model": forbidden_in_model},
+        ),
+        check("Display-only columns excluded from model inputs", not display_only_in_model, {"still_in_model": display_only_in_model}),
         check("Target columns are stored outside feature table", not (set(LABEL_COLUMNS) & set(feature_columns)), {}),
         check("first_future_legal_event_date not in feature table", "first_future_legal_event_date" not in feature_columns, {}),
-        check("siren excluded by training tool", "siren" in feature_columns, {"note": "siren exists for joins but is excluded by train_continuity_model.EXCLUDE_COLUMNS"}),
+        check("siren available for joins and excluded by training tool", "siren" in feature_columns and "siren" in EXCLUDE_COLUMNS, {}),
         check("Future legal label dates inside 12-month window", label_date_violations == 0, {"violations": label_date_violations}),
         check("Financial feature years not after prediction year", financial_future_violations == 0, {"violations": financial_future_violations}),
     ]

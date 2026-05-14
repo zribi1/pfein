@@ -121,7 +121,7 @@ def main() -> None:
         print("[bodacc] syncing raw Parquet output to Drive")
         raw_bodacc = p["data_lake"] / "raw" / "bodacc"
         if raw_bodacc.exists():
-            sync_tree_to_drive(raw_bodacc, p["drive_root"], drive_p["drive_root"])
+            sync_tree_to_drive(raw_bodacc, p["drive_root"], drive_p["drive_root"], replace=args.overwrite_raw)
         print("[bodacc] raw Parquet sync done")
 
 

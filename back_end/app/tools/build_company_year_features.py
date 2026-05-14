@@ -237,7 +237,7 @@ def _create_legal_events_view(con: Any, root: Path | None) -> None:
         root,
         {
             "siren": ("VARCHAR", ("siren",)),
-            "event_date": ("DATE", ("event_date", "eventDate", "date_parution", "dateParution")),
+            "event_date": ("DATE", ("date_parution", "dateParution", "event_date", "eventDate")),
             "event_category": ("VARCHAR", ("event_category", "eventCategory", "bodacc_family", "bodaccFamily")),
             "event_type": ("VARCHAR", ("event_type", "eventType", "jugement_nature", "jugementNature")),
             "is_risk_event": ("BOOLEAN", ("is_risk_event", "isRiskEvent")),
