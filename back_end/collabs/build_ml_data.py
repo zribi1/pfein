@@ -77,6 +77,8 @@ def main() -> None:
     ]
     if args.max_companies:
         feature_command.extend(["--max-companies", str(args.max_companies)])
+    if args.year_batch_size:
+        feature_command.extend(["--year-batch-size", str(args.year_batch_size)])
     run(feature_command, repo_dir, env=env)
     if args.work_dir:
         print("[build] syncing feature outputs to Drive")
@@ -136,6 +138,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--clean-core", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--clean-financials", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--max-companies", type=int, help="Optional smoke-test cap for feature generation.")
+    parser.add_argument("--year-batch-size", type=int, help="Build feature prediction years in smaller batches.")
     parser.add_argument("--train", action="store_true")
     parser.add_argument("--min-rows", type=int, default=1000)
     parser.add_argument("--audit", action="store_true", help="Generate the data-lake audit report after building features.")

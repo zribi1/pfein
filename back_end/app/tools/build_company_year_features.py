@@ -35,6 +35,7 @@ def main() -> None:
         start_year=args.start_year,
         end_year=args.end_year,
         max_companies=args.max_companies,
+        year_batch_size=args.year_batch_size,
         overwrite=args.overwrite,
     )
 
@@ -45,6 +46,7 @@ def build_company_year_datasets(
     start_year: int,
     end_year: int,
     max_companies: int | None,
+    year_batch_size: int | None = None,
     overwrite: bool,
 ) -> None:
     import duckdb
@@ -69,6 +71,8 @@ def build_company_year_datasets(
             overwrite,
             max_companies,
         )
+        if year_batch_size is not None and year_batch_size < 1:
+            raise ValueError("year_batch_size must be greater than or equal to 1")
         _configure_duckdb(con, data_lake_dir)
         sources = _SourceRoots(data_lake_dir)
         logger.info("feature source roots=%s", sources.as_dict())
@@ -77,15 +81,6 @@ def build_company_year_datasets(
         _create_formalities_view(con, sources.formalities_events)
         _create_annual_accounts_view(con, sources.annual_accounts)
         _create_financials_view(con, sources.financials)
-
-        con.execute(
-            """
-            CREATE TEMP TABLE years AS
-            SELECT prediction_year::INTEGER AS prediction_year
-            FROM range(?, ? + 1) AS y(prediction_year)
-            """,
-            [start_year, end_year],
-        )
 
         limit_sql = f"LIMIT {int(max_companies)}" if max_companies else ""
         con.execute(
@@ -113,13 +108,31 @@ def build_company_year_datasets(
         if companies == 0:
             raise RuntimeError("no companies found in clean/raw data lake sources")
 
-        _create_feature_tables(con)
-        logger.info("feature tables created in DuckDB; writing company_year_features")
-        _write_partitioned(con, "company_year_feature_rows", company_year_dir)
-        logger.info("feature write done company_year_features rows=%s", _count(con, "company_year_feature_rows"))
-        logger.info("writing risk_labels")
-        _write_partitioned(con, "risk_label_rows", labels_dir)
-        logger.info("feature write done risk_labels rows=%s", _count(con, "risk_label_rows"))
+        feature_rows = 0
+        label_rows = 0
+        batches = _year_batches(start_year, end_year, year_batch_size)
+        for batch_index, (batch_start, batch_end) in enumerate(batches, start=1):
+            logger.info(
+                "feature batch %s/%s years=%s-%s",
+                batch_index,
+                len(batches),
+                batch_start,
+                batch_end,
+            )
+            _drop_feature_temp_tables(con)
+            _create_years_table(con, batch_start, batch_end)
+            _create_feature_tables(con)
+            logger.info("feature tables created in DuckDB; writing company_year_features")
+            _write_partitioned(con, "company_year_feature_rows", company_year_dir)
+            batch_feature_rows = _count(con, "company_year_feature_rows")
+            feature_rows += batch_feature_rows
+            logger.info("feature write done company_year_features rows=%s", batch_feature_rows)
+            logger.info("writing risk_labels")
+            _write_partitioned(con, "risk_label_rows", labels_dir)
+            batch_label_rows = _count(con, "risk_label_rows")
+            label_rows += batch_label_rows
+            logger.info("feature write done risk_labels rows=%s", batch_label_rows)
+
         logger.info("writing company_features")
         _write_single_file(con, "company_feature_rows", company_features_dir / "company_features.parquet")
         logger.info("feature write done company_features rows=%s", _count(con, "company_feature_rows"))
@@ -128,10 +141,11 @@ def build_company_year_datasets(
             company_year_dir,
             {
                 "dataset": "company_year_features",
-                "rows": _count(con, "company_year_feature_rows"),
+                "rows": feature_rows,
                 "start_year": start_year,
                 "end_year": end_year,
                 "max_companies": max_companies,
+                "year_batch_size": year_batch_size,
                 "source_roots": sources.as_dict(),
             },
         )
@@ -139,10 +153,11 @@ def build_company_year_datasets(
             labels_dir,
             {
                 "dataset": "risk_labels",
-                "rows": _count(con, "risk_label_rows"),
+                "rows": label_rows,
                 "start_year": start_year,
                 "end_year": end_year,
                 "max_companies": max_companies,
+                "year_batch_size": year_batch_size,
                 "source_roots": sources.as_dict(),
             },
         )
@@ -633,6 +648,40 @@ def _create_feature_tables(con: Any) -> None:
     )
 
 
+def _year_batches(start_year: int, end_year: int, year_batch_size: int | None) -> list[tuple[int, int]]:
+    if not year_batch_size:
+        return [(start_year, end_year)]
+    batches = []
+    batch_start = start_year
+    while batch_start <= end_year:
+        batch_end = min(batch_start + year_batch_size - 1, end_year)
+        batches.append((batch_start, batch_end))
+        batch_start = batch_end + 1
+    return batches
+
+
+def _create_years_table(con: Any, start_year: int, end_year: int) -> None:
+    con.execute(
+        """
+        CREATE TEMP TABLE years AS
+        SELECT prediction_year::INTEGER AS prediction_year
+        FROM range(?, ? + 1) AS y(prediction_year)
+        """,
+        [start_year, end_year],
+    )
+
+
+def _drop_feature_temp_tables(con: Any) -> None:
+    for table_name in (
+        "company_feature_rows",
+        "risk_label_rows",
+        "company_year_feature_rows",
+        "base_rows",
+        "years",
+    ):
+        con.execute(f"DROP TABLE IF EXISTS {table_name}")
+
+
 def _create_normalized_view(
     con: Any,
     view_name: str,
@@ -786,6 +835,11 @@ def _parse_args() -> argparse.Namespace:
         help="Default is previous calendar year, so 12-month labels can exist.",
     )
     parser.add_argument("--max-companies", type=int, help="Optional smoke-test cap.")
+    parser.add_argument(
+        "--year-batch-size",
+        type=int,
+        help="Build and write prediction years in smaller batches to reduce peak memory.",
+    )
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--log-level", default="INFO")
     return parser.parse_args()

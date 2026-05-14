@@ -153,6 +153,8 @@ def command_for_step(args: argparse.Namespace, step: str, base: list[str]) -> li
             cmd.append("--train")
         if args.max_companies:
             cmd.extend(["--max-companies", str(args.max_companies)])
+        if args.year_batch_size:
+            cmd.extend(["--year-batch-size", str(args.year_batch_size)])
         if args.audit:
             cmd.append("--audit")
             cmd.extend(["--audit-max-columns", str(args.audit_max_columns)])
@@ -423,6 +425,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--start-year", type=int, default=2017)
     parser.add_argument("--end-year", type=int, default=2025)
     parser.add_argument("--max-companies", type=int, help="Optional smoke-test cap for feature generation.")
+    parser.add_argument("--year-batch-size", type=int, help="Build feature prediction years in smaller batches.")
     parser.add_argument("--audit", action="store_true", help="Generate the data-lake audit report after building features.")
     parser.add_argument("--audit-max-columns", type=int, default=25)
     parser.add_argument("--audit-sample-rows", type=int, default=2)
