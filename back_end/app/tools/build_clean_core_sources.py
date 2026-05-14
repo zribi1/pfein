@@ -14,6 +14,8 @@ from typing import Any
 from app.core.config import settings
 
 logger = logging.getLogger("build_clean_core_sources")
+MIN_REASONABLE_DATE = "1900-01-01"
+FUTURE_DATE_SLACK_DAYS = 366
 
 
 def main() -> None:
@@ -337,6 +339,7 @@ def _coalesce_expr(available: set[str], candidates: tuple[str, ...], sql_type: s
         match = _find_column(available, candidate)
         if match:
             expr = f"TRY_CAST({_quote_ident(match)} AS {sql_type})"
+            expr = _bounded_temporal_expr(expr, sql_type)
             if sql_type == "VARCHAR":
                 expr = f"NULLIF(TRIM({expr}), '')"
             exprs.append(expr)
@@ -345,6 +348,25 @@ def _coalesce_expr(available: set[str], candidates: tuple[str, ...], sql_type: s
     if len(exprs) == 1:
         return exprs[0]
     return f"COALESCE({', '.join(exprs)})"
+
+
+def _bounded_temporal_expr(expr: str, sql_type: str) -> str:
+    normalized = sql_type.upper()
+    if normalized == "DATE":
+        return (
+            "CASE "
+            f"WHEN {expr} BETWEEN DATE '{MIN_REASONABLE_DATE}' "
+            f"AND CAST(CURRENT_DATE + INTERVAL {FUTURE_DATE_SLACK_DAYS} DAY AS DATE) "
+            f"THEN {expr} ELSE NULL::DATE END"
+        )
+    if normalized == "TIMESTAMP":
+        return (
+            "CASE "
+            f"WHEN {expr} BETWEEN CAST(DATE '{MIN_REASONABLE_DATE}' AS TIMESTAMP) "
+            f"AND (CURRENT_TIMESTAMP + INTERVAL {FUTURE_DATE_SLACK_DAYS} DAY) "
+            f"THEN {expr} ELSE NULL::TIMESTAMP END"
+        )
+    return expr
 
 
 def _find_column(available: set[str], candidate: str) -> str | None:

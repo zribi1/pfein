@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -68,6 +69,8 @@ def main() -> None:
             logger.info("skip existing archive=%s output=%s", archive, output_dir)
             _write_progress(progress_path, stats)
             continue
+        if output_dir.exists() and not args.skip_existing:
+            _remove_output_dir(output_dir, output_base)
 
         try:
             output_dir.mkdir(parents=True, exist_ok=True)
@@ -176,6 +179,14 @@ def _manifest_done(path: Path) -> bool:
     except Exception:
         return False
     return int(data.get("rows") or 0) > 0
+
+
+def _remove_output_dir(path: Path, output_base: Path) -> None:
+    resolved = path.resolve()
+    root = output_base.resolve()
+    if root not in resolved.parents and resolved != root:
+        raise RuntimeError(f"refusing to delete output outside raw BODACC root: {path}")
+    shutil.rmtree(path)
 
 
 def _write_progress(path: Path, stats: dict[str, Any]) -> None:

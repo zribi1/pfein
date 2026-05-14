@@ -151,6 +151,10 @@ def command_for_step(args: argparse.Namespace, step: str, base: list[str]) -> li
         ]
         if args.train:
             cmd.append("--train")
+            if args.train_start_year:
+                cmd.extend(["--train-start-year", str(args.train_start_year)])
+            if args.train_end_year:
+                cmd.extend(["--train-end-year", str(args.train_end_year)])
         if args.max_companies:
             cmd.extend(["--max-companies", str(args.max_companies)])
         if args.year_batch_size:
@@ -422,6 +426,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--bodacc-overwrite-raw", action="store_true")
     parser.add_argument("--build", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--train", action="store_true")
+    parser.add_argument("--train-start-year", type=int, help="First prediction_year allowed in the training dataset.")
+    parser.add_argument("--train-end-year", type=int, help="Last prediction_year allowed in the training dataset.")
     parser.add_argument("--start-year", type=int, default=2017)
     parser.add_argument("--end-year", type=int, default=2025)
     parser.add_argument("--max-companies", type=int, help="Optional smoke-test cap for feature generation.")

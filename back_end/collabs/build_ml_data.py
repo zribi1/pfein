@@ -88,21 +88,22 @@ def main() -> None:
                 sync_tree_to_drive(output, p["drive_root"], drive_p["drive_root"])
 
     if args.train:
-        run(
-            [
-                sys.executable,
-                "-m",
-                "app.tools.train_continuity_model",
-                "--data-lake-dir",
-                str(p["data_lake"]),
-                "--artifacts-dir",
-                str(p["artifacts"]),
-                "--min-rows",
-                str(args.min_rows),
-            ],
-            repo_dir,
-            env=env,
-        )
+        train_command = [
+            sys.executable,
+            "-m",
+            "app.tools.train_continuity_model",
+            "--data-lake-dir",
+            str(p["data_lake"]),
+            "--artifacts-dir",
+            str(p["artifacts"]),
+            "--min-rows",
+            str(args.min_rows),
+        ]
+        if args.train_start_year:
+            train_command.extend(["--train-start-year", str(args.train_start_year)])
+        if args.train_end_year:
+            train_command.extend(["--train-end-year", str(args.train_end_year)])
+        run(train_command, repo_dir, env=env)
         if args.work_dir and p["artifacts"].exists():
             print("[build] syncing ML artifacts to Drive")
             sync_tree_to_drive(p["artifacts"], p["drive_root"], drive_p["drive_root"])
@@ -141,6 +142,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--year-batch-size", type=int, help="Build feature prediction years in smaller batches.")
     parser.add_argument("--train", action="store_true")
     parser.add_argument("--min-rows", type=int, default=1000)
+    parser.add_argument("--train-start-year", type=int, help="First prediction_year allowed in the training dataset.")
+    parser.add_argument("--train-end-year", type=int, help="Last prediction_year allowed in the training dataset.")
     parser.add_argument("--audit", action="store_true", help="Generate the data-lake audit report after building features.")
     parser.add_argument("--audit-max-columns", type=int, default=25)
     parser.add_argument("--audit-sample-rows", type=int, default=2)

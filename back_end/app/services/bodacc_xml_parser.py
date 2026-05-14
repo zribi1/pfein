@@ -32,6 +32,8 @@ CESSATION_DATE_RE = re.compile(
     r"([0-9]{1,2})\s+([A-Za-z\u00c0-\u00ff]+)\s+([0-9]{4})",
     re.IGNORECASE,
 )
+MIN_REASONABLE_YEAR = 1900
+MAX_FUTURE_YEARS = 1
 
 
 @dataclass(frozen=True)
@@ -206,7 +208,7 @@ def extract_cessation_paiement_date(text: str | None) -> datetime | None:
         month = FRENCH_MONTHS.get(_strip_accents(month_name).lower())
     if month is None:
         return None
-    return datetime(int(year), month, int(day), tzinfo=timezone.utc)
+    return _keep_reasonable_date(datetime(int(year), month, int(day), tzinfo=timezone.utc))
 
 
 def _has_useful_annonce_fields(annonce: dict[str, Any]) -> bool:
@@ -398,7 +400,7 @@ def _parse_date(value: str | None) -> datetime | None:
     cleaned = value.strip()
     for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%Y%m%d"):
         try:
-            return datetime.strptime(cleaned, fmt).replace(tzinfo=timezone.utc)
+            return _keep_reasonable_date(datetime.strptime(cleaned, fmt).replace(tzinfo=timezone.utc))
         except ValueError:
             pass
     match = re.search(r"([0-9]{1,2})\s+([A-Za-z\u00c0-\u00ff]+)\s+([0-9]{4})", cleaned)
@@ -406,7 +408,14 @@ def _parse_date(value: str | None) -> datetime | None:
         day, month_name, year = match.groups()
         month = FRENCH_MONTHS.get(month_name.lower()) or FRENCH_MONTHS.get(_strip_accents(month_name).lower())
         if month is not None:
-            return datetime(int(year), month, int(day), tzinfo=timezone.utc)
+            return _keep_reasonable_date(datetime(int(year), month, int(day), tzinfo=timezone.utc))
+    return None
+
+
+def _keep_reasonable_date(value: datetime) -> datetime | None:
+    max_year = datetime.now(timezone.utc).year + MAX_FUTURE_YEARS
+    if MIN_REASONABLE_YEAR <= value.year <= max_year:
+        return value
     return None
 
 

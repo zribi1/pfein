@@ -1,0 +1,838 @@
+{
+  "generated_at": "2026-05-14T04:27:35.254362+00:00",
+  "data_lake_dir": "/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake",
+  "datasets": {
+    "company_year_features": {
+      "path": "/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake/features/company_year_features",
+      "available": true,
+      "parquet_files": 9
+    },
+    "risk_labels": {
+      "path": "/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake/features/risk_labels",
+      "available": true,
+      "parquet_files": 9
+    },
+    "company_identity": {
+      "path": "/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake/clean/company_identity",
+      "available": true,
+      "parquet_files": 1
+    },
+    "legal_events": {
+      "path": "/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake/clean/legal_events",
+      "available": true,
+      "parquet_files": 3894
+    },
+    "formalities_events": {
+      "path": "/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake/clean/formalities_events",
+      "available": true,
+      "parquet_files": 5
+    },
+    "annual_accounts": {
+      "path": "/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake/clean/annual_accounts",
+      "available": true,
+      "parquet_files": 29
+    },
+    "financials": {
+      "path": "/content/drive/MyDrive/PFE ML Data/pfe_data/data-lake/clean/financials",
+      "available": true,
+      "parquet_files": 1
+    }
+  },
+  "label_audit": {
+    "available": true,
+    "by_year": [
+      {
+        "prediction_year": 2017,
+        "rows": 29635766,
+        "continuity_positive": 275401,
+        "continuity_rate": 0.009292859175632578,
+        "legal_distress_positive": 97980,
+        "radiation_positive": 190954,
+        "financial_weakness_positive": 131125,
+        "filing_anomaly_positive": 183470
+      },
+      {
+        "prediction_year": 2018,
+        "rows": 29635766,
+        "continuity_positive": 309626,
+        "continuity_rate": 0.010447713752362602,
+        "legal_distress_positive": 97429,
+        "radiation_positive": 230214,
+        "financial_weakness_positive": 127294,
+        "filing_anomaly_positive": 311206
+      },
+      {
+        "prediction_year": 2019,
+        "rows": 29635766,
+        "continuity_positive": 270443,
+        "continuity_rate": 0.009125561323436013,
+        "legal_distress_positive": 78353,
+        "radiation_positive": 215089,
+        "financial_weakness_positive": 142038,
+        "filing_anomaly_positive": 293812
+      },
+      {
+        "prediction_year": 2020,
+        "rows": 29635766,
+        "continuity_positive": 320376,
+        "continuity_rate": 0.01081045112854515,
+        "legal_distress_positive": 67789,
+        "radiation_positive": 261719,
+        "financial_weakness_positive": 121629,
+        "filing_anomaly_positive": 253448
+      },
+      {
+        "prediction_year": 2021,
+        "rows": 29635766,
+        "continuity_positive": 372693,
+        "continuity_rate": 0.012575784273637468,
+        "legal_distress_positive": 74528,
+        "radiation_positive": 315864,
+        "financial_weakness_positive": 125707,
+        "filing_anomaly_positive": 264115
+      },
+      {
+        "prediction_year": 2022,
+        "rows": 29635766,
+        "continuity_positive": 340835,
+        "continuity_rate": 0.011500799405691082,
+        "legal_distress_positive": 91736,
+        "radiation_positive": 268213,
+        "financial_weakness_positive": 124562,
+        "filing_anomaly_positive": 294726
+      },
+      {
+        "prediction_year": 2023,
+        "rows": 29635766,
+        "continuity_positive": 369420,
+        "continuity_rate": 0.012465343396219285,
+        "legal_distress_positive": 108568,
+        "radiation_positive": 283267,
+        "financial_weakness_positive": 109635,
+        "filing_anomaly_positive": 262385
+      },
+      {
+        "prediction_year": 2024,
+        "rows": 29635766,
+        "continuity_positive": 460496,
+        "continuity_rate": 0.015538521933261317,
+        "legal_distress_positive": 116583,
+        "radiation_positive": 368599,
+        "financial_weakness_positive": 10113,
+        "filing_anomaly_positive": 297165
+      },
+      {
+        "prediction_year": 2025,
+        "rows": 29635766,
+        "continuity_positive": 371,
+        "continuity_rate": 1.2518657354765184e-05,
+        "legal_distress_positive": 3,
+        "radiation_positive": 368,
+        "financial_weakness_positive": 0,
+        "filing_anomaly_positive": 774219
+      }
+    ],
+    "source_breakdown": [
+      {
+        "prediction_year": 2017,
+        "bodacc_events": 307839,
+        "inpi_events": 0,
+        "insee_events": 0,
+        "financial_events": 131349
+      },
+      {
+        "prediction_year": 2018,
+        "bodacc_events": 347933,
+        "inpi_events": 0,
+        "insee_events": 0,
+        "financial_events": 127555
+      },
+      {
+        "prediction_year": 2019,
+        "bodacc_events": 309030,
+        "inpi_events": 0,
+        "insee_events": 0,
+        "financial_events": 142335
+      },
+      {
+        "prediction_year": 2020,
+        "bodacc_events": 345882,
+        "inpi_events": 0,
+        "insee_events": 0,
+        "financial_events": 121849
+      },
+      {
+        "prediction_year": 2021,
+        "bodacc_events": 408766,
+        "inpi_events": 0,
+        "insee_events": 0,
+        "financial_events": 125884
+      },
+      {
+        "prediction_year": 2022,
+        "bodacc_events": 381152,
+        "inpi_events": 0,
+        "insee_events": 0,
+        "financial_events": 124773
+      },
+      {
+        "prediction_year": 2023,
+        "bodacc_events": 675128,
+        "inpi_events": 7674,
+        "insee_events": 0,
+        "financial_events": 109812
+      },
+      {
+        "prediction_year": 2024,
+        "bodacc_events": 557866,
+        "inpi_events": 4979,
+        "insee_events": 0,
+        "financial_events": 10121
+      },
+      {
+        "prediction_year": 2025,
+        "bodacc_events": 54,
+        "inpi_events": 317,
+        "insee_events": 0,
+        "financial_events": 0
+      }
+    ],
+    "event_breakdown": [
+      {
+        "event_family": "liquidation",
+        "source": "BODACC",
+        "event_count": 729444
+      },
+      {
+        "event_family": "procedure_collective",
+        "source": "BODACC",
+        "event_count": 861077
+      },
+      {
+        "event_family": "radiation",
+        "source": "BODACC",
+        "event_count": 2472573
+      },
+      {
+        "event_family": "redressement",
+        "source": "BODACC",
+        "event_count": 119600
+      },
+      {
+        "event_family": "sauvegarde",
+        "source": "BODACC",
+        "event_count": 22208
+      },
+      {
+        "event_family": "cessation_radiation_fermeture",
+        "source": "INPI formalites",
+        "event_count": 12970
+      },
+      {
+        "event_family": "negative_result_or_equity",
+        "source": "financials",
+        "event_count": 893678
+      }
+    ],
+    "positive_examples": [
+      {
+        "siren": "000000000",
+        "prediction_date": "2017-12-31",
+        "legal_distress_risk_12m_label": true,
+        "radiation_risk_12m_label": true,
+        "financial_weakness_risk_12m_label": false,
+        "filing_anomaly_risk_12m_label": false,
+        "continuity_risk_12m_label": true,
+        "first_future_legal_event_date": "2018-02-16",
+        "prediction_year": 2017
+      },
+      {
+        "siren": "003103498",
+        "prediction_date": "2017-12-31",
+        "legal_distress_risk_12m_label": true,
+        "radiation_risk_12m_label": false,
+        "financial_weakness_risk_12m_label": false,
+        "filing_anomaly_risk_12m_label": false,
+        "continuity_risk_12m_label": true,
+        "first_future_legal_event_date": "2018-03-02",
+        "prediction_year": 2017
+      },
+      {
+        "siren": "005420021",
+        "prediction_date": "2017-12-31",
+        "legal_distress_risk_12m_label": true,
+        "radiation_risk_12m_label": false,
+        "financial_weakness_risk_12m_label": false,
+        "filing_anomaly_risk_12m_label": false,
+        "continuity_risk_12m_label": true,
+        "first_future_legal_event_date": "2018-07-27",
+        "prediction_year": 2017
+      },
+      {
+        "siren": "005480546",
+        "prediction_date": "2017-12-31",
+        "legal_distress_risk_12m_label": true,
+        "radiation_risk_12m_label": false,
+        "financial_weakness_risk_12m_label": false,
+        "filing_anomaly_risk_12m_label": false,
+        "continuity_risk_12m_label": true,
+        "first_future_legal_event_date": "2018-04-10",
+        "prediction_year": 2017
+      },
+      {
+        "siren": "005550108",
+        "prediction_date": "2017-12-31",
+        "legal_distress_risk_12m_label": false,
+        "radiation_risk_12m_label": true,
+        "financial_weakness_risk_12m_label": false,
+        "filing_anomaly_risk_12m_label": false,
+        "continuity_risk_12m_label": true,
+        "first_future_legal_event_date": "2018-02-16",
+        "prediction_year": 2017
+      },
+      {
+        "siren": "005580683",
+        "prediction_date": "2017-12-31",
+        "legal_distress_risk_12m_label": false,
+        "radiation_risk_12m_label": true,
+        "financial_weakness_risk_12m_label": false,
+        "filing_anomaly_risk_12m_label": true,
+        "continuity_risk_12m_label": true,
+        "first_future_legal_event_date": "2018-02-11",
+        "prediction_year": 2017
+      },
+      {
+        "siren": "005620364",
+        "prediction_date": "2017-12-31",
+        "legal_distress_risk_12m_label": false,
+        "radiation_risk_12m_label": true,
+        "financial_weakness_risk_12m_label": false,
+        "filing_anomaly_risk_12m_label": false,
+        "continuity_risk_12m_label": true,
+        "first_future_legal_event_date": "2018-08-17",
+        "prediction_year": 2017
+      },
+      {
+        "siren": "005680384",
+        "prediction_date": "2017-12-31",
+        "legal_distress_risk_12m_label": false,
+        "radiation_risk_12m_label": true,
+        "financial_weakness_risk_12m_label": false,
+        "filing_anomaly_risk_12m_label": false,
+        "continuity_risk_12m_label": true,
+        "first_future_legal_event_date": "2018-01-09",
+        "prediction_year": 2017
+      },
+      {
+        "siren": "005820360",
+        "prediction_date": "2017-12-31",
+        "legal_distress_risk_12m_label": true,
+        "radiation_risk_12m_label": false,
+        "financial_weakness_risk_12m_label": false,
+        "filing_anomaly_risk_12m_label": false,
+        "continuity_risk_12m_label": true,
+        "first_future_legal_event_date": "2018-03-09",
+        "prediction_year": 2017
+      },
+      {
+        "siren": "005850011",
+        "prediction_date": "2017-12-31",
+        "legal_distress_risk_12m_label": false,
+        "radiation_risk_12m_label": true,
+        "financial_weakness_risk_12m_label": false,
+        "filing_anomaly_risk_12m_label": false,
+        "continuity_risk_12m_label": true,
+        "first_future_legal_event_date": "2018-02-16",
+        "prediction_year": 2017
+      },
+      {
+        "siren": "005950134",
+        "prediction_date": "2017-12-31",
+        "legal_distress_risk_12m_label": true,
+        "radiation_risk_12m_label": false,
+        "financial_weakness_risk_12m_label": false,
+        "filing_anomaly_risk_12m_label": false,
+        "continuity_risk_12m_label": true,
+        "first_future_legal_event_date": "2018-10-30",
+        "prediction_year": 2017
+      },
+      {
+        "siren": "006011522",
+        "prediction_date": "2017-12-31",
+        "legal_distress_risk_12m_label": false,
+        "radiation_risk_12m_label": true,
+        "financial_weakness_risk_12m_label": false,
+        "filing_anomaly_risk_12m_label": false,
+        "continuity_risk_12m_label": true,
+        "first_future_legal_event_date": "2018-11-04",
+        "prediction_year": 2017
+      },
+      {
+        "siren": "006041099",
+        "prediction_date": "2017-12-31",
+        "legal_distress_risk_12m_label": false,
+        "radiation_risk_12m_label": true,
+        "financial_weakness_risk_12m_label": false,
+        "filing_anomaly_risk_12m_label": false,
+        "continuity_risk_12m_label": true,
+        "first_future_legal_event_date": "2018-09-11",
+        "prediction_year": 2017
+      },
+      {
+        "siren": "006241657",
+        "prediction_date": "2017-12-31",
+        "legal_distress_risk_12m_label": false,
+        "radiation_risk_12m_label": true,
+        "financial_weakness_risk_12m_label": false,
+        "filing_anomaly_risk_12m_label": false,
+        "continuity_risk_12m_label": true,
+        "first_future_legal_event_date": "2018-12-31",
+        "prediction_year": 2017
+      },
+      {
+        "siren": "006280234",
+        "prediction_date": "2017-12-31",
+        "legal_distress_risk_12m_label": false,
+        "radiation_risk_12m_label": true,
+        "financial_weakness_risk_12m_label": false,
+        "filing_anomaly_risk_12m_label": true,
+        "continuity_risk_12m_label": true,
+        "first_future_legal_event_date": "2018-02-15",
+        "prediction_year": 2017
+      },
+      {
+        "siren": "006410120",
+        "prediction_date": "2017-12-31",
+        "legal_distress_risk_12m_label": false,
+        "radiation_risk_12m_label": true,
+        "financial_weakness_risk_12m_label": false,
+        "filing_anomaly_risk_12m_label": false,
+        "continuity_risk_12m_label": true,
+        "first_future_legal_event_date": "2018-06-30",
+        "prediction_year": 2017
+      },
+      {
+        "siren": "006512131",
+        "prediction_date": "2017-12-31",
+        "legal_distress_risk_12m_label": false,
+        "radiation_risk_12m_label": true,
+        "financial_weakness_risk_12m_label": false,
+        "filing_anomaly_risk_12m_label": false,
+        "continuity_risk_12m_label": true,
+        "first_future_legal_event_date": "2018-12-31",
+        "prediction_year": 2017
+      },
+      {
+        "siren": "006620066",
+        "prediction_date": "2017-12-31",
+        "legal_distress_risk_12m_label": false,
+        "radiation_risk_12m_label": true,
+        "financial_weakness_risk_12m_label": false,
+        "filing_anomaly_risk_12m_label": false,
+        "continuity_risk_12m_label": true,
+        "first_future_legal_event_date": "2018-01-18",
+        "prediction_year": 2017
+      },
+      {
+        "siren": "006973606",
+        "prediction_date": "2017-12-31",
+        "legal_distress_risk_12m_label": false,
+        "radiation_risk_12m_label": true,
+        "financial_weakness_risk_12m_label": false,
+        "filing_anomaly_risk_12m_label": false,
+        "continuity_risk_12m_label": true,
+        "first_future_legal_event_date": "2018-12-31",
+        "prediction_year": 2017
+      },
+      {
+        "siren": "007080195",
+        "prediction_date": "2017-12-31",
+        "legal_distress_risk_12m_label": true,
+        "radiation_risk_12m_label": false,
+        "financial_weakness_risk_12m_label": false,
+        "filing_anomaly_risk_12m_label": false,
+        "continuity_risk_12m_label": true,
+        "first_future_legal_event_date": "2018-12-05",
+        "prediction_year": 2017
+      }
+    ],
+    "zero_positive_years": [],
+    "diagnosis": [
+      "La distribution des labels ne présente pas d'année totalement vide pour le label principal."
+    ]
+  },
+  "leakage_audit": {
+    "checks": [
+      {
+        "check": "Forbidden columns absent from feature table",
+        "ok": false,
+        "result": "FAIL",
+        "details": {
+          "forbidden_found": [
+            "prediction_date",
+            "siren"
+          ]
+        }
+      },
+      {
+        "check": "Target columns are stored outside feature table",
+        "ok": true,
+        "result": "PASS",
+        "details": {}
+      },
+      {
+        "check": "first_future_legal_event_date not in feature table",
+        "ok": true,
+        "result": "PASS",
+        "details": {}
+      },
+      {
+        "check": "siren excluded by training tool",
+        "ok": true,
+        "result": "PASS",
+        "details": {
+          "note": "siren exists for joins but is excluded by train_continuity_model.EXCLUDE_COLUMNS"
+        }
+      },
+      {
+        "check": "Future legal label dates inside 12-month window",
+        "ok": true,
+        "result": "PASS",
+        "details": {
+          "violations": 0
+        }
+      },
+      {
+        "check": "Financial feature years not after prediction year",
+        "ok": true,
+        "result": "PASS",
+        "details": {
+          "violations": 0
+        }
+      }
+    ],
+    "overall_pass": false
+  },
+  "feature_safety_audit": {
+    "features": [
+      {
+        "feature": "siren",
+        "source": "technical_key",
+        "status": "excluded",
+        "present": true,
+        "note": "Identifiant de jointure, exclu de l'entraînement pour éviter la mémorisation."
+      },
+      {
+        "feature": "prediction_year",
+        "source": "temporal_key",
+        "status": "safe_historical",
+        "present": true,
+        "note": "Année d'observation utilisée pour construire la date de coupure."
+      },
+      {
+        "feature": "prediction_date",
+        "source": "temporal_key",
+        "status": "excluded",
+        "present": true,
+        "note": "Date de coupure utile pour l'audit, exclue du modèle."
+      },
+      {
+        "feature": "company_name",
+        "source": "INSEE",
+        "status": "excluded_or_display_only",
+        "present": true,
+        "note": "Nom utile pour l'affichage et l'audit, pas un signal ML robuste."
+      },
+      {
+        "feature": "activity_code",
+        "source": "INSEE",
+        "status": "needs_verification",
+        "present": true,
+        "note": "Code d'activité conservé depuis l'identité; vérifier la validité historique si l'activité change."
+      },
+      {
+        "feature": "legal_category_code",
+        "source": "INSEE",
+        "status": "needs_verification",
+        "present": true,
+        "note": "Catégorie juridique potentiellement évolutive; vérifier l'historique source."
+      },
+      {
+        "feature": "employee_size_bracket",
+        "source": "INSEE",
+        "status": "needs_verification",
+        "present": true,
+        "note": "Tranche d'effectif potentiellement datée; vérifier la source et l'année."
+      },
+      {
+        "feature": "administrative_status_at_cutoff",
+        "source": "INSEE",
+        "status": "needs_verification",
+        "present": true,
+        "note": "Doit provenir d'une période <= prediction_date; point sensible anti-leakage."
+      },
+      {
+        "feature": "company_age_years",
+        "source": "INSEE",
+        "status": "safe_derived_from_historical_date",
+        "present": true,
+        "note": "Calculé depuis creation_date et prediction_date."
+      },
+      {
+        "feature": "legal_events_count_all",
+        "source": "BODACC",
+        "status": "safe_event_based",
+        "present": true,
+        "note": "Événements filtrés avec event_date <= prediction_date."
+      },
+      {
+        "feature": "legal_events_count_12m",
+        "source": "BODACC",
+        "status": "safe_event_based",
+        "present": true,
+        "note": "Événements filtrés dans les 12 mois avant prediction_date."
+      },
+      {
+        "feature": "legal_risk_events_count_all",
+        "source": "BODACC",
+        "status": "safe_event_based",
+        "present": true,
+        "note": "Événements risqués passés uniquement."
+      },
+      {
+        "feature": "legal_risk_events_count_12m",
+        "source": "BODACC",
+        "status": "safe_event_based",
+        "present": true,
+        "note": "Événements risqués récents passés uniquement."
+      },
+      {
+        "feature": "legal_distress_events_count_all",
+        "source": "BODACC",
+        "status": "safe_event_based",
+        "present": true,
+        "note": "Historique passé de procédures collectives."
+      },
+      {
+        "feature": "radiation_events_count_all",
+        "source": "BODACC",
+        "status": "safe_event_based",
+        "present": true,
+        "note": "Radiations passées uniquement."
+      },
+      {
+        "feature": "days_since_last_legal_event",
+        "source": "BODACC",
+        "status": "safe_derived_from_historical_date",
+        "present": true,
+        "note": "Calculé depuis le dernier event_date passé et prediction_date."
+      },
+      {
+        "feature": "formalities_count_all",
+        "source": "INPI formalites",
+        "status": "safe_event_based",
+        "present": true,
+        "note": "Formalités passées uniquement."
+      },
+      {
+        "feature": "formalities_count_12m",
+        "source": "INPI formalites",
+        "status": "safe_event_based",
+        "present": true,
+        "note": "Formalités des 12 mois avant prediction_date."
+      },
+      {
+        "feature": "cessation_formalities_count_all",
+        "source": "INPI formalites",
+        "status": "safe_event_based",
+        "present": true,
+        "note": "Cessation/radiation/fermeture passées uniquement."
+      },
+      {
+        "feature": "annual_accounts_count_all",
+        "source": "INPI comptes annuels",
+        "status": "safe_event_based",
+        "present": true,
+        "note": "Dépôts passés uniquement."
+      },
+      {
+        "feature": "annual_accounts_count_24m",
+        "source": "INPI comptes annuels",
+        "status": "safe_event_based",
+        "present": true,
+        "note": "Dépôts des 24 mois avant prediction_date."
+      },
+      {
+        "feature": "days_since_last_account_filing",
+        "source": "INPI comptes annuels",
+        "status": "safe_derived_from_historical_date",
+        "present": true,
+        "note": "Calculé depuis le dernier dépôt passé."
+      },
+      {
+        "feature": "latest_account_closing_year",
+        "source": "INPI comptes annuels",
+        "status": "safe_historical",
+        "present": true,
+        "note": "Année de clôture max avec dépôt disponible avant prediction_date."
+      },
+      {
+        "feature": "latest_revenue",
+        "source": "financials",
+        "status": "safe_historical",
+        "present": true,
+        "note": "Dernière valeur avec financial_year <= prediction_year."
+      },
+      {
+        "feature": "latest_net_result",
+        "source": "financials",
+        "status": "safe_historical",
+        "present": true,
+        "note": "Dernière valeur avec financial_year <= prediction_year."
+      },
+      {
+        "feature": "latest_equity",
+        "source": "financials",
+        "status": "safe_historical",
+        "present": true,
+        "note": "Dernière valeur avec financial_year <= prediction_year."
+      },
+      {
+        "feature": "latest_debt",
+        "source": "financials",
+        "status": "safe_historical",
+        "present": true,
+        "note": "Dernière valeur avec financial_year <= prediction_year."
+      },
+      {
+        "feature": "latest_total_assets",
+        "source": "financials",
+        "status": "safe_historical",
+        "present": true,
+        "note": "Dernière valeur avec financial_year <= prediction_year."
+      },
+      {
+        "feature": "latest_net_margin",
+        "source": "financials",
+        "status": "safe_historical",
+        "present": true,
+        "note": "Ratio issu de la dernière année financière passée."
+      },
+      {
+        "feature": "latest_debt_to_assets",
+        "source": "financials",
+        "status": "safe_historical",
+        "present": true,
+        "note": "Ratio issu de la dernière année financière passée."
+      },
+      {
+        "feature": "latest_equity_ratio",
+        "source": "financials",
+        "status": "safe_historical",
+        "present": true,
+        "note": "Ratio issu de la dernière année financière passée."
+      },
+      {
+        "feature": "latest_debt_to_equity",
+        "source": "financials",
+        "status": "safe_historical",
+        "present": true,
+        "note": "Ratio issu de la dernière année financière passée."
+      },
+      {
+        "feature": "has_negative_result_history",
+        "source": "financials",
+        "status": "safe_historical",
+        "present": true,
+        "note": "Historique financier jusqu'à prediction_year."
+      },
+      {
+        "feature": "has_negative_equity_history",
+        "source": "financials",
+        "status": "safe_historical",
+        "present": true,
+        "note": "Historique financier jusqu'à prediction_year."
+      },
+      {
+        "feature": "has_financial_data",
+        "source": "financials",
+        "status": "safe_derived",
+        "present": true,
+        "note": "Indicateur de disponibilité, pas une valeur future."
+      },
+      {
+        "feature": "financial_years_available",
+        "source": "financials",
+        "status": "safe_historical",
+        "present": true,
+        "note": "Nombre d'années disponibles jusqu'à prediction_year."
+      },
+      {
+        "feature": "latest_financial_year",
+        "source": "financials",
+        "status": "safe_historical",
+        "present": true,
+        "note": "Doit être <= prediction_year."
+      },
+      {
+        "feature": "years_since_last_financial_statement",
+        "source": "financials",
+        "status": "safe_derived_from_historical_date",
+        "present": true,
+        "note": "Calculé avec prediction_year et latest_financial_year."
+      },
+      {
+        "feature": "has_confidential_financials",
+        "source": "financials",
+        "status": "safe_historical",
+        "present": true,
+        "note": "Indicateur de confidentialité observé dans l'historique."
+      },
+      {
+        "feature": "revenue_growth_1y",
+        "source": "financials",
+        "status": "safe_historical",
+        "present": true,
+        "note": "Compare latest_revenue à prediction_year - 1."
+      },
+      {
+        "feature": "net_result_change_1y",
+        "source": "financials",
+        "status": "safe_historical",
+        "present": true,
+        "note": "Compare latest_net_result à prediction_year - 1."
+      }
+    ],
+    "undocumented_feature_columns": [],
+    "needs_verification": [
+      {
+        "feature": "activity_code",
+        "source": "INSEE",
+        "status": "needs_verification",
+        "present": true,
+        "note": "Code d'activité conservé depuis l'identité; vérifier la validité historique si l'activité change."
+      },
+      {
+        "feature": "legal_category_code",
+        "source": "INSEE",
+        "status": "needs_verification",
+        "present": true,
+        "note": "Catégorie juridique potentiellement évolutive; vérifier l'historique source."
+      },
+      {
+        "feature": "employee_size_bracket",
+        "source": "INSEE",
+        "status": "needs_verification",
+        "present": true,
+        "note": "Tranche d'effectif potentiellement datée; vérifier la source et l'année."
+      },
+      {
+        "feature": "administrative_status_at_cutoff",
+        "source": "INSEE",
+        "status": "needs_verification",
+        "present": true,
+        "note": "Doit provenir d'une période <= prediction_date; point sensible anti-leakage."
+      }
+    ]
+  }
+}

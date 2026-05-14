@@ -43,6 +43,8 @@ def main() -> None:
         target=args.target,
         min_rows=args.min_rows,
         max_rows=args.max_rows,
+        train_start_year=args.train_start_year,
+        train_end_year=args.train_end_year,
     )
 
 
@@ -54,6 +56,8 @@ def train_model(
     target: str,
     min_rows: int,
     max_rows: int | None,
+    train_start_year: int | None = None,
+    train_end_year: int | None = None,
 ) -> None:
     import duckdb
     import joblib
@@ -74,13 +78,19 @@ def train_model(
     if not _has_parquet(labels_path):
         raise FileNotFoundError(f"missing labels parquet under {labels_path}")
 
+    filters = [f"l.{target} IS NOT NULL"]
+    if train_start_year is not None:
+        filters.append(f"f.prediction_year >= {int(train_start_year)}")
+    if train_end_year is not None:
+        filters.append(f"f.prediction_year <= {int(train_end_year)}")
+    where_sql = " AND ".join(filters)
     limit_sql = f"LIMIT {int(max_rows)}" if max_rows else ""
     query = f"""
         SELECT f.*, l.{target}
         FROM read_parquet('{_sql_string(_glob(features_path))}', union_by_name=true) f
         JOIN read_parquet('{_sql_string(_glob(labels_path))}', union_by_name=true) l
           USING (siren, prediction_year)
-        WHERE l.{target} IS NOT NULL
+        WHERE {where_sql}
         ORDER BY f.prediction_year, f.siren
         {limit_sql}
     """
@@ -192,6 +202,8 @@ def train_model(
         "target": target,
         "horizon_months": 12,
         "rows": int(len(df)),
+        "train_start_year": train_start_year,
+        "train_end_year": train_end_year,
         "class_counts": {str(k): int(v) for k, v in class_counts.items()},
         "split_strategy": split_strategy,
         "train_rows": int(len(X_train)),
@@ -245,6 +257,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--target", default=DEFAULT_TARGET)
     parser.add_argument("--min-rows", type=int, default=1000)
     parser.add_argument("--max-rows", type=int, help="Optional smoke-test cap.")
+    parser.add_argument("--train-start-year", type=int, help="First prediction_year allowed in the training dataset.")
+    parser.add_argument("--train-end-year", type=int, help="Last prediction_year allowed in the training dataset.")
     parser.add_argument("--log-level", default="INFO")
     return parser.parse_args()
 

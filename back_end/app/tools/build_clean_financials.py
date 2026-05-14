@@ -14,6 +14,8 @@ from typing import Any
 from app.core.config import settings
 
 logger = logging.getLogger("build_clean_financials")
+MIN_REASONABLE_DATE = "1900-01-01"
+FUTURE_DATE_SLACK_DAYS = 366
 
 
 def main() -> None:
@@ -59,11 +61,10 @@ def build_clean_financials(
         con.execute(
             f"""
             COPY (
-                WITH base AS (
+                WITH parsed AS (
                     SELECT
                         NULLIF(TRIM(siren), '')::VARCHAR AS siren,
-                        TRY_CAST(date_cloture_exercice AS DATE) AS closing_date,
-                        YEAR(TRY_CAST(date_cloture_exercice AS DATE))::INTEGER AS financial_year,
+                        TRY_CAST(date_cloture_exercice AS DATE) AS raw_closing_date,
                         type_bilan::VARCHAR AS account_type,
                         confidentiality::VARCHAR AS confidentiality,
                         TRY_CAST(map_extract(liasse, 'FL')[1] AS DOUBLE) AS revenue,
@@ -78,13 +79,35 @@ def build_clean_financials(
                         filename::VARCHAR AS source_file
                     FROM read_parquet('{_sql_string(raw_glob)}', union_by_name=true, filename=true)
                     WHERE siren IS NOT NULL
-                      AND TRY_CAST(date_cloture_exercice AS DATE) IS NOT NULL
                     {limit_sql}
+                ),
+                base AS (
+                    SELECT
+                        siren,
+                        CASE
+                            WHEN raw_closing_date BETWEEN DATE '{MIN_REASONABLE_DATE}'
+                             AND CAST(CURRENT_DATE + INTERVAL {FUTURE_DATE_SLACK_DAYS} DAY AS DATE)
+                            THEN raw_closing_date
+                            ELSE NULL
+                        END AS closing_date,
+                        account_type,
+                        confidentiality,
+                        revenue,
+                        net_result,
+                        equity,
+                        debt,
+                        total_liabilities_and_equity,
+                        total_assets,
+                        share_capital,
+                        goods_sales,
+                        services_sales,
+                        source_file
+                    FROM parsed
                 )
                 SELECT
                     NULLIF(TRIM(siren), '')::VARCHAR AS siren,
                     closing_date,
-                    financial_year,
+                    YEAR(closing_date)::INTEGER AS financial_year,
                     account_type,
                     confidentiality,
                     revenue,
@@ -106,6 +129,7 @@ def build_clean_financials(
                     source_file,
                     now() AS exported_at
                 FROM base
+                WHERE closing_date IS NOT NULL
             )
             TO '{target}'
             (FORMAT PARQUET, COMPRESSION ZSTD, OVERWRITE_OR_IGNORE TRUE)

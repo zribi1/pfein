@@ -22,6 +22,8 @@ from typing import Any
 from app.core.config import settings
 
 logger = logging.getLogger("build_company_year_features")
+MIN_REASONABLE_DATE = "1900-01-01"
+FUTURE_DATE_SLACK_DAYS = 366
 
 
 def main() -> None:
@@ -331,12 +333,20 @@ def _create_feature_tables(con: Any) -> None:
     con.execute(
         """
         CREATE TEMP TABLE base_rows AS
+        WITH company_creation AS (
+            SELECT siren, min(creation_date) AS creation_date
+            FROM company_identity
+            GROUP BY siren
+        )
         SELECT
             c.siren,
             y.prediction_year,
             make_date(y.prediction_year, 12, 31) AS prediction_date
         FROM companies c
         CROSS JOIN years y
+        LEFT JOIN company_creation cc ON cc.siren = c.siren
+        WHERE cc.creation_date IS NULL
+           OR cc.creation_date <= make_date(y.prediction_year, 12, 31)
         """
     )
     con.execute(
@@ -716,6 +726,7 @@ def _coalesce_expr(available: set[str], candidates: tuple[str, ...], sql_type: s
         match = _find_column(available, candidate)
         if match:
             expr = f"TRY_CAST({_quote_ident(match)} AS {sql_type})"
+            expr = _bounded_temporal_expr(expr, sql_type)
             if sql_type == "VARCHAR":
                 expr = f"NULLIF(TRIM({expr}), '')"
             exprs.append(expr)
@@ -724,6 +735,25 @@ def _coalesce_expr(available: set[str], candidates: tuple[str, ...], sql_type: s
     if len(exprs) == 1:
         return exprs[0]
     return f"COALESCE({', '.join(exprs)})"
+
+
+def _bounded_temporal_expr(expr: str, sql_type: str) -> str:
+    normalized = sql_type.upper()
+    if normalized == "DATE":
+        return (
+            "CASE "
+            f"WHEN {expr} BETWEEN DATE '{MIN_REASONABLE_DATE}' "
+            f"AND CAST(CURRENT_DATE + INTERVAL {FUTURE_DATE_SLACK_DAYS} DAY AS DATE) "
+            f"THEN {expr} ELSE NULL::DATE END"
+        )
+    if normalized == "TIMESTAMP":
+        return (
+            "CASE "
+            f"WHEN {expr} BETWEEN CAST(DATE '{MIN_REASONABLE_DATE}' AS TIMESTAMP) "
+            f"AND (CURRENT_TIMESTAMP + INTERVAL {FUTURE_DATE_SLACK_DAYS} DAY) "
+            f"THEN {expr} ELSE NULL::TIMESTAMP END"
+        )
+    return expr
 
 
 def _find_column(available: set[str], candidate: str) -> str | None:
