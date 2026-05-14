@@ -9,6 +9,7 @@ import subprocess
 import sys
 import time
 import traceback
+from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -113,7 +114,23 @@ def run(command: list[str], cwd: str | Path, env: dict[str, str] | None = None) 
         merged_env.update(env)
     merged_env["PYTHONUNBUFFERED"] = "1"
     print("[run]", " ".join(command))
-    subprocess.run(command, cwd=str(cwd), env=merged_env, check=True)
+    output_tail: deque[str] = deque(maxlen=200)
+    process = subprocess.Popen(
+        command,
+        cwd=str(cwd),
+        env=merged_env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
+    assert process.stdout is not None
+    for line in process.stdout:
+        print(line, end="")
+        output_tail.append(line)
+    returncode = process.wait()
+    if returncode:
+        raise subprocess.CalledProcessError(returncode, command, output="".join(output_tail))
 
 
 def _unbuffer_python(command: list[str]) -> list[str]:
@@ -125,6 +142,19 @@ def _unbuffer_python(command: list[str]) -> list[str]:
     if len(command) > 1 and command[1] == "-u":
         return command
     return [command[0], "-u", *command[1:]]
+
+
+def _tail_text(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        text = value.decode("utf-8", errors="replace")
+    else:
+        text = str(value)
+    lines = text.splitlines()
+    if len(lines) <= 200:
+        return text
+    return "\n".join(lines[-200:])
 
 
 def read_json_url(url: str) -> dict[str, Any]:
@@ -170,6 +200,12 @@ def append_status(
         entry["traceback"] = "".join(traceback.format_exception(type(error), error, error.__traceback__))
         if isinstance(error, subprocess.CalledProcessError):
             entry["returncode"] = error.returncode
+            output_tail = _tail_text(getattr(error, "output", None))
+            stderr_tail = _tail_text(getattr(error, "stderr", None))
+            if output_tail:
+                entry["output_tail"] = output_tail
+            if stderr_tail:
+                entry["stderr_tail"] = stderr_tail
     payload["steps"].append(entry)
     payload["updated_at"] = entry["timestamp"]
     write_json(json_path, payload)
@@ -212,6 +248,28 @@ def write_pipeline_status_markdown(path: Path, payload: dict[str, Any]) -> None:
                     "",
                 ]
             )
+            if row.get("output_tail"):
+                lines.extend(
+                    [
+                        "Output tail:",
+                        "",
+                        "```text",
+                        str(row.get("output_tail", "")).strip(),
+                        "```",
+                        "",
+                    ]
+                )
+            if row.get("stderr_tail"):
+                lines.extend(
+                    [
+                        "Stderr tail:",
+                        "",
+                        "```text",
+                        str(row.get("stderr_tail", "")).strip(),
+                        "```",
+                        "",
+                    ]
+                )
     path.write_text("\n".join(lines), encoding="utf-8")
 
 

@@ -1,11 +1,22 @@
 from __future__ import annotations
 
 import argparse
-import shutil
 import sys
 from pathlib import Path
 
-from common import DEFAULT_DRIVE_ROOT, install_deps, pipeline_env, print_outputs, storage_paths, sync_tree_to_drive, run
+from common import (
+    DEFAULT_DRIVE_ROOT,
+    install_deps,
+    pipeline_env,
+    print_outputs,
+    seed_tree_from_drive,
+    storage_paths,
+    sync_tree_to_drive,
+    run,
+)
+
+
+CORE_CLEAN_DATASETS = ("company_identity", "legal_events", "formalities_events", "annual_accounts")
 
 
 def main() -> None:
@@ -16,15 +27,7 @@ def main() -> None:
     env = pipeline_env(p["drive_root"])
     if args.install_deps:
         install_deps(repo_dir)
-    if args.work_dir and not (p["data_lake"] / "raw").exists() and (drive_p["data_lake"] / "raw").exists():
-        print("[build] seeding raw data lake from Drive to local work dir")
-        shutil.copytree(drive_p["data_lake"] / "raw", p["data_lake"] / "raw")
-    if args.work_dir and not (p["data_lake"] / "clean").exists() and (drive_p["data_lake"] / "clean").exists():
-        print("[build] seeding clean data lake from Drive to local work dir")
-        shutil.copytree(drive_p["data_lake"] / "clean", p["data_lake"] / "clean")
-    if args.work_dir and not (p["data_lake"] / "features").exists() and (drive_p["data_lake"] / "features").exists():
-        print("[build] seeding feature data lake from Drive to local work dir")
-        shutil.copytree(drive_p["data_lake"] / "features", p["data_lake"] / "features")
+    seed_work_dir_inputs(args, p, drive_p)
 
     if args.clean_core:
         run(
@@ -126,6 +129,59 @@ def main() -> None:
         run(audit_command, repo_dir, env=env)
 
     print_outputs(drive_p["drive_root"] if args.work_dir else args.drive_root)
+
+
+def seed_work_dir_inputs(args: argparse.Namespace, p: dict[str, Path], drive_p: dict[str, Path]) -> None:
+    """Seed only the Drive datasets needed as inputs for this build.
+
+    Feature outputs are intentionally not copied into the work dir: this script
+    always rebuilds them with --overwrite, so copying existing full feature
+    tables can exhaust Colab local disk before the rebuild starts.
+    """
+
+    if not args.work_dir:
+        return
+
+    if args.clean_core or args.clean_financials:
+        seed_tree_if_needed(p["data_lake"] / "raw", p["drive_root"], drive_p["drive_root"], "raw data lake")
+
+    if not args.clean_core:
+        for name in CORE_CLEAN_DATASETS:
+            seed_tree_if_needed(
+                p["data_lake"] / "clean" / name,
+                p["drive_root"],
+                drive_p["drive_root"],
+                f"clean/{name}",
+            )
+
+    if not args.clean_financials:
+        seed_tree_if_needed(
+            p["data_lake"] / "clean" / "financials",
+            p["drive_root"],
+            drive_p["drive_root"],
+            "clean/financials",
+        )
+
+
+def seed_tree_if_needed(local_path: Path, local_root: Path, drive_root: Path, label: str) -> bool:
+    source = drive_root / local_path.relative_to(local_root)
+    if not source.exists() or tree_file_stats(source) == tree_file_stats(local_path):
+        return False
+    print(f"[build] seeding {label} from Drive to local work dir")
+    seed_tree_from_drive(local_path, local_root, drive_root)
+    return True
+
+
+def tree_file_stats(path: Path) -> tuple[int, int] | None:
+    if not path.exists():
+        return None
+    count = 0
+    size = 0
+    for file_path in path.rglob("*"):
+        if file_path.is_file():
+            count += 1
+            size += file_path.stat().st_size
+    return count, size
 
 
 def parse_args() -> argparse.Namespace:
