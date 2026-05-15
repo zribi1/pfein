@@ -35,6 +35,16 @@ EXCLUDE_COLUMNS = {
     "radiation_risk_12m_label",
     "financial_weakness_risk_12m_label",
     "filing_anomaly_risk_12m_label",
+    # Degenerate features observed in run 20260515-193645:
+    # has_confidential_financials is perfectly collinear with has_financial_data
+    # (the source CTE only fires when a financial row exists, so both booleans
+    # are the same). The three formalities_count_* columns had coefficient 0.0
+    # (zero variance), indicating the formalities_events source table is empty
+    # for the trained cohort. Reinstate if/when the source table is populated.
+    "has_confidential_financials",
+    "formalities_count_all",
+    "formalities_count_12m",
+    "cessation_formalities_count_all",
 }
 
 
@@ -189,7 +199,12 @@ def train_model(
             "numeric",
             Pipeline(
                 steps=[
-                    ("imputer", SimpleImputer(strategy="median")),
+                    # add_indicator=True appends a binary column per source
+                    # column that had NaNs, so the classifier can distinguish
+                    # "value is genuinely 0" from "no record on file". With
+                    # ~43% of financial cells missing, median-only imputation
+                    # collapses two very different signals onto the same value.
+                    ("imputer", SimpleImputer(strategy="median", add_indicator=True)),
                     ("scaler", StandardScaler()),
                 ]
             ),
