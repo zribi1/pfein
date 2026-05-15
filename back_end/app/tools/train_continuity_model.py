@@ -275,18 +275,22 @@ def _build_model_pipeline(
     if family == "catboost":
         from catboost import CatBoostClassifier
 
-        # NOTE: using ``auto_class_weights='Balanced'`` instead of an explicit
-        # ``class_weights=[1.0, neg/pos]`` list. CatBoost stores the list but
-        # returns a different object id from ``get_params()``, which breaks
-        # sklearn's ``clone()`` identity check inside ``RandomizedSearchCV``.
-        # ``Balanced`` produces the same effective n_neg/n_pos ratio.
+        # NOTE: avoid passing list-valued constructor params to CatBoostClassifier
+        # — any list (``class_weights``, ``cat_features``) returns a different
+        # object id from ``get_params()`` and breaks sklearn's ``clone()`` identity
+        # check inside ``RandomizedSearchCV``.
+        #   * ``auto_class_weights='Balanced'`` replaces ``class_weights=[1, neg/pos]``
+        #     and yields the same effective n_neg/n_pos ratio.
+        #   * ``cat_features`` is omitted — the upstream ``StringCaster`` step casts
+        #     categorical columns to ``str`` (pandas object dtype), and CatBoost
+        #     auto-detects object/string columns as categorical when ``cat_features``
+        #     is not supplied.
         params = {
             "iterations": 400,
             "learning_rate": 0.05,
             "depth": 6,
             "l2_leaf_reg": 3.0,
             "auto_class_weights": "Balanced",
-            "cat_features": list(categorical_columns),
             "random_seed": 42,
             "verbose": False,
             "allow_writing_files": False,
