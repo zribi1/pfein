@@ -1,0 +1,354 @@
+{
+  "model_version": "continuity-risk-20260515-003859",
+  "run_name": "20260515-003859_continuity-risk-12m_logreg_time-test-2024_cap-2m_rows-2m",
+  "target": "continuity_risk_12m_label",
+  "horizon_months": 12,
+  "eligible_rows": 191592143,
+  "rows": 2000000,
+  "dataset_column_count": 42,
+  "train_start_year": 2017,
+  "train_end_year": 2024,
+  "class_counts": {
+    "0": 1971828,
+    "1": 28172
+  },
+  "class_counts_by_year": {
+    "2017": {
+      "0": 209987,
+      "1": 2744
+    },
+    "2018": {
+      "0": 217723,
+      "1": 3205
+    },
+    "2019": {
+      "0": 229273,
+      "1": 2723
+    },
+    "2020": {
+      "0": 239508,
+      "1": 3271
+    },
+    "2021": {
+      "0": 250013,
+      "1": 3846
+    },
+    "2022": {
+      "0": 263726,
+      "1": 3549
+    },
+    "2023": {
+      "0": 275052,
+      "1": 3910
+    },
+    "2024": {
+      "0": 286546,
+      "1": 4924
+    }
+  },
+  "sample_strategy": "deterministic_hash_sample_threshold_12005_of_1000000",
+  "max_rows": 2000000,
+  "split_strategy": "time_split_latest_year_2024",
+  "train_rows": 1708530,
+  "test_rows": 291470,
+  "feature_count": 38,
+  "excluded_columns_count": 4,
+  "excluded_columns_present": [
+    "company_name",
+    "continuity_risk_12m_label",
+    "prediction_date",
+    "siren"
+  ],
+  "train_missing_values": 26357546,
+  "test_missing_values": 4447148,
+  "train_class_counts": {
+    "0": 1685282,
+    "1": 23248
+  },
+  "test_class_counts": {
+    "0": 286546,
+    "1": 4924
+  },
+  "feature_columns": [
+    "activity_code",
+    "legal_category_code",
+    "employee_size_bracket",
+    "administrative_status_at_cutoff",
+    "company_age_years",
+    "legal_events_count_all",
+    "legal_events_count_12m",
+    "legal_risk_events_count_all",
+    "legal_risk_events_count_12m",
+    "legal_distress_events_count_all",
+    "radiation_events_count_all",
+    "days_since_last_legal_event",
+    "formalities_count_all",
+    "formalities_count_12m",
+    "cessation_formalities_count_all",
+    "annual_accounts_count_all",
+    "annual_accounts_count_24m",
+    "days_since_last_account_filing",
+    "latest_account_closing_year",
+    "latest_revenue",
+    "latest_net_result",
+    "latest_equity",
+    "latest_debt",
+    "latest_total_assets",
+    "latest_net_margin",
+    "latest_debt_to_assets",
+    "latest_equity_ratio",
+    "latest_debt_to_equity",
+    "has_negative_result_history",
+    "has_negative_equity_history",
+    "has_financial_data",
+    "financial_years_available",
+    "latest_financial_year",
+    "years_since_last_financial_statement",
+    "has_confidential_financials",
+    "revenue_growth_1y",
+    "net_result_change_1y",
+    "prediction_year"
+  ],
+  "numeric_columns": [
+    "company_age_years",
+    "legal_events_count_all",
+    "legal_events_count_12m",
+    "legal_risk_events_count_all",
+    "legal_risk_events_count_12m",
+    "legal_distress_events_count_all",
+    "radiation_events_count_all",
+    "days_since_last_legal_event",
+    "formalities_count_all",
+    "formalities_count_12m",
+    "cessation_formalities_count_all",
+    "annual_accounts_count_all",
+    "annual_accounts_count_24m",
+    "days_since_last_account_filing",
+    "latest_account_closing_year",
+    "latest_revenue",
+    "latest_net_result",
+    "latest_equity",
+    "latest_debt",
+    "latest_total_assets",
+    "latest_net_margin",
+    "latest_debt_to_assets",
+    "latest_equity_ratio",
+    "latest_debt_to_equity",
+    "has_negative_result_history",
+    "has_negative_equity_history",
+    "has_financial_data",
+    "financial_years_available",
+    "latest_financial_year",
+    "years_since_last_financial_statement",
+    "has_confidential_financials",
+    "revenue_growth_1y",
+    "net_result_change_1y",
+    "prediction_year"
+  ],
+  "categorical_columns": [
+    "activity_code",
+    "legal_category_code",
+    "employee_size_bracket",
+    "administrative_status_at_cutoff"
+  ],
+  "metrics": {
+    "accuracy": 0.7932102789309363,
+    "roc_auc": 0.8688100857575005,
+    "average_precision": 0.13365259032262009,
+    "precision_at_0_5": 0.06264519493654883,
+    "recall_at_0_5": 0.8050365556458164,
+    "f1_at_0_5": 0.11624462984413718,
+    "confusion_matrix_at_0_5": {
+      "true_negative": 227233,
+      "false_positive": 59313,
+      "false_negative": 960,
+      "true_positive": 3964
+    },
+    "threshold_analysis": [
+      {
+        "threshold": 0.001,
+        "predicted_positive": 281870,
+        "flagged_rate": 0.9670635056781144,
+        "precision": 0.017461950544577286,
+        "recall": 0.9995938261575954,
+        "false_positive_rate": 0.9665045053848248,
+        "f1": 0.034324288513706704,
+        "true_positive": 4922,
+        "false_positive": 276948,
+        "false_negative": 2,
+        "true_negative": 9598
+      },
+      {
+        "threshold": 0.005,
+        "predicted_positive": 269859,
+        "flagged_rate": 0.9258551480426802,
+        "precision": 0.018209509410469914,
+        "recall": 0.9979691307879772,
+        "false_positive_rate": 0.9246159429899562,
+        "f1": 0.03576640476303119,
+        "true_positive": 4914,
+        "false_positive": 264945,
+        "false_negative": 10,
+        "true_negative": 21601
+      },
+      {
+        "threshold": 0.01,
+        "predicted_positive": 264386,
+        "flagged_rate": 0.9070779153943802,
+        "precision": 0.01855620191689424,
+        "recall": 0.996344435418359,
+        "false_positive_rate": 0.905543961527992,
+        "f1": 0.03643384946715681,
+        "true_positive": 4906,
+        "false_positive": 259480,
+        "false_negative": 18,
+        "true_negative": 27066
+      },
+      {
+        "threshold": 0.02,
+        "predicted_positive": 248866,
+        "flagged_rate": 0.8538305829073318,
+        "precision": 0.019649128446633933,
+        "recall": 0.9930950446791227,
+        "false_positive_rate": 0.8514374655378194,
+        "f1": 0.03853579731273888,
+        "true_positive": 4890,
+        "false_positive": 243976,
+        "false_negative": 34,
+        "true_negative": 42570
+      },
+      {
+        "threshold": 0.05,
+        "predicted_positive": 219126,
+        "flagged_rate": 0.7517960682059903,
+        "precision": 0.0221562023675876,
+        "recall": 0.9859870024370431,
+        "false_positive_rate": 0.747771736475121,
+        "f1": 0.04333854050435171,
+        "true_positive": 4855,
+        "false_positive": 214271,
+        "false_negative": 69,
+        "true_negative": 72275
+      },
+      {
+        "threshold": 0.1,
+        "predicted_positive": 185827,
+        "flagged_rate": 0.6375510344117747,
+        "precision": 0.025862764829653388,
+        "recall": 0.9760357432981316,
+        "false_positive_rate": 0.6317345208099223,
+        "f1": 0.050390299395547074,
+        "true_positive": 4806,
+        "false_positive": 181021,
+        "false_negative": 118,
+        "true_negative": 105525
+      },
+      {
+        "threshold": 0.2,
+        "predicted_positive": 145347,
+        "flagged_rate": 0.4986688166878238,
+        "precision": 0.031799761948991034,
+        "recall": 0.938667749796913,
+        "false_positive_rate": 0.49110788494691954,
+        "f1": 0.06151552861164163,
+        "true_positive": 4622,
+        "false_positive": 140725,
+        "false_negative": 302,
+        "true_negative": 145821
+      },
+      {
+        "threshold": 0.3,
+        "predicted_positive": 124833,
+        "flagged_rate": 0.4282876453837445,
+        "precision": 0.03568767873879503,
+        "recall": 0.9047522339561332,
+        "false_positive_rate": 0.42010008864196324,
+        "f1": 0.06866681566312414,
+        "true_positive": 4455,
+        "false_positive": 120378,
+        "false_negative": 469,
+        "true_negative": 166168
+      },
+      {
+        "threshold": 0.5,
+        "predicted_positive": 63277,
+        "flagged_rate": 0.21709609908395375,
+        "precision": 0.06264519493654883,
+        "recall": 0.8050365556458164,
+        "false_positive_rate": 0.20699294354135112,
+        "f1": 0.11624462984413718,
+        "true_positive": 3964,
+        "false_positive": 59313,
+        "false_negative": 960,
+        "true_negative": 227233
+      }
+    ],
+    "top_k_analysis": [
+      {
+        "segment": "top_0.1%",
+        "fraction": 0.001,
+        "selected_rows": 292,
+        "true_positive": 75,
+        "precision": 0.2568493150684932,
+        "recall": 0.015231519090170594,
+        "lift": 15.203872839767204
+      },
+      {
+        "segment": "top_0.5%",
+        "fraction": 0.005,
+        "selected_rows": 1458,
+        "true_positive": 380,
+        "precision": 0.2606310013717421,
+        "recall": 0.07717303005686434,
+        "lift": 15.427725014179869
+      },
+      {
+        "segment": "top_1.0%",
+        "fraction": 0.01,
+        "selected_rows": 2915,
+        "true_positive": 721,
+        "precision": 0.24734133790737564,
+        "recall": 0.14642567018683997,
+        "lift": 14.641060064959948
+      },
+      {
+        "segment": "top_5.0%",
+        "fraction": 0.05,
+        "selected_rows": 14574,
+        "true_positive": 1991,
+        "precision": 0.13661314669960203,
+        "recall": 0.4043460601137287,
+        "lift": 8.086643758840983
+      },
+      {
+        "segment": "top_10.0%",
+        "fraction": 0.1,
+        "selected_rows": 29147,
+        "true_positive": 2988,
+        "precision": 0.10251483857686898,
+        "recall": 0.6068237205523964,
+        "lift": 6.068237205523965
+      }
+    ]
+  },
+  "model_file": "/content/drive/MyDrive/PFE ML Data/pfe_data/ml-artifacts/model.joblib",
+  "trained_at": "2026-05-15T00:38:59.955140+00:00",
+  "run_artifacts_dir": "/content/drive/MyDrive/PFE ML Data/pfe_data/ml-artifacts/runs/20260515-003859_continuity-risk-12m_logreg_time-test-2024_cap-2m_rows-2m",
+  "evaluation_artifacts": {
+    "threshold_analysis_csv": "/content/drive/MyDrive/PFE ML Data/pfe_data/ml-artifacts/runs/20260515-003859_continuity-risk-12m_logreg_time-test-2024_cap-2m_rows-2m/threshold_analysis.csv",
+    "top_k_analysis_csv": "/content/drive/MyDrive/PFE ML Data/pfe_data/ml-artifacts/runs/20260515-003859_continuity-risk-12m_logreg_time-test-2024_cap-2m_rows-2m/top_k_analysis.csv",
+    "class_counts_by_year_json": "/content/drive/MyDrive/PFE ML Data/pfe_data/ml-artifacts/runs/20260515-003859_continuity-risk-12m_logreg_time-test-2024_cap-2m_rows-2m/class_counts_by_year.json",
+    "metrics_summary_csv": "/content/drive/MyDrive/PFE ML Data/pfe_data/ml-artifacts/runs/20260515-003859_continuity-risk-12m_logreg_time-test-2024_cap-2m_rows-2m/metrics_summary.csv",
+    "precision_recall_curve_png": "/content/drive/MyDrive/PFE ML Data/pfe_data/ml-artifacts/runs/20260515-003859_continuity-risk-12m_logreg_time-test-2024_cap-2m_rows-2m/precision_recall_curve.png",
+    "roc_curve_png": "/content/drive/MyDrive/PFE ML Data/pfe_data/ml-artifacts/runs/20260515-003859_continuity-risk-12m_logreg_time-test-2024_cap-2m_rows-2m/roc_curve.png",
+    "confusion_matrix_at_0_5_png": "/content/drive/MyDrive/PFE ML Data/pfe_data/ml-artifacts/runs/20260515-003859_continuity-risk-12m_logreg_time-test-2024_cap-2m_rows-2m/confusion_matrix_at_0_5.png",
+    "score_distribution_by_class_png": "/content/drive/MyDrive/PFE ML Data/pfe_data/ml-artifacts/runs/20260515-003859_continuity-risk-12m_logreg_time-test-2024_cap-2m_rows-2m/score_distribution_by_class.png",
+    "threshold_tradeoff_png": "/content/drive/MyDrive/PFE ML Data/pfe_data/ml-artifacts/runs/20260515-003859_continuity-risk-12m_logreg_time-test-2024_cap-2m_rows-2m/threshold_tradeoff.png",
+    "class_counts_by_year_png": "/content/drive/MyDrive/PFE ML Data/pfe_data/ml-artifacts/runs/20260515-003859_continuity-risk-12m_logreg_time-test-2024_cap-2m_rows-2m/class_counts_by_year.png",
+    "feature_coefficients_csv": "/content/drive/MyDrive/PFE ML Data/pfe_data/ml-artifacts/runs/20260515-003859_continuity-risk-12m_logreg_time-test-2024_cap-2m_rows-2m/feature_coefficients.csv",
+    "top_feature_coefficients_png": "/content/drive/MyDrive/PFE ML Data/pfe_data/ml-artifacts/runs/20260515-003859_continuity-risk-12m_logreg_time-test-2024_cap-2m_rows-2m/top_feature_coefficients.png",
+    "run_summary_md": "/content/drive/MyDrive/PFE ML Data/pfe_data/ml-artifacts/runs/20260515-003859_continuity-risk-12m_logreg_time-test-2024_cap-2m_rows-2m/run_summary.md",
+    "model_run_comparison_csv": "/content/drive/MyDrive/PFE ML Data/pfe_data/ml-artifacts/model_run_comparison.csv",
+    "model_run_comparison_png": "/content/drive/MyDrive/PFE ML Data/pfe_data/ml-artifacts/model_run_comparison.png"
+  }
+}

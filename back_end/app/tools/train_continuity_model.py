@@ -183,7 +183,19 @@ def train_model(
                 Pipeline(
                     steps=[
                         ("imputer", SimpleImputer(strategy="most_frequent")),
-                        ("onehot", OneHotEncoder(handle_unknown="ignore")),
+                        (
+                            "onehot",
+                            # min_frequency folds rare categories (e.g. long-tail
+                            # NAF activity_code values) into one "infrequent" bin
+                            # instead of giving each its own sparse column. Without
+                            # it, high-cardinality codes explode into hundreds of
+                            # dummies fit on a handful of positives, and the model
+                            # ends up dominated by noisy per-category coefficients.
+                            OneHotEncoder(
+                                handle_unknown="infrequent_if_exist",
+                                min_frequency=0.001,
+                            ),
+                        ),
                     ]
                 ),
                 categorical_columns,
