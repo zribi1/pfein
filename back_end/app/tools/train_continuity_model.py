@@ -134,8 +134,19 @@ def train_model(
                 f"deterministic_hash_sample_threshold_{threshold}_of_{modulus}"
             )
 
+        feature_table_columns = _list_columns(con, _glob(features_path))
+        all_source_columns = feature_table_columns + [target]
+        # Pull only the columns the model needs. "SELECT f.*" also loads heavy
+        # unused columns into the DataFrame -- company_name strings worst of all
+        # -- which inflates peak memory and lowers the row cap that fits in RAM.
+        # siren and prediction_year still drive the JOIN's USING clause on the
+        # source tables even when siren is not in the SELECT list.
+        select_columns = [
+            col for col in feature_table_columns if col not in EXCLUDE_COLUMNS
+        ]
+        select_sql = ", ".join(f'f."{col}"' for col in select_columns)
         query = f"""
-            SELECT f.*, l.{target}
+            SELECT {select_sql}, l."{target}"
             FROM read_parquet('{_sql_string(_glob(features_path))}', union_by_name=true) f
             JOIN read_parquet('{_sql_string(_glob(labels_path))}', union_by_name=true) l
               USING (siren, prediction_year)
@@ -167,7 +178,9 @@ def train_model(
         for col in df.columns
         if col not in EXCLUDE_COLUMNS and col != target
     ]
-    excluded_columns_present = sorted(col for col in df.columns if col in EXCLUDE_COLUMNS)
+    excluded_columns_present = sorted(
+        col for col in all_source_columns if col in EXCLUDE_COLUMNS
+    )
     X = df[feature_columns].copy()
     for col in X.columns:
         if pd.api.types.is_bool_dtype(X[col]):
@@ -302,7 +315,7 @@ def train_model(
         "horizon_months": 12,
         "eligible_rows": int(total_rows),
         "rows": int(len(df)),
-        "dataset_column_count": int(len(df.columns)),
+        "dataset_column_count": int(len(all_source_columns)),
         "train_start_year": train_start_year,
         "train_end_year": train_end_year,
         "class_counts": {str(k): int(v) for k, v in class_counts.items()},
@@ -1192,6 +1205,13 @@ def _count_training_rows(
 
 def _row_hash_sql() -> str:
     return "hash(CAST(f.siren AS VARCHAR) || ':' || CAST(f.prediction_year AS VARCHAR))"
+
+
+def _list_columns(con: Any, glob_path: str) -> list[str]:
+    rows = con.execute(
+        f"DESCRIBE SELECT * FROM read_parquet('{_sql_string(glob_path)}', union_by_name=true)"
+    ).fetchall()
+    return [str(row[0]) for row in rows]
 
 
 def _counts_by_year(counts: Any) -> dict[str, dict[str, int]]:
