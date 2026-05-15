@@ -159,6 +159,102 @@ class StringCaster:
         return self
 
 
+class _CatBoostSklearnClassifier:
+    """sklearn-clone-safe wrapper around ``catboost.CatBoostClassifier``.
+
+    Native ``CatBoostClassifier`` mutates list-typed constructor params
+    (``cat_features``, ``class_weights``) internally — ``get_params()`` returns
+    a different object id than what was passed, which breaks sklearn's
+    ``clone()`` identity check inside ``RandomizedSearchCV``.
+
+    This wrapper stores every constructor argument verbatim on ``self``, so
+    ``get_params()`` (implemented manually below to mirror sklearn's
+    ``BaseEstimator``) returns the same Python objects ``clone()`` saw. The
+    real ``CatBoostClassifier`` is instantiated lazily inside ``fit``.
+    """
+
+    def __init__(
+        self,
+        cat_features: list[str] | None = None,
+        iterations: int = 400,
+        learning_rate: float = 0.05,
+        depth: int = 6,
+        l2_leaf_reg: float = 3.0,
+        auto_class_weights: str | None = "Balanced",
+        bagging_temperature: float | None = None,
+        random_seed: int = 42,
+        verbose: bool = False,
+        allow_writing_files: bool = False,
+        task_type: str = "CPU",
+        devices: str | None = None,
+    ) -> None:
+        # Store parameters exactly as passed (no list(...) / int(...) coercion)
+        # so sklearn ``clone()`` can round-trip the estimator.
+        self.cat_features = cat_features
+        self.iterations = iterations
+        self.learning_rate = learning_rate
+        self.depth = depth
+        self.l2_leaf_reg = l2_leaf_reg
+        self.auto_class_weights = auto_class_weights
+        self.bagging_temperature = bagging_temperature
+        self.random_seed = random_seed
+        self.verbose = verbose
+        self.allow_writing_files = allow_writing_files
+        self.task_type = task_type
+        self.devices = devices
+
+    _PARAM_NAMES = (
+        "cat_features", "iterations", "learning_rate", "depth", "l2_leaf_reg",
+        "auto_class_weights", "bagging_temperature", "random_seed", "verbose",
+        "allow_writing_files", "task_type", "devices",
+    )
+
+    def get_params(self, deep: bool = True) -> dict[str, Any]:
+        return {name: getattr(self, name) for name in self._PARAM_NAMES}
+
+    def set_params(self, **params: Any) -> "_CatBoostSklearnClassifier":
+        for key, value in params.items():
+            if key not in self._PARAM_NAMES:
+                raise ValueError(f"Invalid parameter {key!r} for _CatBoostSklearnClassifier")
+            setattr(self, key, value)
+        return self
+
+    def _build_estimator(self) -> Any:
+        from catboost import CatBoostClassifier
+
+        kwargs: dict[str, Any] = {
+            "iterations": int(self.iterations),
+            "learning_rate": float(self.learning_rate),
+            "depth": int(self.depth),
+            "l2_leaf_reg": float(self.l2_leaf_reg),
+            "random_seed": int(self.random_seed),
+            "verbose": bool(self.verbose),
+            "allow_writing_files": bool(self.allow_writing_files),
+            "task_type": str(self.task_type),
+        }
+        if self.cat_features is not None:
+            kwargs["cat_features"] = list(self.cat_features)
+        if self.auto_class_weights is not None:
+            kwargs["auto_class_weights"] = self.auto_class_weights
+        if self.bagging_temperature is not None:
+            kwargs["bagging_temperature"] = float(self.bagging_temperature)
+        if self.task_type == "GPU" and self.devices is not None:
+            kwargs["devices"] = str(self.devices)
+        return CatBoostClassifier(**kwargs)
+
+    def fit(self, X: Any, y: Any = None, **fit_params: Any) -> "_CatBoostSklearnClassifier":
+        self._estimator_ = self._build_estimator()
+        self._estimator_.fit(X, y, **fit_params)
+        self.classes_ = self._estimator_.classes_
+        return self
+
+    def predict(self, X: Any) -> Any:
+        return self._estimator_.predict(X)
+
+    def predict_proba(self, X: Any) -> Any:
+        return self._estimator_.predict_proba(X)
+
+
 MODEL_FAMILIES = ("hgb", "lightgbm", "catboost", "xgboost")
 
 
@@ -273,20 +369,14 @@ def _build_model_pipeline(
         )
 
     if family == "catboost":
-        from catboost import CatBoostClassifier
-
-        # NOTE: avoid passing list-valued constructor params to CatBoostClassifier
-        # — any list (``class_weights``, ``cat_features``) returns a different
-        # object id from ``get_params()`` and breaks sklearn's ``clone()`` identity
-        # check inside ``RandomizedSearchCV``.
-        #   * ``auto_class_weights='Balanced'`` replaces ``class_weights=[1, neg/pos]``
-        #     and yields the same effective n_neg/n_pos ratio.
-        #   * ``cat_features`` is omitted — we use ``CategoricalCaster`` upstream
-        #     to set pandas ``category`` dtype on the categorical columns, which
-        #     CatBoost auto-detects as categorical regardless of ``cat_features``.
-        #     (``object``/string dtype is NOT reliably auto-detected on GPU mode,
-        #     so ``category`` is required.)
-        params = {
+        # Use the sklearn-clone-safe wrapper instead of CatBoostClassifier
+        # directly. CatBoost's native ``__init__`` mutates list params, so
+        # ``get_params()`` returns different identities than what was passed
+        # and sklearn ``clone()`` (called inside ``RandomizedSearchCV``) fails.
+        # The wrapper stores everything verbatim, then builds the real
+        # CatBoostClassifier on ``fit``.
+        kwargs: dict[str, Any] = {
+            "cat_features": categorical_columns,
             "iterations": 400,
             "learning_rate": 0.05,
             "depth": 6,
@@ -297,13 +387,13 @@ def _build_model_pipeline(
             "allow_writing_files": False,
         }
         if gpu:
-            params["task_type"] = "GPU"
-            params["devices"] = "0"
-        params.update(overrides)
+            kwargs["task_type"] = "GPU"
+            kwargs["devices"] = "0"
+        kwargs.update(overrides)
         return Pipeline(
             steps=[
-                ("prepare_categoricals", CategoricalCaster(categorical_columns)),
-                ("classifier", CatBoostClassifier(**params)),
+                ("prepare_categoricals", StringCaster(categorical_columns)),
+                ("classifier", _CatBoostSklearnClassifier(**kwargs)),
             ]
         )
 
