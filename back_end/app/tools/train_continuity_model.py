@@ -39,30 +39,38 @@ class CategoricalCardinalityCapper:
         max_categories: int = 250,
         other_label: str = "__OTHER__",
     ) -> None:
-        self.categorical_columns = list(categorical_columns)
-        self.max_categories = int(max_categories)
-        self.other_label = str(other_label)
+        # IMPORTANT: store parameters exactly as passed for sklearn ``clone()``
+        # compatibility. Any coercion (``list(...)``, ``int(...)``, ``str(...)``)
+        # breaks the identity check in ``_clone_parametrized`` and prevents the
+        # estimator from being used inside RandomizedSearchCV / GridSearchCV.
+        self.categorical_columns = categorical_columns
+        self.max_categories = max_categories
+        self.other_label = other_label
 
     def fit(self, X: Any, y: Any = None) -> "CategoricalCardinalityCapper":
+        max_categories = int(self.max_categories)
         self.top_categories_: dict[str, set[str]] = {}
-        for column in self.categorical_columns:
+        for column in list(self.categorical_columns):
             if column not in X.columns:
                 continue
             counts = X[column].dropna().astype(str).value_counts()
             self.top_categories_[column] = set(
-                counts.head(self.max_categories).index.tolist()
+                counts.head(max_categories).index.tolist()
             )
         return self
 
     def transform(self, X: Any) -> Any:
+        other_label = str(self.other_label)
         X = X.copy()
-        for column in self.categorical_columns:
+        for column in list(self.categorical_columns):
             if column not in X.columns:
                 continue
             allowed = self.top_categories_.get(column, set())
             series = X[column].astype(object).where(X[column].notna(), None)
             mapped = series.map(
-                lambda value: value if (value is None or value in allowed) else self.other_label
+                lambda value, _allowed=allowed, _other=other_label: (
+                    value if (value is None or value in _allowed) else _other
+                )
             )
             X[column] = mapped.astype("category")
         return X
@@ -92,14 +100,15 @@ class CategoricalCaster:
     """
 
     def __init__(self, categorical_columns: list[str]) -> None:
-        self.categorical_columns = list(categorical_columns)
+        # See CategoricalCardinalityCapper.__init__ — store as-is for clone().
+        self.categorical_columns = categorical_columns
 
     def fit(self, X: Any, y: Any = None) -> "CategoricalCaster":
         return self
 
     def transform(self, X: Any) -> Any:
         X = X.copy()
-        for column in self.categorical_columns:
+        for column in list(self.categorical_columns):
             if column in X.columns:
                 X[column] = X[column].astype("category")
         return X
@@ -125,14 +134,15 @@ class StringCaster:
     """
 
     def __init__(self, categorical_columns: list[str]) -> None:
-        self.categorical_columns = list(categorical_columns)
+        # See CategoricalCardinalityCapper.__init__ — store as-is for clone().
+        self.categorical_columns = categorical_columns
 
     def fit(self, X: Any, y: Any = None) -> "StringCaster":
         return self
 
     def transform(self, X: Any) -> Any:
         X = X.copy()
-        for column in self.categorical_columns:
+        for column in list(self.categorical_columns):
             if column in X.columns:
                 X[column] = X[column].astype(str)
         return X
