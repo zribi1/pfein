@@ -6,7 +6,10 @@
       "Bash(python -c \"import json; nb = json.load\\(open\\('collabs/pfe_ml_colab_period_fix_rebuild.ipynb', encoding='utf-8'\\)\\); print\\('cells:', len\\(nb['cells']\\), '| types:', [c['cell_type'] for c in nb['cells']]\\)\")",
       "Bash(python -c \"import json; json.load\\(open\\(r'c:/Users/omar charfi/Desktop/pfe_ml/pfein/back_end/collabs/pfe_ml_colab_period_fix_with_diagnostics.ipynb', encoding='utf-8'\\)\\); print\\('OK'\\)\")",
       "Bash(python -c \"import json; json.load\\(open\\(r'c:/Users/omar charfi/Desktop/pfe_ml/pfein/back_end/collabs/pfe_ml_colab_period_fix_with_diagnostics.ipynb', encoding='utf-8'\\)\\); print\\('Notebook JSON OK'\\)\")",
-      "Bash(python -c \"import ast; ast.parse\\(open\\(r'c:/Users/omar charfi/Desktop/pfe_ml/pfein/back_end/app/tools/train_continuity_model.py', encoding='utf-8'\\).read\\(\\)\\); print\\('Script syntax OK'\\)\")"
+      "Bash(python -c \"import ast; ast.parse\\(open\\(r'c:/Users/omar charfi/Desktop/pfe_ml/pfein/back_end/app/tools/train_continuity_model.py', encoding='utf-8'\\).read\\(\\)\\); print\\('Script syntax OK'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(r'c:/Users/omar charfi/Desktop/pfe_ml/pfein/back_end/app/tools/train_continuity_model.py', encoding='utf-8'\\).read\\(\\)\\); print\\('OK'\\)\")",
+      "Bash(python -c \"import json; json.load\\(open\\(r'c:/Users/omar charfi/Desktop/pfe_ml/pfein/back_end/collabs/pfe_ml_colab_hgb_run.ipynb', encoding='utf-8'\\)\\); print\\('Notebook OK'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(r'c:/Users/omar charfi/Desktop/pfe_ml/pfein/back_end/app/tools/train_continuity_model.py', encoding='utf-8'\\).read\\(\\)\\); print\\('Script OK'\\)\")"
     ]
   }
 }

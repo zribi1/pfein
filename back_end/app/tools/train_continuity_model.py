@@ -19,6 +19,69 @@ from app.core.config import settings
 
 logger = logging.getLogger("train_continuity_model")
 
+
+class CategoricalCardinalityCapper:
+    """Cap categorical column cardinality so HistGradientBoostingClassifier
+    fits inside its max_bins limit, then cast to pandas Categorical so HGB
+    picks the columns up via ``categorical_features="from_dtype"``.
+
+    Categories outside the top-N most frequent in training data (and
+    categories never seen at training time) are folded into ``__OTHER__``.
+    NaN is kept as NaN and handled by HGB's native missing-value bin.
+
+    Defined at module level so a fitted instance round-trips through joblib
+    without requiring the caller to import a nested class.
+    """
+
+    def __init__(
+        self,
+        categorical_columns: list[str],
+        max_categories: int = 250,
+        other_label: str = "__OTHER__",
+    ) -> None:
+        self.categorical_columns = list(categorical_columns)
+        self.max_categories = int(max_categories)
+        self.other_label = str(other_label)
+
+    def fit(self, X: Any, y: Any = None) -> "CategoricalCardinalityCapper":
+        self.top_categories_: dict[str, set[str]] = {}
+        for column in self.categorical_columns:
+            if column not in X.columns:
+                continue
+            counts = X[column].dropna().astype(str).value_counts()
+            self.top_categories_[column] = set(
+                counts.head(self.max_categories).index.tolist()
+            )
+        return self
+
+    def transform(self, X: Any) -> Any:
+        X = X.copy()
+        for column in self.categorical_columns:
+            if column not in X.columns:
+                continue
+            allowed = self.top_categories_.get(column, set())
+            series = X[column].astype(object).where(X[column].notna(), None)
+            mapped = series.map(
+                lambda value: value if (value is None or value in allowed) else self.other_label
+            )
+            X[column] = mapped.astype("category")
+        return X
+
+    def fit_transform(self, X: Any, y: Any = None) -> Any:
+        return self.fit(X, y).transform(X)
+
+    def get_params(self, deep: bool = True) -> dict[str, Any]:
+        return {
+            "categorical_columns": self.categorical_columns,
+            "max_categories": self.max_categories,
+            "other_label": self.other_label,
+        }
+
+    def set_params(self, **params: Any) -> "CategoricalCardinalityCapper":
+        for key, value in params.items():
+            setattr(self, key, value)
+        return self
+
 DEFAULT_TARGET = "continuity_risk_12m_label"
 # The four INSEE identity columns (activity_code, legal_category_code,
 # employee_size_bracket, administrative_status_at_cutoff) were once excluded
@@ -45,6 +108,11 @@ EXCLUDE_COLUMNS = {
     "formalities_count_all",
     "formalities_count_12m",
     "cessation_formalities_count_all",
+    # latest_equity_ratio is perfectly collinear with latest_debt_to_assets
+    # (corr 0.9998 in the run 8 audit) because of the accounting identity
+    # debt + equity ~= total_assets. Keeping both gives tree splits no extra
+    # signal and confuses feature-importance attribution. Keep debt_to_assets.
+    "latest_equity_ratio",
 }
 
 
@@ -81,9 +149,7 @@ def train_model(
     import joblib
     import numpy as np
     import pandas as pd
-    from sklearn.compose import ColumnTransformer
-    from sklearn.impute import SimpleImputer
-    from sklearn.linear_model import LogisticRegression
+    from sklearn.ensemble import HistGradientBoostingClassifier
     from sklearn.metrics import (
         accuracy_score,
         average_precision_score,
@@ -95,7 +161,6 @@ def train_model(
     )
     from sklearn.model_selection import train_test_split
     from sklearn.pipeline import Pipeline
-    from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
     features_path = data_lake_dir / "features" / "company_year_features"
     labels_path = data_lake_dir / "features" / "risk_labels"
@@ -186,62 +251,45 @@ def train_model(
     )
     X = df[feature_columns].copy()
     for col in X.columns:
+        # HGB consumes pandas booleans fine, but pyarrow-backed object columns
+        # that arrive as 0/1/None get treated as object dtype and rejected.
+        # Cast booleans to float so the missing-value bin route lights up
+        # consistently.
         if pd.api.types.is_bool_dtype(X[col]):
-            X[col] = X[col].astype("Int64")
+            X[col] = X[col].astype(float)
 
     numeric_columns = [
         col for col in X.columns if pd.api.types.is_numeric_dtype(X[col])
     ]
     categorical_columns = [col for col in X.columns if col not in numeric_columns]
 
-    transformers = [
-        (
-            "numeric",
-            Pipeline(
-                steps=[
-                    # add_indicator=True appends a binary column per source
-                    # column that had NaNs, so the classifier can distinguish
-                    # "value is genuinely 0" from "no record on file". With
-                    # ~43% of financial cells missing, median-only imputation
-                    # collapses two very different signals onto the same value.
-                    ("imputer", SimpleImputer(strategy="median", add_indicator=True)),
-                    ("scaler", StandardScaler()),
-                ]
-            ),
-            numeric_columns,
-        ),
-    ]
-    # The categorical branch is only added when categorical columns survive
-    # EXCLUDE_COLUMNS. With the leaky INSEE identity columns excluded there are
-    # currently none, so the branch is skipped rather than fitting an encoder on
-    # an empty column list. min_frequency folds rare categories into one
-    # "infrequent" bin instead of giving each its own sparse column.
-    if categorical_columns:
-        transformers.append(
-            (
-                "categorical",
-                Pipeline(
-                    steps=[
-                        ("imputer", SimpleImputer(strategy="most_frequent")),
-                        (
-                            "onehot",
-                            OneHotEncoder(
-                                handle_unknown="infrequent_if_exist",
-                                min_frequency=0.001,
-                            ),
-                        ),
-                    ]
-                ),
-                categorical_columns,
-            )
-        )
-    preprocessor = ColumnTransformer(transformers=transformers)
+    # HistGradientBoostingClassifier handles NaN and high-cardinality
+    # categoricals natively, so we drop the SimpleImputer + StandardScaler +
+    # OneHotEncoder stack the linear baseline needed. CategoricalCardinality-
+    # Capper caps activity_code (1,703 distinct values in the audit) under
+    # HGB's max_bins limit and casts categoricals to pandas Categorical so
+    # ``categorical_features="from_dtype"`` picks them up automatically.
     model = Pipeline(
         steps=[
-            ("preprocess", preprocessor),
+            (
+                "prepare_categoricals",
+                CategoricalCardinalityCapper(categorical_columns, max_categories=250),
+            ),
             (
                 "classifier",
-                LogisticRegression(max_iter=1000, class_weight="balanced", n_jobs=1),
+                HistGradientBoostingClassifier(
+                    max_iter=400,
+                    learning_rate=0.05,
+                    max_leaf_nodes=63,
+                    min_samples_leaf=50,
+                    l2_regularization=1.0,
+                    class_weight="balanced",
+                    categorical_features="from_dtype",
+                    early_stopping=True,
+                    validation_fraction=0.1,
+                    n_iter_no_change=20,
+                    random_state=42,
+                ),
             ),
         ]
     )
@@ -296,7 +344,7 @@ def train_model(
     run_name = _run_artifacts_folder_name(
         model_version=model_version,
         target=target,
-        model_family="logreg",
+        model_family="hgb",
         split_strategy=split_strategy,
         max_rows=max_rows,
         rows=len(df),
@@ -364,6 +412,8 @@ def train_model(
         _write_model_explanation_artifacts(
             run_artifacts_dir=run_artifacts_dir,
             model=model,
+            X_test=X_test,
+            y_test=y_test,
         )
     )
     run_summary_path = run_artifacts_dir / "run_summary.md"
@@ -533,71 +583,99 @@ def _write_model_explanation_artifacts(
     *,
     run_artifacts_dir: Path,
     model: Any,
+    X_test: Any,
+    y_test: Any,
+    n_repeats: int = 5,
+    sample_size: int = 50_000,
 ) -> dict[str, str]:
+    """Permutation importance on a capped test slice.
+
+    Trees don't expose coefficients, so we shuffle each feature in turn and
+    measure the drop in ROC-AUC. Capped to ``sample_size`` rows because
+    permutation importance refits ``predict_proba`` once per feature per
+    repeat; on the full 291k test set with 30+ features and 5 repeats the
+    runtime blows past 20 minutes.
+    """
+    from sklearn.inspection import permutation_importance
+
     artifacts: dict[str, str] = {}
     run_artifacts_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        preprocessor = model.named_steps["preprocess"]
-        classifier = model.named_steps["classifier"]
-        coefficients = classifier.coef_[0]
-        try:
-            feature_names = preprocessor.get_feature_names_out()
-        except Exception:
-            feature_names = [f"feature_{idx}" for idx in range(len(coefficients))]
-        if len(feature_names) != len(coefficients):
-            feature_names = [f"feature_{idx}" for idx in range(len(coefficients))]
+        if len(X_test) > sample_size:
+            sampled = X_test.sample(n=sample_size, random_state=42)
+            y_sampled = y_test.loc[sampled.index]
+        else:
+            sampled = X_test
+            y_sampled = y_test
+
+        result = permutation_importance(
+            model,
+            sampled,
+            y_sampled,
+            n_repeats=n_repeats,
+            scoring="roc_auc",
+            random_state=42,
+            n_jobs=1,
+        )
+        feature_names = list(X_test.columns)
         rows = [
             {
-                "feature": _clean_feature_name(str(name)),
-                "coefficient": float(coef),
-                "abs_coefficient": abs(float(coef)),
-                "direction": "increases_risk" if coef > 0 else "decreases_risk",
+                "feature": str(name),
+                "importance_mean": float(result.importances_mean[idx]),
+                "importance_std": float(result.importances_std[idx]),
             }
-            for name, coef in zip(feature_names, coefficients, strict=False)
+            for idx, name in enumerate(feature_names)
         ]
-        rows.sort(key=lambda row: float(row["abs_coefficient"]), reverse=True)
-        coefficients_path = run_artifacts_dir / "feature_coefficients.csv"
-        _write_csv(coefficients_path, rows)
-        artifacts["feature_coefficients_csv"] = str(coefficients_path)
+        rows.sort(key=lambda row: float(row["importance_mean"]), reverse=True)
+        importances_path = run_artifacts_dir / "feature_importances.csv"
+        _write_csv(importances_path, rows)
+        artifacts["feature_importances_csv"] = str(importances_path)
     except Exception as exc:
-        error_path = run_artifacts_dir / "feature_coefficients_error.txt"
+        error_path = run_artifacts_dir / "feature_importances_error.txt"
         error_path.write_text(str(exc), encoding="utf-8")
-        artifacts["feature_coefficients_error"] = str(error_path)
+        artifacts["feature_importances_error"] = str(error_path)
         return artifacts
 
     try:
-        plot_path = run_artifacts_dir / "top_feature_coefficients.png"
-        _write_top_coefficients_plot(plot_path, rows[:30])
-        artifacts["top_feature_coefficients_png"] = str(plot_path)
+        plot_path = run_artifacts_dir / "top_feature_importances.png"
+        _write_top_importances_plot(plot_path, rows[:30])
+        artifacts["top_feature_importances_png"] = str(plot_path)
     except Exception as exc:
-        error_path = run_artifacts_dir / "feature_coefficients_plot_error.txt"
+        error_path = run_artifacts_dir / "feature_importances_plot_error.txt"
         error_path.write_text(str(exc), encoding="utf-8")
-        artifacts["feature_coefficients_plot_error"] = str(error_path)
+        artifacts["feature_importances_plot_error"] = str(error_path)
 
     return artifacts
 
 
-def _write_top_coefficients_plot(path: Path, rows: list[dict[str, Any]]) -> None:
+def _write_top_importances_plot(path: Path, rows: list[dict[str, Any]]) -> None:
     import matplotlib
 
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
     if not rows:
-        path.write_text("No coefficient rows available.", encoding="utf-8")
+        path.write_text("No importance rows available.", encoding="utf-8")
         return
     rows_for_plot = list(reversed(rows))
     labels = [str(row["feature"])[:70] for row in rows_for_plot]
-    values = [float(row["coefficient"]) for row in rows_for_plot]
-    colors = ["#b91c1c" if value > 0 else "#1d4ed8" for value in values]
+    values = [float(row["importance_mean"]) for row in rows_for_plot]
+    errors = [float(row["importance_std"]) for row in rows_for_plot]
     fig_height = max(5.0, len(rows_for_plot) * 0.28)
     fig, ax = plt.subplots(figsize=(9, fig_height))
-    ax.barh(range(len(rows_for_plot)), values, color=colors, alpha=0.82)
+    ax.barh(
+        range(len(rows_for_plot)),
+        values,
+        xerr=errors,
+        color="#0f766e",
+        alpha=0.82,
+        error_kw={"ecolor": "#0f172a", "alpha": 0.6, "capsize": 2},
+    )
     ax.axvline(0, color="black", linewidth=0.8)
     ax.set_yticks(range(len(rows_for_plot)), labels=labels)
-    ax.set_title("Top Logistic-Regression Coefficients")
-    ax.set_xlabel("Coefficient after preprocessing")
+    ax.set_title("Top Permutation Importances (ROC-AUC drop)")
+    ax.set_xlabel("Mean ROC-AUC drop when feature is shuffled (± std)")
     ax.grid(True, axis="x", alpha=0.3)
     fig.tight_layout()
     fig.savefig(path, dpi=160)
@@ -639,13 +717,6 @@ def _flat_metric_row(metadata: dict[str, Any]) -> dict[str, Any]:
         "recall_at_0_5": metrics.get("recall_at_0_5"),
         "f1_at_0_5": metrics.get("f1_at_0_5"),
     }
-
-
-def _clean_feature_name(name: str) -> str:
-    for prefix in ("numeric__", "categorical__"):
-        if name.startswith(prefix):
-            return name[len(prefix):]
-    return name
 
 
 def _run_artifacts_folder_name(
@@ -841,7 +912,7 @@ def _write_run_summary(path: Path, metadata: dict[str, Any]) -> None:
         "score_distribution_by_class_png",
         "threshold_tradeoff_png",
         "class_counts_by_year_png",
-        "top_feature_coefficients_png",
+        "top_feature_importances_png",
     ):
         if key in artifacts:
             lines.append(f"| {key} | `{Path(str(artifacts[key])).name}` |")
