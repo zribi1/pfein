@@ -20,6 +20,11 @@ from app.core.config import settings
 logger = logging.getLogger("train_continuity_model")
 
 DEFAULT_TARGET = "continuity_risk_12m_label"
+# The four INSEE identity columns (activity_code, legal_category_code,
+# employee_size_bracket, administrative_status_at_cutoff) were once excluded
+# here as temporal leakage. They are now temporally valid: the clean layer
+# keeps INSEE periods and the feature builder selects the period in effect at
+# each prediction_date, so they are back in the model inputs below.
 EXCLUDE_COLUMNS = {
     "siren",
     "prediction_date",
@@ -30,18 +35,6 @@ EXCLUDE_COLUMNS = {
     "radiation_risk_12m_label",
     "financial_weakness_risk_12m_label",
     "filing_anomaly_risk_12m_label",
-    # INSEE identity columns excluded as temporal leakage. The clean
-    # company_identity table is one row per SIREN (latest snapshot), so the
-    # feature builder applies the company's *present-day* activity, legal
-    # category, employee bracket, and administrative status to every past
-    # prediction year. They are kept in the feature table for display/audit
-    # but must not reach the model. Re-include only once the clean layer
-    # preserves INSEE periods and the builder selects the period covering
-    # prediction_date.
-    "activity_code",
-    "legal_category_code",
-    "employee_size_bracket",
-    "administrative_status_at_cutoff",
 }
 
 

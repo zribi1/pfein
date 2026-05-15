@@ -224,8 +224,10 @@ def _create_company_identity_view(con: Any, root: Path | None) -> None:
             "administrative_status": ("VARCHAR", ("administrative_status", "etat_administratif")),
             "creation_date": ("DATE", ("creation_date", "date_creation")),
             "closure_date": ("DATE", ("closure_date", "date_cessation", "date_cessation_activite")),
-            "status_period_start": ("DATE", ("last_insee_period_start", "date_debut_periode")),
+            "period_start": ("DATE", ("period_start", "last_insee_period_start", "status_period_start", "date_debut_periode")),
+            "period_end": ("DATE", ("period_end", "date_fin_periode")),
             "employee_size_bracket": ("VARCHAR", ("employee_size_bracket", "tranche_effectifs")),
+            "employee_size_year": ("INTEGER", ("employee_size_year", "annee_effectifs")),
         },
     )
 
@@ -341,7 +343,8 @@ def _create_feature_tables(con: Any) -> None:
         SELECT
             c.siren,
             y.prediction_year,
-            make_date(y.prediction_year, 12, 31) AS prediction_date
+            make_date(y.prediction_year, 12, 31) AS prediction_date,
+            cc.creation_date
         FROM companies c
         CROSS JOIN years y
         LEFT JOIN company_creation cc ON cc.siren = c.siren
@@ -353,25 +356,28 @@ def _create_feature_tables(con: Any) -> None:
         """
         CREATE TEMP TABLE company_year_feature_rows AS
         WITH identity_features AS (
+            -- Identity attributes are period-dated in INSEE. Join only periods
+            -- that started on or before the prediction date, then arg_max on
+            -- period_start picks the period in effect at the cutoff. This is
+            -- the anti-leakage core: a 2017 row gets the company's 2017 state,
+            -- not its present-day state.
             SELECT
                 b.siren,
                 b.prediction_year,
                 b.prediction_date,
-                any_value(i.company_name) AS company_name,
-                any_value(i.activity_code) AS activity_code,
-                any_value(i.legal_category_code) AS legal_category_code,
+                b.creation_date,
+                arg_max(i.company_name, i.period_start) AS company_name,
+                arg_max(i.activity_code, i.period_start) AS activity_code,
+                arg_max(i.legal_category_code, i.period_start) AS legal_category_code,
+                arg_max(i.administrative_status, i.period_start) AS administrative_status_at_cutoff,
                 any_value(i.employee_size_bracket) AS employee_size_bracket,
-                min(i.creation_date) AS creation_date,
-                max(
-                    CASE
-                        WHEN i.status_period_start IS NULL OR i.status_period_start <= b.prediction_date
-                        THEN i.administrative_status
-                        ELSE NULL
-                    END
-                ) AS administrative_status_at_cutoff
+                any_value(i.employee_size_year) AS employee_size_year
             FROM base_rows b
-            LEFT JOIN company_identity i ON i.siren = b.siren
-            GROUP BY b.siren, b.prediction_year, b.prediction_date
+            LEFT JOIN company_identity i
+              ON i.siren = b.siren
+             AND i.period_start IS NOT NULL
+             AND i.period_start <= b.prediction_date
+            GROUP BY b.siren, b.prediction_year, b.prediction_date, b.creation_date
         ),
         legal_features AS (
             SELECT
@@ -478,7 +484,12 @@ def _create_feature_tables(con: Any) -> None:
             i.company_name,
             i.activity_code,
             i.legal_category_code,
-            i.employee_size_bracket,
+            CASE
+                WHEN i.employee_size_year IS NOT NULL
+                 AND i.employee_size_year <= i.prediction_year
+                THEN i.employee_size_bracket
+                ELSE NULL
+            END AS employee_size_bracket,
             i.administrative_status_at_cutoff,
             CASE
                 WHEN i.creation_date IS NULL THEN NULL
@@ -581,8 +592,8 @@ def _create_feature_tables(con: Any) -> None:
                         AND i.closure_date <= b.prediction_date + INTERVAL 12 MONTH
                     ) OR (
                         upper(COALESCE(i.administrative_status, '')) IN ('C', 'CESSEE', 'FERMEE', 'INACTIVE')
-                        AND i.status_period_start > b.prediction_date
-                        AND i.status_period_start <= b.prediction_date + INTERVAL 12 MONTH
+                        AND i.period_start > b.prediction_date
+                        AND i.period_start <= b.prediction_date + INTERVAL 12 MONTH
                     ) THEN 1 ELSE 0 END
                 ) AS insee_closure_risk_12m_label
             FROM base_rows b

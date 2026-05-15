@@ -336,53 +336,171 @@ limitations table.
 
 ---
 
-### Run 3 — pending
+### Run 3 — 2026-05-15 — `20260515-020342_continuity-risk-12m_logreg_time-test-2024_cap-2m_rows-2m`
 
-To be completed after the next Colab run with the four INSEE identity columns
-excluded.
+**Configuration**
 
 | Item | Value |
 |---|---|
-| Change under test | `activity_code`, `legal_category_code`, `employee_size_bracket`, `administrative_status_at_cutoff` excluded from model inputs |
-| Resulting feature set | Behavioural and financial history only — company age, BODACC legal-event counts, INPI formality/account counts, financial values and ratios, `prediction_year` |
-| Hypothesis | Metrics may drop again, because leaky signal is being removed. That is acceptable and expected: Run 3 is the first **leakage-free** baseline and becomes the honest reference point. If metrics hold, the behavioural/financial features are genuinely strong on their own. |
-| What to record | The same configuration / dataset health / results / interpretation / decision blocks as the runs above, plus the `model_run_comparison.png` across all three runs |
+| Model version | `continuity-risk-20260515-020342` |
+| Model family | Logistic regression, `class_weight="balanced"` |
+| Change under test | The four INSEE identity columns excluded from model inputs (feature count 38 → 34, excluded columns 4 → 8) |
+| Dataset, cap, split | 2,000,000 rows, same deterministic hash sample and temporal split as Runs 1 and 2 — same test set (291,470 rows, 4,924 positives), so directly comparable |
+
+This is the **first leakage-free run**. The only difference from Run 2 is the
+removal of the four leaky INSEE identity features.
+
+**Results (test year 2024)**
+
+| Metric | Run 2 (with leakage) | Run 3 (leakage-free) | Change |
+|---|---|---|---|
+| ROC AUC | 0.859 | 0.764 | −0.095 |
+| Average precision | 0.121 | 0.061 | −0.060 |
+| Precision @ 0.5 | 0.060 | 0.051 | −0.009 |
+| Recall @ 0.5 | 0.789 | 0.583 | −0.206 |
+| Top 1% precision / lift | 0.224 / 13.2× | 0.115 / 6.8× | roughly halved |
+| Top 5% recall | 0.385 | 0.229 | −0.156 |
+| Top 10% recall | 0.589 | 0.393 | −0.196 |
+
+Confusion matrix at threshold 0.5: TN 232,844 — FP 53,702 — FN 2,052 — TP 2,872.
+
+**Interpretation**
+
+The drop is large and it is the **honest cost of removing leakage**. Roughly
+half of the apparent performance of Runs 1 and 2 came from the four INSEE
+snapshot features peeking at each company's present-day identity. Average
+precision falls to 0.061 — only about 3.6× the test base rate of 0.017 — and
+top-5% lift falls from ~8× to ~4.6×. Run 3 is a genuinely weak model, but it is
+a *true* one. It is the reference point for every later modelling decision.
+
+**Good news — the model is now interpretable and sensible.** With the
+high-cardinality dummies gone, the coefficients are small (largest ≈ 1.1, versus
+±5–6 in Run 1) and they point the right way: `revenue_growth_1y` decreases risk,
+`company_age_years` decreases risk, `legal_events_count_all` and
+`legal_events_count_12m` increase risk, `years_since_last_financial_statement`
+increases risk. This is a defensible model — just not yet a strong one.
+
+**Problem found — three features are dead weight.** `formalities_count_all`,
+`formalities_count_12m`, and `cessation_formalities_count_all` all received a
+coefficient of exactly 0.0. These INPI formality features carry no signal,
+consistent with the label audit showing INPI events appearing only in 2023–2024
+and in very small counts. The INPI formalities source is currently too sparse to
+be useful.
+
+**Decision taken after Run 3** — proceed to the row-count scaling check
+(Run 4), then address feature quality rather than model family.
+
+---
+
+### Run 4 — 2026-05-15 — Row-count scaling check (5M and 10M)
+
+**Configuration.** Identical to Run 3 (leakage-free, 34 features, same temporal
+split) except for `--max-rows`. Three runs were produced:
+`20260515-020012` (5M), `20260515-020602` (5M, an exact re-run — byte-identical
+to the first), and `20260515-020913` (10M).
+
+**Results.**
+
+| Rows | ROC AUC | Average precision | Precision @ 0.5 | Recall @ 0.5 |
+|---|---|---|---|---|
+| 2M (Run 3) | 0.7638 | 0.0606 | 0.0508 | 0.5833 |
+| 5M | 0.7649 | 0.0624 | 0.0511 | 0.5764 |
+| 10M | 0.7644 | 0.0623 | 0.0511 | 0.5763 |
+
+**Interpretation.** The metrics are flat. Going from 2M to 10M training rows —
+a 5× increase — moves ROC AUC by 0.001 and average precision by less than 0.002.
+This **empirically confirms that 2M rows is statistically sufficient** for the
+logistic-regression baseline: the deterministic hash sample is uniform, and the
+model has long since saturated on sample size. The conclusion is not that the
+model is good, but that *more data is not the lever* — the ceiling is set by
+feature quality, not row count. Later runs return to the 2M cap to keep training
+cheap and comparable.
+
+---
+
+### Pending — Proper INSEE Period Fix
+
+Run 3 removed the four INSEE identity columns because they were applied as a
+present-day snapshot. Those features carried real predictive signal — sector,
+legal form, employee bracket, administrative status genuinely are predictive of
+continuity risk — so removing them entirely is conservative but lossy. The
+proper fix restores them as **temporally valid** features.
+
+**What changed in the code.** Three files updated, no notebook change.
+
+| File | Change |
+|---|---|
+| `app/tools/build_clean_core_sources.py` (`_build_company_identity`) | Reads `raw/insee/bulk/stock_unite_legale_historique` (already downloaded by the pipeline) and writes one row per *(SIREN, period)* with `period_start` / `period_end`. SIREN-level attributes (`creation_date`, `employee_size_bracket`, `employee_size_year`) come from the current stock file and are broadcast to every period row. A `closure_date` is derived as the first period start with administrative status in the closure set. A degraded fallback uses the current stock file when the historique file is absent. Grain is recorded as `one row per SIREN historical period`, schema version 2. |
+| `app/tools/build_company_year_features.py` (`_create_company_identity_view`, `base_rows`, `identity_features`, `future_insee`) | The view now exposes `period_start`, `period_end`, `employee_size_year`. `base_rows` carries `creation_date` forward. The `identity_features` CTE joins only periods with `period_start <= prediction_date` and selects the period in effect at the cutoff via `arg_max(field, period_start)`. The final SELECT gates `employee_size_bracket` by `employee_size_year <= prediction_year`. The `future_insee` label CTE now reads `period_start` instead of `status_period_start`. |
+| `app/tools/train_continuity_model.py` (`EXCLUDE_COLUMNS`) | The four INSEE identity columns are removed from the exclusion set — they are temporally valid now and reach the model. The categorical preprocessing branch (with `min_frequency=0.001` from Run 2) reactivates automatically. |
+
+**Pipeline required.** Unlike Runs 2–4, this fix touches the *data lake*, not
+only the trainer. Re-running the training notebook is not enough. The required
+sequence is:
+
+1. Confirm `data-lake/raw/insee/bulk/stock_unite_legale_historique/` exists
+   (it should — the file is in `INSEE_RESOURCES`). If missing, run
+   `collabs/export_raw_sources.py --insee` once.
+2. Rebuild the clean layer: `python -m app.tools.build_clean_core_sources --overwrite`.
+3. Rebuild the company-year features and labels:
+   `python -m app.tools.build_company_year_features --start-year 2017 --end-year 2024 --overwrite`.
+   Recommended: start with `--max-companies 50000` for a smoke test, verify the
+   clean manifest reports `"grain": "one row per SIREN historical period"`, then
+   run without the cap.
+4. Re-run training, keeping `--max-rows 2000000` for direct comparability with
+   Run 3.
+
+**Expected outcome.** Some of the gap between Run 3 (ROC AUC 0.764,
+AP 0.061) and Runs 1–2 (ROC AUC ~0.86) should be recovered, this time
+legitimately. The recovery will not necessarily be complete: part of Runs 1–2's
+score was *pure* leakage (for example employee_size shrinking right before
+closure leaking the outcome), which the temporal gate now blocks. The fair
+expectation is "meaningfully better than Run 3, somewhat below Runs 1–2."
 
 ## Cross-Run Comparison
 
-| Run | Date | Model | Encoder change | ROC AUC | Avg precision | Precision @0.5 | Recall @0.5 | Top 5% recall |
+| Run | Date | Rows | Configuration | ROC AUC | Avg precision | Precision @0.5 | Recall @0.5 | Top 5% recall |
 |---|---|---|---|---|---|---|---|---|
-| 1 | 2026-05-15 | Logistic regression | one-hot, no min-frequency; INSEE identity features included | 0.869 | 0.134 | 0.063 | 0.805 | 0.404 |
-| 2 | 2026-05-15 | Logistic regression | one-hot, `min_frequency=0.001`; INSEE identity features included | 0.859 | 0.121 | 0.060 | 0.789 | 0.385 |
-| 3 | pending | Logistic regression | four INSEE identity features excluded as leakage | — | — | — | — | — |
+| 1 | 2026-05-15 | 2M | INSEE identity features included; one-hot, no min-frequency | 0.869 | 0.134 | 0.063 | 0.805 | 0.404 |
+| 2 | 2026-05-15 | 2M | INSEE identity features included; one-hot, `min_frequency=0.001` | 0.859 | 0.121 | 0.060 | 0.789 | 0.385 |
+| 3 | 2026-05-15 | 2M | **Leakage-free** — four INSEE identity features excluded | 0.764 | 0.061 | 0.051 | 0.583 | 0.229 |
+| 4 | 2026-05-15 | 5M | Leakage-free, row-count scaling check | 0.765 | 0.062 | 0.051 | 0.576 | — |
+| 4 | 2026-05-15 | 10M | Leakage-free, row-count scaling check | 0.764 | 0.062 | 0.051 | 0.576 | — |
+| 5 | pending | 2M | INSEE identity features restored from period-dated source | — | — | — | — | — |
 
 Runs 1 and 2 both included the four INSEE identity features later confirmed as
 temporal leakage, so their metrics are leakage-inflated and are kept only as a
-record, not as a baseline. Run 3 is the first leakage-free run and will be the
-true reference point for all later modelling decisions.
+record, not as a baseline. **Run 3 is the honest reference point** — the true
+baseline against which all later work is measured. Run 4 confirms that adding
+training rows beyond 2M does not move the metrics, so the path forward is better
+features, not more data or (yet) a different model family.
 
 ## Limitations And Future Improvements
 
 | Current Limitation | Future Improvement |
 |---|---|
-| Runs 1 and 2 are leakage-inflated and cannot be used as a baseline | Run 3 onward excludes the leaky INSEE identity features and is the honest reference point |
-| The four INSEE identity features were confirmed as temporal leakage and are now excluded from the model | Restore them properly: rebuild `clean/company_identity` to preserve INSEE periods (one row per period, not per SIREN), then have the feature builder select the period covering `prediction_date` |
-| The clean identity layer keeps only one row per SIREN, discarding INSEE period history | Change the deduplication in `build_clean_core_sources.py` to keep period rows; this is a prerequisite for valid identity features |
-| No probability calibration is produced | Add Brier score, a reliability table, and a calibration curve; evaluate `CalibratedClassifierCV` |
-| No operating threshold is stored in the run metadata | Select a threshold from the threshold analysis on a business criterion and record it for the serving layer |
-| Only one run exists, so no baseline comparison is possible | Keep `model_run_index.jsonl` and run folders so each new run is compared against previous runs |
-| Model family is a baseline only | After the data foundation is validated, compare logistic regression with LightGBM, XGBoost, and CatBoost, including calibrated variants |
+| The leakage-free baseline (Run 3) is weak — average precision 0.061, only ~3.6× the base rate, top-5% lift ~4.6× | The ceiling is feature quality, not model or row count (Run 4 proved more data does not help). Improve features before changing model family. |
+| The four INSEE identity features were confirmed as temporal leakage and are excluded — but they carried real predictive signal | **Highest-value next step.** Rebuild `clean/company_identity` to preserve INSEE periods (one row per period, not per SIREN), then have the feature builder select the period covering `prediction_date`. This restores activity/legal-category/employee-size *legitimately*. |
+| The clean identity layer keeps only one row per SIREN, discarding INSEE period history | Change the deduplication in `build_clean_core_sources.py` to keep period rows; this is the prerequisite for the row above. |
+| Three INPI formality features (`formalities_count_all`, `formalities_count_12m`, `cessation_formalities_count_all`) received zero coefficients — the INPI source is too sparse | Improve INPI formalities coverage in the data lake, or drop these features until coverage is broad enough to carry signal. |
+| Financial features are point-in-time values and a single 1-year change; no multi-year trends or richer ratios | Add multi-year trend and volatility features, and the richer financial-weakness definition described in the improvement-plan document. |
+| No probability calibration is produced | Add Brier score, a reliability table, and a calibration curve; evaluate `CalibratedClassifierCV`. |
+| No operating threshold is stored in the run metadata | Select a threshold from the threshold analysis on a business criterion and record it for the serving layer. |
+| Model family is a baseline only | The data foundation is now leakage-free, so comparing logistic regression with LightGBM, XGBoost, and CatBoost (including calibrated variants) is now legitimate — but feature quality should be addressed first. |
 
 ## Report Summary
 
 The machine-learning section predicts company continuity risk over a 12-month
 horizon from INSEE, BODACC, INPI, and financial features, using a temporal
 train/test split and a transparent logistic-regression baseline orchestrated
-with scikit-learn. Run 1 (2026-05-15) showed a strong ranking signal
-(ROC AUC 0.869, top-1% lift 14.6×) but weak operational precision and a
-coefficient profile dominated by overfit categorical dummies. The encoder was
-corrected with a minimum-frequency floor, and Run 2 is the pending verification.
-The model is currently defensible as a risk-ranking watchlist tool, not as a
-0.5-threshold classifier. The next priorities, in order, are: confirm the
-historical validity of the INSEE features, add probability calibration, store an
-operating threshold, and only then compare gradient-boosted tree models.
+with scikit-learn. Runs 1 and 2 (ROC AUC ~0.86) were later found to depend on
+four INSEE identity features that the feature builder applied as a present-day
+snapshot to every past prediction year — a temporal leak. Run 3, with those
+features removed, is the honest baseline: ROC AUC 0.764, average precision 0.061,
+top-5% lift ~4.6×. It is a weak but genuine and interpretable model. Run 4
+confirmed that increasing training rows from 2M to 10M does not change the
+metrics, so the limiting factor is feature quality, not data volume or model
+family. The next priorities, in order, are: rebuild the clean identity layer to
+restore the INSEE features as temporally valid period data, improve the sparse
+INPI and point-in-time financial features, add probability calibration, store an
+operating threshold, and then compare gradient-boosted tree models.

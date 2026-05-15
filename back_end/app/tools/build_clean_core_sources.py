@@ -67,71 +67,131 @@ def _build_company_identity(
     overwrite: bool,
     max_rows: int | None,
 ) -> dict[str, Any]:
-    raw_root = _first_dataset(
+    """Build a period-grained company identity table.
+
+    INSEE Sirene records identity attributes (activity, legal category,
+    administrative status, name) as dated periods, not a single current state.
+    Using only the latest state would apply present-day values to past
+    prediction years, which is temporal leakage. This builder keeps one row per
+    SIREN historical period from the ``stock_unite_legale_historique`` file, so
+    the feature builder can select the period in effect at each prediction date.
+
+    The historical file does not carry ``dateCreationUniteLegale`` or the
+    employee-size bracket; those SIREN-level attributes are joined in from the
+    current ``stock_unite_legale`` file and broadcast onto every period row.
+    """
+    historique_root = _first_dataset(
+        data_lake_dir / "raw" / "insee" / "bulk" / "stock_unite_legale_historique",
+        data_lake_dir / "raw" / "insee" / "unites_legales_historique",
+    )
+    snapshot_root = _first_dataset(
         data_lake_dir / "raw" / "insee" / "unites_legales",
         data_lake_dir / "raw" / "insee" / "bulk" / "stock_unite_legale",
     )
     output_dir = data_lake_dir / "clean" / "company_identity"
-    if raw_root is None:
+    if historique_root is None and snapshot_root is None:
         expected_root = data_lake_dir / "raw" / "insee"
         return _write_skipped_manifest(output_dir, "company_identity", expected_root)
 
     _prepare_output_dir(output_dir, data_lake_dir, overwrite)
-    path = _duckdb_glob(raw_root)
-    available = _parquet_columns(con, path)
     limit_sql = f"LIMIT {int(max_rows)}" if max_rows else ""
     output_file = output_dir / "company_identity.parquet"
-    logger.info("clean dataset=company_identity reading raw_root=%s", raw_root)
 
-    siren = _coalesce_expr(available, ("siren",), "VARCHAR")
-    nic_siege = _coalesce_expr(available, ("nic_siege", "nicSiegeUniteLegale"), "VARCHAR")
+    # SIREN-level attributes that the period file does not carry. Pulled from
+    # the current stock file (one row per SIREN) and broadcast onto periods.
+    siren_level_sql = "SELECT NULL::VARCHAR AS siren WHERE FALSE"
+    if snapshot_root is not None:
+        snap_path = _duckdb_glob(snapshot_root)
+        snap_available = _parquet_columns(con, snap_path)
+        snap_siren = _coalesce_expr(snap_available, ("siren",), "VARCHAR")
+        siren_level_sql = f"""
+            SELECT
+                {snap_siren} AS siren,
+                {_coalesce_expr(snap_available, ("creation_date", "date_creation", "dateCreationUniteLegale"), "DATE")} AS creation_date,
+                {_coalesce_expr(snap_available, ("employee_size_bracket", "tranche_effectifs", "trancheEffectifsUniteLegale"), "VARCHAR")} AS employee_size_bracket,
+                {_coalesce_expr(snap_available, ("employee_size_year", "annee_effectifs", "anneeEffectifsUniteLegale"), "INTEGER")} AS employee_size_year
+            FROM read_parquet('{_sql_string(snap_path)}', union_by_name=true, filename=true)
+            WHERE {snap_siren} IS NOT NULL
+            QUALIFY row_number() OVER (PARTITION BY {snap_siren} ORDER BY {snap_siren}) = 1
+        """
+
+    if historique_root is not None:
+        # Preferred path: one row per SIREN historical period.
+        period_root = historique_root
+        period_path = _duckdb_glob(period_root)
+        period_available = _parquet_columns(con, period_path)
+        period_siren = _coalesce_expr(period_available, ("siren",), "VARCHAR")
+        period_start_expr = _coalesce_expr(period_available, ("period_start", "date_debut", "dateDebut"), "DATE")
+        period_end_expr = _coalesce_expr(period_available, ("period_end", "date_fin", "dateFin"), "DATE")
+        grain = "one row per SIREN historical period"
+    else:
+        # Fallback: no historical file. Derive one synthetic period per SIREN
+        # from the current stock file so downstream stays valid (degraded mode).
+        period_root = snapshot_root
+        period_path = _duckdb_glob(period_root)
+        period_available = _parquet_columns(con, period_path)
+        period_siren = _coalesce_expr(period_available, ("siren",), "VARCHAR")
+        period_start_expr = _coalesce_expr(period_available, ("creation_date", "date_creation", "dateCreationUniteLegale"), "DATE")
+        period_end_expr = "NULL::DATE"
+        grain = "one row per SIREN (no historical file; single synthetic period)"
+
+    nic_siege = _coalesce_expr(period_available, ("nic_siege", "nicSiegeUniteLegale"), "VARCHAR")
     source_updated = _coalesce_expr(
-        available,
+        period_available,
         ("source_updated_at", "dateDernierTraitementUniteLegale", "exported_at"),
         "TIMESTAMP",
     )
-    exported_at = _coalesce_expr(available, ("exported_at",), "TIMESTAMP")
-    status_period_start = _coalesce_expr(
-        available,
-        ("last_insee_period_start", "status_period_start", "date_debut_periode"),
-        "DATE",
-    )
-
+    logger.info("clean dataset=company_identity reading periods=%s snapshot=%s", period_root, snapshot_root)
     logger.info("clean dataset=company_identity writing output=%s", output_file)
     con.execute(
         f"""
         COPY (
-            WITH normalized AS (
+            WITH periods AS (
                 SELECT
-                    {siren} AS siren,
-                    {_coalesce_expr(available, ("company_name", "denomination", "denomination_periode", "denominationUniteLegale", "nom", "nomUniteLegale", "nomUsageUniteLegale"), "VARCHAR")} AS company_name,
-                    {_coalesce_expr(available, ("activity_code", "activite_principale", "activite_principale_periode", "activitePrincipaleUniteLegale"), "VARCHAR")} AS activity_code,
-                    {_coalesce_expr(available, ("legal_category_code", "categorie_juridique", "categorieJuridiqueUniteLegale"), "VARCHAR")} AS legal_category_code,
-                    {_coalesce_expr(available, ("administrative_status", "etat_administratif", "etatAdministratifUniteLegale"), "VARCHAR")} AS administrative_status,
-                    {_coalesce_expr(available, ("creation_date", "date_creation", "dateCreationUniteLegale"), "DATE")} AS creation_date,
-                    {_coalesce_expr(available, ("closure_date", "date_cessation", "date_cessation_activite"), "DATE")} AS closure_date,
-                    {status_period_start} AS status_period_start,
-                    {_coalesce_expr(available, ("employee_size_bracket", "tranche_effectifs", "trancheEffectifsUniteLegale"), "VARCHAR")} AS employee_size_bracket,
-                    {_coalesce_expr(available, ("employee_size_year", "annee_effectifs", "anneeEffectifsUniteLegale"), "INTEGER")} AS employee_size_year,
+                    {period_siren} AS siren,
+                    {period_start_expr} AS period_start,
+                    {period_end_expr} AS period_end,
+                    {_coalesce_expr(period_available, ("company_name", "denomination", "denomination_periode", "denominationUniteLegale", "nom", "nomUniteLegale", "nomUsageUniteLegale"), "VARCHAR")} AS company_name,
+                    {_coalesce_expr(period_available, ("activity_code", "activite_principale", "activite_principale_periode", "activitePrincipaleUniteLegale"), "VARCHAR")} AS activity_code,
+                    {_coalesce_expr(period_available, ("legal_category_code", "categorie_juridique", "categorieJuridiqueUniteLegale"), "VARCHAR")} AS legal_category_code,
+                    {_coalesce_expr(period_available, ("administrative_status", "etat_administratif", "etatAdministratifUniteLegale"), "VARCHAR")} AS administrative_status,
                     CASE
-                        WHEN length({siren}) = 9 AND length({nic_siege}) = 5 THEN {siren} || {nic_siege}
+                        WHEN length({period_siren}) = 9 AND length({nic_siege}) = 5 THEN {period_siren} || {nic_siege}
                         ELSE NULL
                     END AS head_office_siret,
                     {source_updated} AS source_updated_at,
-                    {_coalesce_expr(available, ("filename", "source_file"), "VARCHAR")} AS source_file,
-                    {exported_at} AS exported_at
-                FROM read_parquet('{_sql_string(path)}', union_by_name=true, filename=true)
-                WHERE {siren} IS NOT NULL
+                    {_coalesce_expr(period_available, ("filename", "source_file"), "VARCHAR")} AS source_file
+                FROM read_parquet('{_sql_string(period_path)}', union_by_name=true, filename=true)
+                WHERE {period_siren} IS NOT NULL
             ),
-            deduped AS (
-                SELECT *
-                FROM normalized
-                QUALIFY row_number() OVER (
-                    PARTITION BY siren
-                    ORDER BY source_updated_at DESC NULLS LAST, status_period_start DESC NULLS LAST, exported_at DESC NULLS LAST
-                ) = 1
+            siren_level AS (
+                {siren_level_sql}
+            ),
+            closure AS (
+                SELECT siren, min(period_start) AS closure_date
+                FROM periods
+                WHERE upper(COALESCE(administrative_status, '')) IN ('C', 'CESSEE', 'FERMEE', 'INACTIVE')
+                  AND period_start IS NOT NULL
+                GROUP BY siren
             )
-            SELECT * FROM deduped
+            SELECT
+                p.siren,
+                p.period_start,
+                p.period_end,
+                p.company_name,
+                p.activity_code,
+                p.legal_category_code,
+                p.administrative_status,
+                s.creation_date,
+                c.closure_date,
+                p.head_office_siret,
+                s.employee_size_bracket,
+                s.employee_size_year,
+                p.source_updated_at,
+                p.source_file
+            FROM periods p
+            LEFT JOIN siren_level s USING (siren)
+            LEFT JOIN closure c USING (siren)
             {limit_sql}
         )
         TO '{_sql_string(str(output_file).replace("\\", "/"))}'
@@ -144,9 +204,10 @@ def _build_company_identity(
         {
             "dataset": "company_identity",
             "rows": rows,
-            "raw_root": str(raw_root),
-            "schema_version": 1,
-            "grain": "one row per SIREN",
+            "raw_root": str(period_root),
+            "snapshot_root": str(snapshot_root) if snapshot_root else None,
+            "schema_version": 2,
+            "grain": grain,
         },
     )
 

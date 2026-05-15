@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python -m py_compile app/tools/train_continuity_model.py)"
+      "Bash(python -m py_compile app/tools/train_continuity_model.py)",
+      "Bash(python -m py_compile app/tools/build_clean_core_sources.py app/tools/build_company_year_features.py app/tools/train_continuity_model.py)",
+      "Bash(python -c \"import json; nb = json.load\\(open\\('collabs/pfe_ml_colab_period_fix_rebuild.ipynb', encoding='utf-8'\\)\\); print\\('cells:', len\\(nb['cells']\\), '| types:', [c['cell_type'] for c in nb['cells']]\\)\")"
     ]
   }
 }
