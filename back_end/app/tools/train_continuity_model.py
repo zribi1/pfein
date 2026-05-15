@@ -159,7 +159,10 @@ class StringCaster:
         return self
 
 
-class _CatBoostSklearnClassifier:
+from sklearn.base import BaseEstimator, ClassifierMixin
+
+
+class _CatBoostSklearnClassifier(ClassifierMixin, BaseEstimator):
     """sklearn-clone-safe wrapper around ``catboost.CatBoostClassifier``.
 
     Native ``CatBoostClassifier`` mutates list-typed constructor params
@@ -167,10 +170,10 @@ class _CatBoostSklearnClassifier:
     a different object id than what was passed, which breaks sklearn's
     ``clone()`` identity check inside ``RandomizedSearchCV``.
 
-    This wrapper stores every constructor argument verbatim on ``self``, so
-    ``get_params()`` (implemented manually below to mirror sklearn's
-    ``BaseEstimator``) returns the same Python objects ``clone()`` saw. The
-    real ``CatBoostClassifier`` is instantiated lazily inside ``fit``.
+    Inherits from ``ClassifierMixin`` (declares ``_estimator_type='classifier'``
+    so sklearn scorers route through ``predict_proba``) and ``BaseEstimator``
+    (auto-derives ``get_params``/``set_params`` from the ``__init__`` signature
+    — clone-safe because we store every arg verbatim).
     """
 
     def __init__(
@@ -202,22 +205,6 @@ class _CatBoostSklearnClassifier:
         self.allow_writing_files = allow_writing_files
         self.task_type = task_type
         self.devices = devices
-
-    _PARAM_NAMES = (
-        "cat_features", "iterations", "learning_rate", "depth", "l2_leaf_reg",
-        "auto_class_weights", "bagging_temperature", "random_seed", "verbose",
-        "allow_writing_files", "task_type", "devices",
-    )
-
-    def get_params(self, deep: bool = True) -> dict[str, Any]:
-        return {name: getattr(self, name) for name in self._PARAM_NAMES}
-
-    def set_params(self, **params: Any) -> "_CatBoostSklearnClassifier":
-        for key, value in params.items():
-            if key not in self._PARAM_NAMES:
-                raise ValueError(f"Invalid parameter {key!r} for _CatBoostSklearnClassifier")
-            setattr(self, key, value)
-        return self
 
     def _build_estimator(self) -> Any:
         from catboost import CatBoostClassifier
