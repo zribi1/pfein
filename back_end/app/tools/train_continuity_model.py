@@ -30,6 +30,18 @@ EXCLUDE_COLUMNS = {
     "radiation_risk_12m_label",
     "financial_weakness_risk_12m_label",
     "filing_anomaly_risk_12m_label",
+    # INSEE identity columns excluded as temporal leakage. The clean
+    # company_identity table is one row per SIREN (latest snapshot), so the
+    # feature builder applies the company's *present-day* activity, legal
+    # category, employee bracket, and administrative status to every past
+    # prediction year. They are kept in the feature table for display/audit
+    # but must not reach the model. Re-include only once the clean layer
+    # preserves INSEE periods and the builder selects the period covering
+    # prediction_date.
+    "activity_code",
+    "legal_category_code",
+    "employee_size_bracket",
+    "administrative_status_at_cutoff",
 }
 
 
@@ -166,18 +178,25 @@ def train_model(
     ]
     categorical_columns = [col for col in X.columns if col not in numeric_columns]
 
-    preprocessor = ColumnTransformer(
-        transformers=[
-            (
-                "numeric",
-                Pipeline(
-                    steps=[
-                        ("imputer", SimpleImputer(strategy="median")),
-                        ("scaler", StandardScaler()),
-                    ]
-                ),
-                numeric_columns,
+    transformers = [
+        (
+            "numeric",
+            Pipeline(
+                steps=[
+                    ("imputer", SimpleImputer(strategy="median")),
+                    ("scaler", StandardScaler()),
+                ]
             ),
+            numeric_columns,
+        ),
+    ]
+    # The categorical branch is only added when categorical columns survive
+    # EXCLUDE_COLUMNS. With the leaky INSEE identity columns excluded there are
+    # currently none, so the branch is skipped rather than fitting an encoder on
+    # an empty column list. min_frequency folds rare categories into one
+    # "infrequent" bin instead of giving each its own sparse column.
+    if categorical_columns:
+        transformers.append(
             (
                 "categorical",
                 Pipeline(
@@ -185,12 +204,6 @@ def train_model(
                         ("imputer", SimpleImputer(strategy="most_frequent")),
                         (
                             "onehot",
-                            # min_frequency folds rare categories (e.g. long-tail
-                            # NAF activity_code values) into one "infrequent" bin
-                            # instead of giving each its own sparse column. Without
-                            # it, high-cardinality codes explode into hundreds of
-                            # dummies fit on a handful of positives, and the model
-                            # ends up dominated by noisy per-category coefficients.
                             OneHotEncoder(
                                 handle_unknown="infrequent_if_exist",
                                 min_frequency=0.001,
@@ -199,9 +212,9 @@ def train_model(
                     ]
                 ),
                 categorical_columns,
-            ),
-        ]
-    )
+            )
+        )
+    preprocessor = ColumnTransformer(transformers=transformers)
     model = Pipeline(
         steps=[
             ("preprocess", preprocessor),
