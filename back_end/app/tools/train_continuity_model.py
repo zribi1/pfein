@@ -281,10 +281,11 @@ def _build_model_pipeline(
         # check inside ``RandomizedSearchCV``.
         #   * ``auto_class_weights='Balanced'`` replaces ``class_weights=[1, neg/pos]``
         #     and yields the same effective n_neg/n_pos ratio.
-        #   * ``cat_features`` is omitted — the upstream ``StringCaster`` step casts
-        #     categorical columns to ``str`` (pandas object dtype), and CatBoost
-        #     auto-detects object/string columns as categorical when ``cat_features``
-        #     is not supplied.
+        #   * ``cat_features`` is omitted — we use ``CategoricalCaster`` upstream
+        #     to set pandas ``category`` dtype on the categorical columns, which
+        #     CatBoost auto-detects as categorical regardless of ``cat_features``.
+        #     (``object``/string dtype is NOT reliably auto-detected on GPU mode,
+        #     so ``category`` is required.)
         params = {
             "iterations": 400,
             "learning_rate": 0.05,
@@ -301,7 +302,7 @@ def _build_model_pipeline(
         params.update(overrides)
         return Pipeline(
             steps=[
-                ("prepare_categoricals", StringCaster(categorical_columns)),
+                ("prepare_categoricals", CategoricalCaster(categorical_columns)),
                 ("classifier", CatBoostClassifier(**params)),
             ]
         )
