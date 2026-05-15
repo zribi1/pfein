@@ -6,6 +6,13 @@ For a full runnable notebook, open:
 collabs/pfe_ml_colab_workbook.ipynb
 ```
 
+For model training only, after the data lake and feature tables already exist,
+open:
+
+```text
+collabs/pfe_ml_colab_training_only.ipynb
+```
+
 For a detailed step-by-step user guide, read:
 
 ```text
@@ -30,6 +37,10 @@ pip install -q -r collabs/requirements-colab.txt
 Do not install the backend `requirements.txt` in Colab unless you want to run
 the API there. The Colab file avoids conflicts with packages preinstalled by
 Google Colab.
+
+Training plots are generated in Colab, so plotting dependencies such as
+`matplotlib` live in `collabs/requirements-colab.txt`, not the backend API
+requirements.
 
 The default Drive storage root is:
 

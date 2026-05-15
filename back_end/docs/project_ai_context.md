@@ -49,6 +49,7 @@ complete, historically valid, and leakage-checked.
 | Temporal validation comes first | Main validation should train on older years and test on the latest year |
 | Missing financial data is not automatically bad | Missingness must be represented explicitly |
 | Metrics must match risk use | Report PR-AUC, recall/precision, top-K capture, and calibration, not accuracy only |
+| Every run must leave evidence | Keep metadata, plots, threshold tables, top-K analysis, and class-balance proof |
 | Explanations must be evidence-grounded | Do not let generated text invent reasons not supported by features/source evidence |
 
 ## Highest-Risk Weak Points
@@ -79,6 +80,8 @@ complete, historically valid, and leakage-checked.
 5. Add source freshness and data completeness fields to future serving documents.
 6. Evaluate risk models with temporal split, PR-AUC, calibration, and top-K risk
    capture before claiming predictive value.
+7. After each training run, update the experiment log and compare the new
+   evidence against previous runs instead of reporting metrics in isolation.
 
 ## Defense Framing
 
@@ -114,5 +117,6 @@ legal distress, radiation, financial weakness, and filing anomaly risk.
 - `docs/colab_data_preparation_pipeline_report.md`
 - `docs/ml_continuity_risk_pipeline.md`
 - `docs/model_validation_report.md`
+- `docs/ml_experiment_tracking_report.md`
 - `docs/data_quality_report.md`
 - `docs/dataset_readiness_report.md`

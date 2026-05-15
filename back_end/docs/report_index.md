@@ -19,6 +19,7 @@ before copying sections into the final end-of-studies report.
 | `docs/financial_report_section.md` | Updated | Source-specific financial Parquet pipeline section with full clean-build evidence |
 | `docs/ml_continuity_risk_pipeline.md` | Updated | ML feature, label, training, scoring, and publishing section |
 | `docs/model_validation_report.md` | Updated with interim status | Validation checks, metrics, leakage review, and publishing gate |
+| `docs/ml_experiment_tracking_report.md` | Added | Academic-style experiment log, run artifact policy, and model-development decision record |
 | `docs/data_quality_report.md` | Updated with current evidence | Data-lake quality checks, reproducibility evidence, and source-specific checks |
 | `docs/dataset_readiness_report.md` | Added | Local source-completeness gate before feature rebuilds and training |
 | `docs/data_collection_checklist.md` | Added | Incremental checklist for source inventory, collection, feature building, and training gates |
@@ -43,6 +44,7 @@ before copying sections into the final end-of-studies report.
 | Financial Parquet data | `financial_report_section.md` |
 | Company-year ML features and labels | `ml_continuity_risk_pipeline.md` |
 | Model validation process | `model_validation_report.md` |
+| ML experiment history and run artifacts | `ml_experiment_tracking_report.md` |
 | Data-quality and reproducibility checks | `data_quality_report.md` |
 | Dataset readiness gate | `dataset_readiness_report.md` |
 | Incremental collection plan | `data_collection_checklist.md` |
@@ -82,6 +84,7 @@ before copying sections into the final end-of-studies report.
 | Model validation metrics are not populated yet | Finish INPI, INSEE, and historical BODACC coverage, rebuild features, then train and update `docs/model_validation_report.md` |
 | Full data-quality measurements are not populated yet | Update `docs/data_quality_report.md` after final full exports |
 | Feature safety registry is currently documentation-backed | Optionally add a training-time registry loader to block unsafe columns automatically |
+| Model experiment comparisons are just beginning | Use the new run folders and `model_run_index.jsonl` after each training run |
 
 ## Recommended Reading Order
 
@@ -90,20 +93,22 @@ before copying sections into the final end-of-studies report.
 3. Source sections: INSEE, INPI, BODACC, financial
 4. `docs/ml_continuity_risk_pipeline.md`
 5. `docs/model_validation_report.md`
-6. `docs/data_quality_report.md`
-7. `docs/dataset_readiness_report.md`
-8. `docs/backend_api_operations_report.md`
-9. `docs/docker_runtime_strategy.md`
-10. `docs/report_markdown_rules.md`
-11. `docs/project_ai_context.md`
-12. `docs/colab_user_guide.md`
-13. `docs/project_weak_points_and_improvement_plan.md`
-14. `docs/feature_safety_registry.md`
+6. `docs/ml_experiment_tracking_report.md`
+7. `docs/data_quality_report.md`
+8. `docs/dataset_readiness_report.md`
+9. `docs/backend_api_operations_report.md`
+10. `docs/docker_runtime_strategy.md`
+11. `docs/report_markdown_rules.md`
+12. `docs/project_ai_context.md`
+13. `docs/colab_user_guide.md`
+14. `docs/project_weak_points_and_improvement_plan.md`
+15. `docs/feature_safety_registry.md`
 
 ## Report Summary
 
 The report set now covers the main source pipelines, the data-lake architecture,
-the first continuity-risk ML pipeline, and backend operations. The largest
-remaining documentation tasks are tied to implementation work that is still in
-progress: full INPI/INSEE/BODACC coverage, final Mongo serving documents, model
-validation results, financial ratios, and measured data-quality evidence.
+the first continuity-risk ML pipeline, ML experiment tracking, and backend
+operations. The largest remaining documentation tasks are tied to implementation
+work that is still in progress: full INPI/INSEE/BODACC coverage, final Mongo
+serving documents, model validation results, financial ratios, and measured
+data-quality evidence.

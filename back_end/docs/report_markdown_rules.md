@@ -42,6 +42,7 @@ document purpose.
 | Backend operations section | `backend_api_operations_report.md` | Explain API endpoints, worker jobs, state collections, and operational controls |
 | Documentation inventory | `report_index.md` | Track report coverage, status, and remaining gaps |
 | Model validation section | `model_validation_report.md` | Record model metrics, split strategy, leakage review, and publishing decision |
+| ML experiment log | `ml_experiment_tracking_report.md` | Record model changes, run artifacts, metric comparisons, and next modelling actions |
 | Data-quality section | `data_quality_report.md` | Record row counts, manifests, schema checks, duplicate checks, and lineage evidence |
 | Rules/template | `report_markdown_rules.md` | Define how future documentation should be written |
 
