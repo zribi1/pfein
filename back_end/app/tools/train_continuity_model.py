@@ -158,6 +158,8 @@ def _build_model_pipeline(
     categorical_columns: list[str],
     train_positive_count: int,
     train_negative_count: int,
+    extra_params: dict[str, Any] | None = None,
+    gpu: bool = False,
 ) -> Any:
     """Return a sklearn ``Pipeline`` configured for the requested boosting library.
 
@@ -170,111 +172,118 @@ def _build_model_pipeline(
     - HGB caps cardinality (``max_bins=255``) and casts to ``Categorical``.
     - LightGBM and XGBoost cast to ``Categorical`` without capping.
     - CatBoost casts to ``str`` and consumes a ``cat_features`` list.
+
+    Passing ``extra_params`` overrides the classifier's defaults — used by
+    Phase B hyperparameter tuning to inject the best configuration found by
+    RandomizedSearchCV. ``gpu=True`` switches CatBoost and XGBoost to their
+    CUDA paths; HGB and LightGBM have no GPU support here and ignore it.
     """
     from sklearn.pipeline import Pipeline
 
     pos = max(int(train_positive_count), 1)
     neg = max(int(train_negative_count), 1)
     pos_weight = neg / pos
+    overrides = dict(extra_params or {})
 
     if family == "hgb":
         from sklearn.ensemble import HistGradientBoostingClassifier
 
+        params = {
+            "max_iter": 400,
+            "learning_rate": 0.05,
+            "max_leaf_nodes": 63,
+            "min_samples_leaf": 50,
+            "l2_regularization": 1.0,
+            "class_weight": "balanced",
+            "categorical_features": "from_dtype",
+            "early_stopping": True,
+            "validation_fraction": 0.1,
+            "n_iter_no_change": 20,
+            "random_state": 42,
+        }
+        params.update(overrides)
         return Pipeline(
             steps=[
                 (
                     "prepare_categoricals",
                     CategoricalCardinalityCapper(categorical_columns, max_categories=250),
                 ),
-                (
-                    "classifier",
-                    HistGradientBoostingClassifier(
-                        max_iter=400,
-                        learning_rate=0.05,
-                        max_leaf_nodes=63,
-                        min_samples_leaf=50,
-                        l2_regularization=1.0,
-                        class_weight="balanced",
-                        categorical_features="from_dtype",
-                        early_stopping=True,
-                        validation_fraction=0.1,
-                        n_iter_no_change=20,
-                        random_state=42,
-                    ),
-                ),
+                ("classifier", HistGradientBoostingClassifier(**params)),
             ]
         )
 
     if family == "lightgbm":
         from lightgbm import LGBMClassifier
 
+        params = {
+            "n_estimators": 400,
+            "learning_rate": 0.05,
+            "num_leaves": 63,
+            "min_child_samples": 50,
+            "reg_lambda": 1.0,
+            "class_weight": "balanced",
+            "random_state": 42,
+            "verbosity": -1,
+            "n_jobs": -1,
+        }
+        params.update(overrides)
         return Pipeline(
             steps=[
                 ("prepare_categoricals", CategoricalCaster(categorical_columns)),
-                (
-                    "classifier",
-                    LGBMClassifier(
-                        n_estimators=400,
-                        learning_rate=0.05,
-                        num_leaves=63,
-                        min_child_samples=50,
-                        reg_lambda=1.0,
-                        class_weight="balanced",
-                        random_state=42,
-                        verbosity=-1,
-                        n_jobs=-1,
-                    ),
-                ),
+                ("classifier", LGBMClassifier(**params)),
             ]
         )
 
     if family == "xgboost":
         from xgboost import XGBClassifier
 
+        params = {
+            "n_estimators": 400,
+            "learning_rate": 0.05,
+            "max_depth": 8,
+            "min_child_weight": 50.0,
+            "reg_lambda": 1.0,
+            "scale_pos_weight": pos_weight,
+            "enable_categorical": True,
+            "tree_method": "hist",
+            "objective": "binary:logistic",
+            "eval_metric": "logloss",
+            "random_state": 42,
+            "verbosity": 0,
+            "n_jobs": -1,
+        }
+        if gpu:
+            params["device"] = "cuda"
+        params.update(overrides)
         return Pipeline(
             steps=[
                 ("prepare_categoricals", CategoricalCaster(categorical_columns)),
-                (
-                    "classifier",
-                    XGBClassifier(
-                        n_estimators=400,
-                        learning_rate=0.05,
-                        max_depth=8,
-                        min_child_weight=50.0,
-                        reg_lambda=1.0,
-                        scale_pos_weight=pos_weight,
-                        enable_categorical=True,
-                        tree_method="hist",
-                        objective="binary:logistic",
-                        eval_metric="logloss",
-                        random_state=42,
-                        verbosity=0,
-                        n_jobs=-1,
-                    ),
-                ),
+                ("classifier", XGBClassifier(**params)),
             ]
         )
 
     if family == "catboost":
         from catboost import CatBoostClassifier
 
+        params = {
+            "iterations": 400,
+            "learning_rate": 0.05,
+            "depth": 6,
+            "l2_leaf_reg": 3.0,
+            "class_weights": [1.0, float(pos_weight)],
+            "cat_features": list(categorical_columns),
+            "random_seed": 42,
+            "verbose": False,
+            "allow_writing_files": False,
+        }
+        if gpu:
+            params["task_type"] = "GPU"
+            params["devices"] = "0"
+        params.update(overrides)
         return Pipeline(
             steps=[
                 ("prepare_categoricals", StringCaster(categorical_columns)),
-                (
-                    "classifier",
-                    CatBoostClassifier(
-                        iterations=400,
-                        learning_rate=0.05,
-                        depth=6,
-                        l2_leaf_reg=3.0,
-                        class_weights=[1.0, float(pos_weight)],
-                        cat_features=list(categorical_columns),
-                        random_seed=42,
-                        verbose=False,
-                        allow_writing_files=False,
-                    ),
-                ),
+                ("classifier", CatBoostClassifier(**params)),
             ]
         )
 
@@ -321,6 +330,9 @@ def main() -> None:
         level=getattr(logging, args.log_level.upper(), logging.INFO),
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     )
+    model_params: dict[str, Any] | None = None
+    if args.params_file:
+        model_params = json.loads(Path(args.params_file).read_text(encoding="utf-8"))
     train_model(
         data_lake_dir=Path(args.data_lake_dir or settings.DATA_LAKE_DIR),
         artifacts_dir=Path(args.artifacts_dir or settings.ML_ARTIFACTS_DIR),
@@ -331,6 +343,8 @@ def main() -> None:
         train_start_year=args.train_start_year,
         train_end_year=args.train_end_year,
         model_family=args.model_family,
+        model_params=model_params,
+        gpu=args.gpu,
     )
 
 
@@ -345,6 +359,8 @@ def train_model(
     train_start_year: int | None = None,
     train_end_year: int | None = None,
     model_family: str = "hgb",
+    model_params: dict[str, Any] | None = None,
+    gpu: bool = False,
 ) -> None:
     if model_family not in MODEL_FAMILIES:
         raise ValueError(
@@ -479,6 +495,8 @@ def train_model(
         categorical_columns=categorical_columns,
         train_positive_count=preview_pos,
         train_negative_count=preview_neg,
+        extra_params=model_params,
+        gpu=gpu,
     )
 
     latest_year = int(df["prediction_year"].max())
@@ -555,6 +573,9 @@ def train_model(
         "model_version": model_version,
         "run_name": run_name,
         "model_family": model_family,
+        "model_params_overridden": bool(model_params),
+        "model_params": model_params or {},
+        "gpu": bool(gpu),
         "target": target,
         "horizon_months": 12,
         "eligible_rows": int(total_rows),
@@ -1525,6 +1546,15 @@ def _parse_args() -> argparse.Namespace:
         choices=MODEL_FAMILIES,
         default="hgb",
         help="Gradient-boosting library to train.",
+    )
+    parser.add_argument(
+        "--params-file",
+        help="Path to a JSON file with classifier kwargs overriding the family defaults (used to inject Phase B tuned hyperparameters).",
+    )
+    parser.add_argument(
+        "--gpu",
+        action="store_true",
+        help="Enable GPU training for CatBoost (task_type=GPU) and XGBoost (device=cuda). HGB and LightGBM ignore this flag.",
     )
     parser.add_argument("--log-level", default="INFO")
     return parser.parse_args()
