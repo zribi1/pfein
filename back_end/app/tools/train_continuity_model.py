@@ -82,6 +82,205 @@ class CategoricalCardinalityCapper:
             setattr(self, key, value)
         return self
 
+
+class CategoricalCaster:
+    """Cast the named columns to pandas ``Categorical`` without capping.
+
+    Used for LightGBM and XGBoost, which detect Categorical dtype via their
+    ``categorical_feature='auto'`` / ``enable_categorical=True`` paths and
+    handle high cardinality natively (no max_bins-style cap like HGB).
+    """
+
+    def __init__(self, categorical_columns: list[str]) -> None:
+        self.categorical_columns = list(categorical_columns)
+
+    def fit(self, X: Any, y: Any = None) -> "CategoricalCaster":
+        return self
+
+    def transform(self, X: Any) -> Any:
+        X = X.copy()
+        for column in self.categorical_columns:
+            if column in X.columns:
+                X[column] = X[column].astype("category")
+        return X
+
+    def fit_transform(self, X: Any, y: Any = None) -> Any:
+        return self.transform(X)
+
+    def get_params(self, deep: bool = True) -> dict[str, Any]:
+        return {"categorical_columns": self.categorical_columns}
+
+    def set_params(self, **params: Any) -> "CategoricalCaster":
+        for key, value in params.items():
+            setattr(self, key, value)
+        return self
+
+
+class StringCaster:
+    """Cast the named columns to Python ``str`` for CatBoost.
+
+    CatBoost requires categorical columns to be string-typed and accepts a
+    ``cat_features`` list at construction. NaN values become the literal
+    string ``"nan"`` and are treated as a distinct category by CatBoost.
+    """
+
+    def __init__(self, categorical_columns: list[str]) -> None:
+        self.categorical_columns = list(categorical_columns)
+
+    def fit(self, X: Any, y: Any = None) -> "StringCaster":
+        return self
+
+    def transform(self, X: Any) -> Any:
+        X = X.copy()
+        for column in self.categorical_columns:
+            if column in X.columns:
+                X[column] = X[column].astype(str)
+        return X
+
+    def fit_transform(self, X: Any, y: Any = None) -> Any:
+        return self.transform(X)
+
+    def get_params(self, deep: bool = True) -> dict[str, Any]:
+        return {"categorical_columns": self.categorical_columns}
+
+    def set_params(self, **params: Any) -> "StringCaster":
+        for key, value in params.items():
+            setattr(self, key, value)
+        return self
+
+
+MODEL_FAMILIES = ("hgb", "lightgbm", "catboost", "xgboost")
+
+
+def _build_model_pipeline(
+    *,
+    family: str,
+    categorical_columns: list[str],
+    train_positive_count: int,
+    train_negative_count: int,
+) -> Any:
+    """Return a sklearn ``Pipeline`` configured for the requested boosting library.
+
+    All four families use comparable settings: 400 boosting rounds, learning
+    rate 0.05, tree complexity around ~63 leaves / depth 6, mild L2
+    regularization, and balanced class weighting (each library exposes its
+    own knob for this — ``class_weight``, ``class_weights``,
+    ``scale_pos_weight``). The categorical prep step is library-specific:
+
+    - HGB caps cardinality (``max_bins=255``) and casts to ``Categorical``.
+    - LightGBM and XGBoost cast to ``Categorical`` without capping.
+    - CatBoost casts to ``str`` and consumes a ``cat_features`` list.
+    """
+    from sklearn.pipeline import Pipeline
+
+    pos = max(int(train_positive_count), 1)
+    neg = max(int(train_negative_count), 1)
+    pos_weight = neg / pos
+
+    if family == "hgb":
+        from sklearn.ensemble import HistGradientBoostingClassifier
+
+        return Pipeline(
+            steps=[
+                (
+                    "prepare_categoricals",
+                    CategoricalCardinalityCapper(categorical_columns, max_categories=250),
+                ),
+                (
+                    "classifier",
+                    HistGradientBoostingClassifier(
+                        max_iter=400,
+                        learning_rate=0.05,
+                        max_leaf_nodes=63,
+                        min_samples_leaf=50,
+                        l2_regularization=1.0,
+                        class_weight="balanced",
+                        categorical_features="from_dtype",
+                        early_stopping=True,
+                        validation_fraction=0.1,
+                        n_iter_no_change=20,
+                        random_state=42,
+                    ),
+                ),
+            ]
+        )
+
+    if family == "lightgbm":
+        from lightgbm import LGBMClassifier
+
+        return Pipeline(
+            steps=[
+                ("prepare_categoricals", CategoricalCaster(categorical_columns)),
+                (
+                    "classifier",
+                    LGBMClassifier(
+                        n_estimators=400,
+                        learning_rate=0.05,
+                        num_leaves=63,
+                        min_child_samples=50,
+                        reg_lambda=1.0,
+                        class_weight="balanced",
+                        random_state=42,
+                        verbosity=-1,
+                        n_jobs=-1,
+                    ),
+                ),
+            ]
+        )
+
+    if family == "xgboost":
+        from xgboost import XGBClassifier
+
+        return Pipeline(
+            steps=[
+                ("prepare_categoricals", CategoricalCaster(categorical_columns)),
+                (
+                    "classifier",
+                    XGBClassifier(
+                        n_estimators=400,
+                        learning_rate=0.05,
+                        max_depth=8,
+                        min_child_weight=50.0,
+                        reg_lambda=1.0,
+                        scale_pos_weight=pos_weight,
+                        enable_categorical=True,
+                        tree_method="hist",
+                        objective="binary:logistic",
+                        eval_metric="logloss",
+                        random_state=42,
+                        verbosity=0,
+                        n_jobs=-1,
+                    ),
+                ),
+            ]
+        )
+
+    if family == "catboost":
+        from catboost import CatBoostClassifier
+
+        return Pipeline(
+            steps=[
+                ("prepare_categoricals", StringCaster(categorical_columns)),
+                (
+                    "classifier",
+                    CatBoostClassifier(
+                        iterations=400,
+                        learning_rate=0.05,
+                        depth=6,
+                        l2_leaf_reg=3.0,
+                        class_weights=[1.0, float(pos_weight)],
+                        cat_features=list(categorical_columns),
+                        random_seed=42,
+                        verbose=False,
+                        allow_writing_files=False,
+                    ),
+                ),
+            ]
+        )
+
+    raise ValueError(f"unknown model family: {family!r}")
+
+
 DEFAULT_TARGET = "continuity_risk_12m_label"
 # The four INSEE identity columns (activity_code, legal_category_code,
 # employee_size_bracket, administrative_status_at_cutoff) were once excluded
@@ -131,6 +330,7 @@ def main() -> None:
         max_rows=args.max_rows,
         train_start_year=args.train_start_year,
         train_end_year=args.train_end_year,
+        model_family=args.model_family,
     )
 
 
@@ -144,12 +344,16 @@ def train_model(
     max_rows: int | None,
     train_start_year: int | None = None,
     train_end_year: int | None = None,
+    model_family: str = "hgb",
 ) -> None:
+    if model_family not in MODEL_FAMILIES:
+        raise ValueError(
+            f"unknown model_family={model_family!r}; expected one of {MODEL_FAMILIES}"
+        )
     import duckdb
     import joblib
     import numpy as np
     import pandas as pd
-    from sklearn.ensemble import HistGradientBoostingClassifier
     from sklearn.metrics import (
         accuracy_score,
         average_precision_score,
@@ -263,35 +467,18 @@ def train_model(
     ]
     categorical_columns = [col for col in X.columns if col not in numeric_columns]
 
-    # HistGradientBoostingClassifier handles NaN and high-cardinality
-    # categoricals natively, so we drop the SimpleImputer + StandardScaler +
-    # OneHotEncoder stack the linear baseline needed. CategoricalCardinality-
-    # Capper caps activity_code (1,703 distinct values in the audit) under
-    # HGB's max_bins limit and casts categoricals to pandas Categorical so
-    # ``categorical_features="from_dtype"`` picks them up automatically.
-    model = Pipeline(
-        steps=[
-            (
-                "prepare_categoricals",
-                CategoricalCardinalityCapper(categorical_columns, max_categories=250),
-            ),
-            (
-                "classifier",
-                HistGradientBoostingClassifier(
-                    max_iter=400,
-                    learning_rate=0.05,
-                    max_leaf_nodes=63,
-                    min_samples_leaf=50,
-                    l2_regularization=1.0,
-                    class_weight="balanced",
-                    categorical_features="from_dtype",
-                    early_stopping=True,
-                    validation_fraction=0.1,
-                    n_iter_no_change=20,
-                    random_state=42,
-                ),
-            ),
-        ]
+    # Gradient-boosting libraries all handle NaN + high-cardinality categoricals
+    # natively, but each one needs the data shaped slightly differently
+    # (Categorical vs string, capped vs uncapped). The dispatcher returns a
+    # ready-to-fit Pipeline; class-imbalance handling is also library-specific.
+    train_mask_preview = df["prediction_year"] < int(df["prediction_year"].max())
+    preview_pos = int((y[train_mask_preview] == 1).sum())
+    preview_neg = int((y[train_mask_preview] == 0).sum())
+    model = _build_model_pipeline(
+        family=model_family,
+        categorical_columns=categorical_columns,
+        train_positive_count=preview_pos,
+        train_negative_count=preview_neg,
     )
 
     latest_year = int(df["prediction_year"].max())
@@ -344,7 +531,7 @@ def train_model(
     run_name = _run_artifacts_folder_name(
         model_version=model_version,
         target=target,
-        model_family="hgb",
+        model_family=model_family,
         split_strategy=split_strategy,
         max_rows=max_rows,
         rows=len(df),
@@ -367,6 +554,7 @@ def train_model(
     metadata = {
         "model_version": model_version,
         "run_name": run_name,
+        "model_family": model_family,
         "target": target,
         "horizon_months": 12,
         "eligible_rows": int(total_rows),
@@ -1112,6 +1300,7 @@ def _append_run_index(path: Path, metadata: dict[str, Any]) -> None:
     row = {
         "model_version": metadata.get("model_version"),
         "run_name": metadata.get("run_name"),
+        "model_family": metadata.get("model_family"),
         "trained_at": metadata.get("trained_at"),
         "target": metadata.get("target"),
         "rows": metadata.get("rows"),
@@ -1184,6 +1373,7 @@ def _comparison_row(row: dict[str, Any]) -> dict[str, Any]:
     return {
         "model_version": row.get("model_version"),
         "run_name": row.get("run_name"),
+        "model_family": row.get("model_family"),
         "trained_at": row.get("trained_at"),
         "target": row.get("target"),
         "rows": row.get("rows"),
@@ -1330,6 +1520,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-rows", type=int, help="Optional smoke-test cap.")
     parser.add_argument("--train-start-year", type=int, help="First prediction_year allowed in the training dataset.")
     parser.add_argument("--train-end-year", type=int, help="Last prediction_year allowed in the training dataset.")
+    parser.add_argument(
+        "--model-family",
+        choices=MODEL_FAMILIES,
+        default="hgb",
+        help="Gradient-boosting library to train.",
+    )
     parser.add_argument("--log-level", default="INFO")
     return parser.parse_args()
 
