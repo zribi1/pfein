@@ -1,0 +1,6 @@
+{
+  "bagging_temperature": 0.0,
+  "depth": 8,
+  "l2_leaf_reg": 5,
+  "learning_rate": 0.03313073862781126
+}
