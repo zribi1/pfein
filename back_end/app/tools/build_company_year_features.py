@@ -15,7 +15,7 @@ import json
 import logging
 import os
 import shutil
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +32,12 @@ def main() -> None:
         level=getattr(logging, args.log_level.upper(), logging.INFO),
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     )
+    cutoff_date_arg: date | None = None
+    if args.cutoff_date:
+        if str(args.cutoff_date).lower() == "today":
+            cutoff_date_arg = date.today()
+        else:
+            cutoff_date_arg = date.fromisoformat(args.cutoff_date)
     build_company_year_datasets(
         data_lake_dir=Path(args.data_lake_dir or settings.DATA_LAKE_DIR),
         start_year=args.start_year,
@@ -39,6 +45,8 @@ def main() -> None:
         max_companies=args.max_companies,
         year_batch_size=args.year_batch_size,
         overwrite=args.overwrite,
+        cutoff_date=cutoff_date_arg,
+        features_only=args.features_only,
     )
 
 
@@ -50,8 +58,40 @@ def build_company_year_datasets(
     max_companies: int | None,
     year_batch_size: int | None = None,
     overwrite: bool,
+    cutoff_date: date | None = None,
+    features_only: bool = False,
 ) -> None:
+    """Build the company-year features (and optionally risk labels) parquet datasets.
+
+    ``cutoff_date``: when provided, builds a single mid-year row per company with
+    ``prediction_date = cutoff_date`` instead of year-end. Forces single-partition
+    output (``prediction_year = cutoff_date.year``) and ignores ``start_year`` /
+    ``end_year`` / ``year_batch_size``. Use this for "score as of today" workflows
+    where you want fully-observed rolling windows ending at the cutoff date.
+
+    ``features_only``: when True, skip writing the ``risk_labels`` dataset. Mandatory
+    when ``cutoff_date`` is in the future or in the current year, because labels need
+    12 months of forward observations that don't yet exist.
+    """
     import duckdb
+
+    if cutoff_date is not None:
+        # In cutoff-date mode, year-range arguments are ignored. Force a sensible
+        # single partition and disable batching.
+        start_year = cutoff_date.year
+        end_year = cutoff_date.year
+        year_batch_size = None
+        # Mid-year cutoffs need features-only because the 12m label window is
+        # partially or entirely in the future. Writing labels would silently emit
+        # false negatives (companies that close after our observation window).
+        if not features_only:
+            today = date.today()
+            if cutoff_date > today or cutoff_date.year >= today.year:
+                logger.warning(
+                    "cutoff_date=%s implies labels need future observations; forcing features_only=True",
+                    cutoff_date,
+                )
+                features_only = True
 
     if end_year < start_year:
         raise ValueError("end_year must be greater than or equal to start_year")
@@ -60,16 +100,21 @@ def build_company_year_datasets(
     company_year_dir = features_dir / "company_year_features"
     labels_dir = features_dir / "risk_labels"
     company_features_dir = features_dir / "company_features"
-    for path in (company_year_dir, labels_dir, company_features_dir):
+    paths_to_prepare = [company_year_dir, company_features_dir]
+    if not features_only:
+        paths_to_prepare.append(labels_dir)
+    for path in paths_to_prepare:
         _prepare_output_dir(path, data_lake_dir, overwrite)
 
     con = duckdb.connect()
     try:
         logger.info(
-            "feature build started data_lake=%s years=%s-%s overwrite=%s max_companies=%s",
+            "feature build started data_lake=%s years=%s-%s cutoff_date=%s features_only=%s overwrite=%s max_companies=%s",
             data_lake_dir,
             start_year,
             end_year,
+            cutoff_date,
+            features_only,
             overwrite,
             max_companies,
         )
@@ -122,18 +167,21 @@ def build_company_year_datasets(
                 batch_end,
             )
             _drop_feature_temp_tables(con)
-            _create_years_table(con, batch_start, batch_end)
+            _create_years_table(con, batch_start, batch_end, cutoff_date=cutoff_date)
             _create_feature_tables(con)
             logger.info("feature tables created in DuckDB; writing company_year_features")
             _write_partitioned(con, "company_year_feature_rows", company_year_dir)
             batch_feature_rows = _count(con, "company_year_feature_rows")
             feature_rows += batch_feature_rows
             logger.info("feature write done company_year_features rows=%s", batch_feature_rows)
-            logger.info("writing risk_labels")
-            _write_partitioned(con, "risk_label_rows", labels_dir)
-            batch_label_rows = _count(con, "risk_label_rows")
-            label_rows += batch_label_rows
-            logger.info("feature write done risk_labels rows=%s", batch_label_rows)
+            if features_only:
+                logger.info("skipping risk_labels (features_only=True)")
+            else:
+                logger.info("writing risk_labels")
+                _write_partitioned(con, "risk_label_rows", labels_dir)
+                batch_label_rows = _count(con, "risk_label_rows")
+                label_rows += batch_label_rows
+                logger.info("feature write done risk_labels rows=%s", batch_label_rows)
 
         logger.info("writing company_features")
         _write_single_file(con, "company_feature_rows", company_features_dir / "company_features.parquet")
@@ -146,23 +194,26 @@ def build_company_year_datasets(
                 "rows": feature_rows,
                 "start_year": start_year,
                 "end_year": end_year,
+                "cutoff_date": cutoff_date.isoformat() if cutoff_date else None,
+                "features_only": features_only,
                 "max_companies": max_companies,
                 "year_batch_size": year_batch_size,
                 "source_roots": sources.as_dict(),
             },
         )
-        _write_manifest(
-            labels_dir,
-            {
-                "dataset": "risk_labels",
-                "rows": label_rows,
-                "start_year": start_year,
-                "end_year": end_year,
-                "max_companies": max_companies,
-                "year_batch_size": year_batch_size,
-                "source_roots": sources.as_dict(),
-            },
-        )
+        if not features_only:
+            _write_manifest(
+                labels_dir,
+                {
+                    "dataset": "risk_labels",
+                    "rows": label_rows,
+                    "start_year": start_year,
+                    "end_year": end_year,
+                    "max_companies": max_companies,
+                    "year_batch_size": year_batch_size,
+                    "source_roots": sources.as_dict(),
+                },
+            )
         _write_manifest(
             company_features_dir,
             {
@@ -343,13 +394,13 @@ def _create_feature_tables(con: Any) -> None:
         SELECT
             c.siren,
             y.prediction_year,
-            make_date(y.prediction_year, 12, 31) AS prediction_date,
+            y.prediction_date,
             cc.creation_date
         FROM companies c
         CROSS JOIN years y
         LEFT JOIN company_creation cc ON cc.siren = c.siren
         WHERE cc.creation_date IS NULL
-           OR cc.creation_date <= make_date(y.prediction_year, 12, 31)
+           OR cc.creation_date <= y.prediction_date
         """
     )
     con.execute(
@@ -681,15 +732,45 @@ def _year_batches(start_year: int, end_year: int, year_batch_size: int | None) -
     return batches
 
 
-def _create_years_table(con: Any, start_year: int, end_year: int) -> None:
-    con.execute(
-        """
-        CREATE TEMP TABLE years AS
-        SELECT prediction_year::INTEGER AS prediction_year
-        FROM range(?, ? + 1) AS y(prediction_year)
-        """,
-        [start_year, end_year],
-    )
+def _create_years_table(
+    con: Any,
+    start_year: int,
+    end_year: int,
+    cutoff_date: date | None = None,
+) -> None:
+    """Build the ``years`` temp table that drives one prediction row per company-year.
+
+    Two modes:
+
+    * Year-end (default): emit one row per integer year in ``[start_year, end_year]``,
+      each with ``prediction_date = make_date(prediction_year, 12, 31)``. This is the
+      training-grade behaviour — every row has a fully observed 12-month label window.
+
+    * Mid-year cutoff: when ``cutoff_date`` is supplied, emit a single row with
+      ``prediction_year = cutoff_date.year`` and ``prediction_date = cutoff_date``.
+      Rolling-window features then end at ``cutoff_date`` (e.g. May 2025 → May 2026
+      instead of Jan → Dec 2026), so windows are fully observed even mid-year.
+      ``start_year`` / ``end_year`` are ignored in this mode.
+    """
+    if cutoff_date is not None:
+        con.execute(
+            """
+            CREATE TEMP TABLE years AS
+            SELECT ?::INTEGER AS prediction_year, ?::DATE AS prediction_date
+            """,
+            [cutoff_date.year, cutoff_date.isoformat()],
+        )
+    else:
+        con.execute(
+            """
+            CREATE TEMP TABLE years AS
+            SELECT
+                prediction_year::INTEGER AS prediction_year,
+                make_date(prediction_year, 12, 31)::DATE AS prediction_date
+            FROM range(?, ? + 1) AS y(prediction_year)
+            """,
+            [start_year, end_year],
+        )
 
 
 def _drop_feature_temp_tables(con: Any) -> None:
@@ -882,6 +963,19 @@ def _parse_args() -> argparse.Namespace:
         help="Build and write prediction years in smaller batches to reduce peak memory.",
     )
     parser.add_argument("--overwrite", action="store_true")
+    parser.add_argument(
+        "--cutoff-date",
+        help=(
+            "Mid-year cutoff date (YYYY-MM-DD or 'today'). When set, builds a single "
+            "row per company with prediction_date = cutoff_date instead of year-end. "
+            "Useful for 'score as of today' workflows. Forces features-only output."
+        ),
+    )
+    parser.add_argument(
+        "--features-only",
+        action="store_true",
+        help="Skip the risk_labels write. Required for mid-year/future cutoffs.",
+    )
     parser.add_argument("--log-level", default="INFO")
     return parser.parse_args()
 
