@@ -27,3 +27,6 @@ references/*.json
 references/*.xml
 references/*.taz
 references/*.zip
+
+# Archived Colab notebooks — kept on disk for reference but not tracked.
+collabs/archive/
