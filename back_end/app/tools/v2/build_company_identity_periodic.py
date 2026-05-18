@@ -175,7 +175,38 @@ def build_company_identity_periodic(
         ]
     )
 
+    # Date sanity filter. INSEE bulk data contains placeholder/corruption dates
+    # (e.g. 0001-01-01, year 9202) that would poison downstream temporal joins.
+    # We clip to a plausible SIRENE coverage window and report how many rows
+    # were dropped.
+    period_start_col = cols.get("period_start")
+    date_lo = "DATE '1900-01-01'"
+    date_hi = "DATE '2030-01-01'"
+
+    if period_start_col:
+        invalid_date_count = con.execute(
+            f"""
+            SELECT COUNT(*)
+            FROM read_parquet('{glob}')
+            WHERE {cols.get('siren', 'NULL')} IS NOT NULL
+              AND "{period_start_col}" IS NOT NULL
+              AND ("{period_start_col}" < {date_lo}
+                OR "{period_start_col}" > {date_hi})
+            """
+        ).fetchone()[0]
+        logger.info(
+            "Date sanity filter will drop %s rows outside [%s, %s]",
+            invalid_date_count, date_lo, date_hi,
+        )
+    else:
+        invalid_date_count = 0
+
     logger.info("Loading source parquet into in-memory cache")
+    date_predicate = (
+        f' AND "{period_start_col}" BETWEEN {date_lo} AND {date_hi}'
+        if period_start_col
+        else ""
+    )
     con.execute(
         f"""
         CREATE TEMP TABLE source AS
@@ -183,6 +214,7 @@ def build_company_identity_periodic(
         FROM read_parquet('{glob}')
         WHERE {cols.get('siren', 'NULL')} IS NOT NULL
           AND {cols.get('period_start', 'NULL')} IS NOT NULL
+          {date_predicate}
         """
     )
 
@@ -216,6 +248,12 @@ def build_company_identity_periodic(
     # Single combined audit pass on the cached input table. Overlap/gap are
     # measured against `source_period_end` (the raw INSEE field), not the
     # synthesized output `period_end`.
+    #
+    # INSEE convention: `date_fin` is INCLUSIVE (the last day the state was
+    # active). The next period starts on `date_fin + 1 day`. So:
+    #   - overlap = period_start <= prev_source_end
+    #   - gap     = period_start >  prev_source_end + 1 day
+    #   - contiguous = period_start == prev_source_end + 1 day
     audit = con.execute(
         """
         WITH audit_base AS (
@@ -237,11 +275,14 @@ def build_company_identity_periodic(
             AVG(EXTRACT(YEAR FROM next_period_start) - EXTRACT(YEAR FROM period_start))
                 FILTER (WHERE next_period_start IS NOT NULL)                  AS avg_period_years,
             SUM(CASE WHEN prev_source_end IS NOT NULL
-                      AND period_start < prev_source_end
+                      AND period_start <= prev_source_end
                      THEN 1 ELSE 0 END)                                       AS rows_with_overlap,
             SUM(CASE WHEN prev_source_end IS NOT NULL
-                      AND period_start > prev_source_end
+                      AND period_start  > prev_source_end + INTERVAL 1 DAY
                      THEN 1 ELSE 0 END)                                       AS rows_with_gap,
+            SUM(CASE WHEN prev_source_end IS NOT NULL
+                      AND period_start = prev_source_end + INTERVAL 1 DAY
+                     THEN 1 ELSE 0 END)                                       AS rows_contiguous,
             SUM(CASE WHEN source_period_end IS NULL THEN 1 ELSE 0 END)        AS rows_with_null_source_period_end
         FROM audit_base
         """
@@ -251,6 +292,8 @@ def build_company_identity_periodic(
     unique_sirens = int(audit[1])
     overlaps = int(audit[6])
     gaps = int(audit[7])
+    contiguous = int(audit[8])
+    non_first_rows = total_rows - unique_sirens  # rows that have a predecessor
 
     stats: dict[str, Any] = {
         "total_rows": total_rows,
@@ -261,11 +304,19 @@ def build_company_identity_periodic(
         "avg_period_years": float(audit[5]) if audit[5] is not None else None,
         "rows_with_overlap": overlaps,
         "rows_with_gap": gaps,
-        "rows_with_null_source_period_end": int(audit[8]),
+        "rows_contiguous": contiguous,
+        "rows_with_null_source_period_end": int(audit[9]),
+        "rows_dropped_invalid_date": int(invalid_date_count),
+        "date_sanity_lo": "1900-01-01",
+        "date_sanity_hi": "2030-01-01",
         "overlap_rate": round(overlaps / max(total_rows, 1), 6),
         "gap_rate": round(gaps / max(total_rows, 1), 6),
+        # Among rows that have a predecessor (non-first rows), what fraction
+        # are perfectly contiguous? This is the metric to compare against the
+        # roadmap's "≥95% SIRENs with contiguous periods" criterion.
+        "contiguous_rate_non_first": round(contiguous / max(non_first_rows, 1), 6),
         "rows_per_siren": round(total_rows / max(unique_sirens, 1), 3),
-        "audit_basis": "input_parquet_source_period_end",
+        "audit_basis": "input_parquet_source_period_end_inclusive",
         "input_columns_resolved": cols,
         "raw_dir": str(raw_dir),
         "out_path": out_path,
