@@ -5,7 +5,10 @@
       "Bash(curl -sS http://localhost:8000/api/v1/health)",
       "Bash(curl -sS http://localhost:8000/api/v1/health/db)",
       "Bash(python -c \"import ast, sys; [ast.parse\\(open\\(p\\).read\\(\\)\\) for p in ['app/main.py','app/worker.py','app/scheduler/scheduler.py','app/scheduler/jobs.py','app/services/ingestion_service.py','app/core/config.py']]; print\\('syntax ok'\\)\")",
-      "Bash(python -c \"import json; nb=json.load\\(open\\('collabs/v2/v2_phase_1_identity_periodic.ipynb',encoding='utf-8'\\)\\); [print\\(f'--- Cell {i} \\({c[\\\\\"cell_type\\\\\"]}\\) ---'\\); print\\(''.join\\(c.get\\('source',[]\\)\\)\\) for i,c in enumerate\\(nb['cells'][:8]\\)]\")"
+      "Bash(python -c \"import json; nb=json.load\\(open\\('collabs/v2/v2_phase_1_identity_periodic.ipynb',encoding='utf-8'\\)\\); [print\\(f'--- Cell {i} \\({c[\\\\\"cell_type\\\\\"]}\\) ---'\\); print\\(''.join\\(c.get\\('source',[]\\)\\)\\) for i,c in enumerate\\(nb['cells'][:8]\\)]\")",
+      "Bash(python .tmp_make_phase2_nb.py)",
+      "Bash(python -c \"import json; nb=json.load\\(open\\('collabs/v2/v2_phase_2_features_audit.ipynb',encoding='utf-8'\\)\\); print\\('cells:', len\\(nb['cells']\\), 'types:', [c['cell_type'] for c in nb['cells']]\\)\")",
+      "Bash(rm .tmp_make_phase2_nb.py)"
     ],
     "additionalDirectories": [
       "c:\\Users\\MSI\\Desktop\\Pfein\\back_end\\app"
