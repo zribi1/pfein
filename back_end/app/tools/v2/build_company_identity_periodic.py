@@ -137,9 +137,12 @@ def build_company_identity_periodic(
         con.execute(f"PRAGMA temp_directory='{duckdb_temp_dir.as_posix()}'")
     threads = max(os.cpu_count() or 4, 4)
     con.execute(f"PRAGMA threads={threads}")
-    con.execute("PRAGMA memory_limit='40GB'")
+    # Conservative cap: with a 52 GB Colab High-RAM runtime, leaving 25+ GB
+    # free avoids OOM when the kernel's Drive-FUSE page cache balloons while
+    # uploading the output parquet. The build only needs ~10–15 GB peak.
+    con.execute("PRAGMA memory_limit='25GB'")
     con.execute("PRAGMA enable_progress_bar")
-    logger.info("DuckDB configured: threads=%s memory_limit=40GB", threads)
+    logger.info("DuckDB configured: threads=%s memory_limit=25GB", threads)
 
     cols = _resolve_columns(con, glob)
     logger.info("Resolved input columns: %s", cols)
