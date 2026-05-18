@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
@@ -134,8 +135,11 @@ def build_company_identity_periodic(
     if duckdb_temp_dir is not None:
         duckdb_temp_dir.mkdir(parents=True, exist_ok=True)
         con.execute(f"PRAGMA temp_directory='{duckdb_temp_dir.as_posix()}'")
-    con.execute("PRAGMA threads=4")
+    threads = max(os.cpu_count() or 4, 4)
+    con.execute(f"PRAGMA threads={threads}")
+    con.execute("PRAGMA memory_limit='40GB'")
     con.execute("PRAGMA enable_progress_bar")
+    logger.info("DuckDB configured: threads=%s memory_limit=40GB", threads)
 
     cols = _resolve_columns(con, glob)
     logger.info("Resolved input columns: %s", cols)
@@ -147,11 +151,21 @@ def build_company_identity_periodic(
             expr = f"CAST({expr} AS {cast_to})"
         return f"{expr} AS {canonical}"
 
-    select_clause = ", ".join(
+    # Cache the projected input as an in-memory table. We keep
+    # `source_period_end` (the raw INSEE period_end) so the audit can validate
+    # *input* contiguity. The output's `period_end` is synthesized via LEAD and
+    # is contiguous by construction, so auditing the output would be tautological.
+    period_end_actual = cols.get("period_end")
+    source_period_end_expr = (
+        f'CAST("{period_end_actual}" AS DATE) AS source_period_end'
+        if period_end_actual
+        else "CAST(NULL AS DATE) AS source_period_end"
+    )
+    source_select = ", ".join(
         [
             col_or_null("siren", "VARCHAR"),
             col_or_null("period_start", "DATE"),
-            col_or_null("period_end", "DATE"),
+            source_period_end_expr,
             col_or_null("denomination", "VARCHAR"),
             col_or_null("activity_code", "VARCHAR"),
             col_or_null("legal_category_code", "VARCHAR"),
@@ -161,108 +175,97 @@ def build_company_identity_periodic(
         ]
     )
 
-    out_path = (out_dir / "company_identity_periodic.parquet").as_posix()
+    logger.info("Loading source parquet into in-memory cache")
+    con.execute(
+        f"""
+        CREATE TEMP TABLE source AS
+        SELECT {source_select}
+        FROM read_parquet('{glob}')
+        WHERE {cols.get('siren', 'NULL')} IS NOT NULL
+          AND {cols.get('period_start', 'NULL')} IS NOT NULL
+        """
+    )
 
-    logger.info("Reading raw and writing periodic identity to %s", out_path)
+    out_path = (out_dir / "company_identity_periodic.parquet").as_posix()
+    logger.info("Writing periodic identity to %s", out_path)
     con.execute(
         f"""
         COPY (
-            WITH source AS (
-                SELECT {select_clause}
-                FROM read_parquet('{glob}', union_by_name=true)
-                WHERE {cols.get('siren', 'NULL')} IS NOT NULL
-            ),
-            ordered AS (
-                SELECT
-                    siren,
-                    period_start,
-                    LEAD(period_start) OVER (PARTITION BY siren ORDER BY period_start) AS next_period_start,
-                    period_end AS source_period_end,
-                    denomination,
-                    activity_code,
-                    legal_category_code,
-                    employee_size_bracket,
-                    administrative_status,
-                    creation_date
-                FROM source
-                WHERE period_start IS NOT NULL
-            )
             SELECT
                 siren,
                 period_start,
-                COALESCE(next_period_start, DATE '9999-12-31') AS period_end,
+                COALESCE(
+                    LEAD(period_start) OVER w,
+                    DATE '9999-12-31'
+                ) AS period_end,
                 denomination,
                 activity_code,
                 legal_category_code,
                 employee_size_bracket,
                 administrative_status,
                 creation_date,
-                next_period_start IS NULL AS is_latest_period
-            FROM ordered
+                LEAD(period_start) OVER w IS NULL AS is_latest_period
+            FROM source
+            WINDOW w AS (PARTITION BY siren ORDER BY period_start)
         )
         TO '{out_path}'
         (FORMAT PARQUET, COMPRESSION ZSTD, ROW_GROUP_SIZE 256000)
         """
     )
 
-    # Audit stats
+    # Single combined audit pass on the cached input table. Overlap/gap are
+    # measured against `source_period_end` (the raw INSEE field), not the
+    # synthesized output `period_end`.
     audit = con.execute(
-        f"""
-        WITH d AS (SELECT * FROM read_parquet('{out_path}'))
+        """
+        WITH audit_base AS (
+            SELECT
+                siren,
+                period_start,
+                source_period_end,
+                LAG(source_period_end) OVER w AS prev_source_end,
+                LEAD(period_start)     OVER w AS next_period_start
+            FROM source
+            WINDOW w AS (PARTITION BY siren ORDER BY period_start)
+        )
         SELECT
-            COUNT(*)                                      AS total_rows,
-            COUNT(DISTINCT siren)                         AS unique_sirens,
-            SUM(CASE WHEN is_latest_period THEN 1 ELSE 0 END) AS latest_period_rows,
-            MIN(period_start)                             AS min_period_start,
-            MAX(period_start)                             AS max_period_start,
-            AVG(EXTRACT(YEAR FROM period_end) - EXTRACT(YEAR FROM period_start)) AS avg_period_years
-        FROM d
+            COUNT(*)                                                          AS total_rows,
+            COUNT(DISTINCT siren)                                             AS unique_sirens,
+            SUM(CASE WHEN next_period_start IS NULL THEN 1 ELSE 0 END)        AS latest_period_rows,
+            MIN(period_start)                                                 AS min_period_start,
+            MAX(period_start)                                                 AS max_period_start,
+            AVG(EXTRACT(YEAR FROM next_period_start) - EXTRACT(YEAR FROM period_start))
+                FILTER (WHERE next_period_start IS NOT NULL)                  AS avg_period_years,
+            SUM(CASE WHEN prev_source_end IS NOT NULL
+                      AND period_start < prev_source_end
+                     THEN 1 ELSE 0 END)                                       AS rows_with_overlap,
+            SUM(CASE WHEN prev_source_end IS NOT NULL
+                      AND period_start > prev_source_end
+                     THEN 1 ELSE 0 END)                                       AS rows_with_gap,
+            SUM(CASE WHEN source_period_end IS NULL THEN 1 ELSE 0 END)        AS rows_with_null_source_period_end
+        FROM audit_base
         """
     ).fetchone()
 
-    # Overlap detection: a period that starts before the previous period's end
-    overlaps = con.execute(
-        f"""
-        WITH d AS (SELECT * FROM read_parquet('{out_path}')),
-        pairs AS (
-            SELECT
-                siren,
-                period_start,
-                LAG(period_end) OVER (PARTITION BY siren ORDER BY period_start) AS prev_period_end
-            FROM d
-        )
-        SELECT COUNT(*) FROM pairs WHERE period_start < prev_period_end
-        """
-    ).fetchone()[0]
-
-    # Gap detection: a period that starts strictly after the previous period's
-    # end (period_end is exclusive, so a gap exists iff period_start > prev_end)
-    gaps = con.execute(
-        f"""
-        WITH d AS (SELECT * FROM read_parquet('{out_path}')),
-        pairs AS (
-            SELECT
-                siren,
-                period_start,
-                LAG(period_end) OVER (PARTITION BY siren ORDER BY period_start) AS prev_period_end
-            FROM d
-        )
-        SELECT COUNT(*) FROM pairs WHERE prev_period_end IS NOT NULL AND period_start > prev_period_end
-        """
-    ).fetchone()[0]
+    total_rows = int(audit[0])
+    unique_sirens = int(audit[1])
+    overlaps = int(audit[6])
+    gaps = int(audit[7])
 
     stats: dict[str, Any] = {
-        "total_rows": int(audit[0]),
-        "unique_sirens": int(audit[1]),
+        "total_rows": total_rows,
+        "unique_sirens": unique_sirens,
         "latest_period_rows": int(audit[2]),
         "min_period_start": str(audit[3]),
         "max_period_start": str(audit[4]),
         "avg_period_years": float(audit[5]) if audit[5] is not None else None,
-        "rows_with_overlap": int(overlaps),
-        "rows_with_gap": int(gaps),
-        "overlap_rate": round(int(overlaps) / max(int(audit[0]), 1), 6),
-        "gap_rate": round(int(gaps) / max(int(audit[0]), 1), 6),
-        "rows_per_siren": round(int(audit[0]) / max(int(audit[1]), 1), 3),
+        "rows_with_overlap": overlaps,
+        "rows_with_gap": gaps,
+        "rows_with_null_source_period_end": int(audit[8]),
+        "overlap_rate": round(overlaps / max(total_rows, 1), 6),
+        "gap_rate": round(gaps / max(total_rows, 1), 6),
+        "rows_per_siren": round(total_rows / max(unique_sirens, 1), 3),
+        "audit_basis": "input_parquet_source_period_end",
         "input_columns_resolved": cols,
         "raw_dir": str(raw_dir),
         "out_path": out_path,
