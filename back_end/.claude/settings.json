@@ -4,7 +4,8 @@
       "Bash(docker compose *)",
       "Bash(curl -sS http://localhost:8000/api/v1/health)",
       "Bash(curl -sS http://localhost:8000/api/v1/health/db)",
-      "Bash(python -c \"import ast, sys; [ast.parse\\(open\\(p\\).read\\(\\)\\) for p in ['app/main.py','app/worker.py','app/scheduler/scheduler.py','app/scheduler/jobs.py','app/services/ingestion_service.py','app/core/config.py']]; print\\('syntax ok'\\)\")"
+      "Bash(python -c \"import ast, sys; [ast.parse\\(open\\(p\\).read\\(\\)\\) for p in ['app/main.py','app/worker.py','app/scheduler/scheduler.py','app/scheduler/jobs.py','app/services/ingestion_service.py','app/core/config.py']]; print\\('syntax ok'\\)\")",
+      "Bash(python -c \"import json; nb=json.load\\(open\\('collabs/v2/v2_phase_1_identity_periodic.ipynb',encoding='utf-8'\\)\\); [print\\(f'--- Cell {i} \\({c[\\\\\"cell_type\\\\\"]}\\) ---'\\); print\\(''.join\\(c.get\\('source',[]\\)\\)\\) for i,c in enumerate\\(nb['cells'][:8]\\)]\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\MSI\\Desktop\\Pfein\\back_end\\app"
