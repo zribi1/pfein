@@ -5,7 +5,9 @@
       "Bash(curl -sS http://localhost:8000/api/v1/health)",
       "Bash(curl -sS http://localhost:8000/api/v1/health/db)",
       "Bash(python -c \"import ast, sys; [ast.parse\\(open\\(p\\).read\\(\\)\\) for p in ['app/main.py','app/worker.py','app/scheduler/scheduler.py','app/scheduler/jobs.py','app/services/ingestion_service.py','app/core/config.py']]; print\\('syntax ok'\\)\")",
-      "Bash(python -X utf8 -c ' *)"
+      "Bash(python -X utf8 -c ' *)",
+      "Bash(python -c ' *)",
+      "Bash(python _tmp_fix_cell17.py)"
     ],
     "additionalDirectories": [
       "c:\\Users\\MSI\\Desktop\\Pfein\\back_end\\app"
