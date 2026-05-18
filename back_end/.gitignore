@@ -27,3 +27,6 @@ references/*.json
 references/*.xml
 references/*.taz
 references/*.zip
+
+# Local notebook backups (not part of V2 work; recover from other branches if needed).
+collabs/archive/
