@@ -230,22 +230,77 @@ def _create_company_identity_view(con: Any, root: Path | None) -> None:
     # `employee_size_year` from V1 are not present in the periodic table —
     # closure signals come from BODACC events, employee_size_year was a weak
     # feature and is dropped.
-    _create_normalized_view(
-        con,
-        "company_identity",
-        root,
-        {
-            "siren": ("VARCHAR", ("siren",)),
-            "company_name": ("VARCHAR", ("denomination", "company_name")),
-            "activity_code": ("VARCHAR", ("activity_code",)),
-            "legal_category_code": ("VARCHAR", ("legal_category_code",)),
-            "administrative_status": ("VARCHAR", ("administrative_status",)),
-            "creation_date": ("DATE", ("creation_date",)),
-            "period_start": ("DATE", ("period_start",)),
-            "period_end": ("DATE", ("period_end",)),
-            "employee_size_bracket": ("VARCHAR", ("employee_size_bracket",)),
-        },
+    #
+    # IMPORTANT: we DO NOT use _create_normalized_view here because that helper
+    # applies _bounded_temporal_expr to every DATE column, clipping anything
+    # outside [1900, today+1y] to NULL. Phase 1 writes `period_end = 9999-12-31`
+    # for each SIREN's latest (still-open) period -- the bounded clip would
+    # null those out, breaking the join for every active SIREN at its current
+    # state. We build the view by hand, bounding only the non-sentinel dates.
+    if root is None or not _has_parquet(root):
+        con.execute(
+            """
+            CREATE OR REPLACE TEMP VIEW company_identity AS
+            SELECT
+                NULL::VARCHAR AS siren,
+                NULL::VARCHAR AS company_name,
+                NULL::VARCHAR AS activity_code,
+                NULL::VARCHAR AS legal_category_code,
+                NULL::VARCHAR AS administrative_status,
+                NULL::DATE    AS creation_date,
+                NULL::DATE    AS period_start,
+                NULL::DATE    AS period_end,
+                NULL::VARCHAR AS employee_size_bracket
+            WHERE FALSE
+            """
+        )
+        logger.info("created empty view company_identity")
+        return
+
+    path = _duckdb_glob(root)
+    available = _parquet_columns(con, path)
+    period_start_col = _find_column(available, "period_start")
+    period_end_col   = _find_column(available, "period_end")
+    creation_col     = _find_column(available, "creation_date")
+    if not period_start_col or not period_end_col:
+        raise RuntimeError(
+            f"company_identity_periodic at {root} is missing required date columns "
+            f"(period_start={period_start_col!r}, period_end={period_end_col!r})"
+        )
+
+    def varchar(name: str) -> str:
+        col = _find_column(available, name)
+        return f"NULLIF(TRIM(TRY_CAST({_quote_ident(col)} AS VARCHAR)), '')" if col else "NULL"
+
+    # period_start gets the normal temporal bounds; period_end keeps the
+    # 9999-12-31 sentinel intact so the join's `period_end > prediction_date`
+    # test fires for currently-active periods.
+    period_start_expr = _bounded_temporal_expr(
+        f"TRY_CAST({_quote_ident(period_start_col)} AS DATE)", "DATE"
     )
+    period_end_expr = f"TRY_CAST({_quote_ident(period_end_col)} AS DATE)"
+    creation_expr = (
+        _bounded_temporal_expr(f"TRY_CAST({_quote_ident(creation_col)} AS DATE)", "DATE")
+        if creation_col else "NULL::DATE"
+    )
+
+    con.execute(
+        f"""
+        CREATE OR REPLACE TEMP VIEW company_identity AS
+        SELECT
+            {varchar('siren')}                  AS siren,
+            {varchar('denomination')}           AS company_name,
+            {varchar('activity_code')}          AS activity_code,
+            {varchar('legal_category_code')}    AS legal_category_code,
+            {varchar('administrative_status')}  AS administrative_status,
+            {creation_expr}                     AS creation_date,
+            {period_start_expr}                 AS period_start,
+            {period_end_expr}                   AS period_end,
+            {varchar('employee_size_bracket')}  AS employee_size_bracket
+        FROM read_parquet('{_sql_string(path)}')
+        """
+    )
+    logger.info("created view company_identity from %s (period_end sentinel preserved)", root)
 
 
 def _create_legal_events_view(con: Any, root: Path | None) -> None:
