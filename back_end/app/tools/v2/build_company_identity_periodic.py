@@ -61,10 +61,12 @@ CANONICAL_COLUMNS = {
         "categorie_juridique_unite_legale",
         "categorieJuridiqueUniteLegale",
     ),
-    "employee_size_bracket": (
-        "tranche_effectifs_unite_legale",
-        "trancheEffectifsUniteLegale",
-    ),
+    # employee_size_bracket is intentionally NOT mapped here: the INSEE
+    # `stock_unite_legale_historique` feed does not publish tranche_effectifs as
+    # a time-versioned column. It is only available as a current snapshot in
+    # `stock_unite_legale`, which is what V1 used and what caused the leakage
+    # this rebuild was meant to fix. Re-introducing the snapshot would defeat
+    # V2's purpose, so we drop the feature.
     "administrative_status": (
         "etat_administratif_unite_legale",
         "etatAdministratifUniteLegale",
@@ -172,7 +174,6 @@ def build_company_identity_periodic(
             col_or_null("denomination", "VARCHAR"),
             col_or_null("activity_code", "VARCHAR"),
             col_or_null("legal_category_code", "VARCHAR"),
-            col_or_null("employee_size_bracket", "VARCHAR"),
             col_or_null("administrative_status", "VARCHAR"),
             col_or_null("creation_date", "DATE"),
         ]
@@ -236,7 +237,6 @@ def build_company_identity_periodic(
                 denomination,
                 activity_code,
                 legal_category_code,
-                employee_size_bracket,
                 administrative_status,
                 creation_date,
                 LEAD(period_start) OVER w IS NULL AS is_latest_period

@@ -4,9 +4,12 @@ V2 vs V1 difference is one semantic change — the identity join now uses
 the strict interval test `period_start <= prediction_date < period_end`
 against `clean/company_identity_periodic` (built in Phase 1), instead of
 arg_max'ing the latest qualifying period from the V1 snapshot. As a
-result the four INSEE features that V1 had to exclude (activity_code,
-legal_category_code, employee_size_bracket, administrative_status) are
-now legitimate period-of-record values.
+result three of the four INSEE features that V1 had to exclude
+(activity_code, legal_category_code, administrative_status) are now
+legitimate period-of-record values. The fourth one (employee_size_bracket
+/ tranche_effectifs) is intentionally dropped: INSEE only publishes it
+as a current snapshot, not in the historique feed, so reintroducing it
+would resurrect V1's leakage.
 
 Outputs sit under `data-lake/features/company_year_features_v2/`. Labels
 are reused from V1 per roadmap (the `risk_labels` table is unchanged),
@@ -249,8 +252,7 @@ def _create_company_identity_view(con: Any, root: Path | None) -> None:
                 NULL::VARCHAR AS administrative_status,
                 NULL::DATE    AS creation_date,
                 NULL::DATE    AS period_start,
-                NULL::DATE    AS period_end,
-                NULL::VARCHAR AS employee_size_bracket
+                NULL::DATE    AS period_end
             WHERE FALSE
             """
         )
@@ -295,8 +297,7 @@ def _create_company_identity_view(con: Any, root: Path | None) -> None:
             {varchar('administrative_status')}  AS administrative_status,
             {creation_expr}                     AS creation_date,
             {period_start_expr}                 AS period_start,
-            {period_end_expr}                   AS period_end,
-            {varchar('employee_size_bracket')}  AS employee_size_bracket
+            {period_end_expr}                   AS period_end
         FROM read_parquet('{_sql_string(path)}')
         """
     )
@@ -440,8 +441,7 @@ def _create_feature_tables(con: Any) -> None:
                 i.company_name,
                 i.activity_code,
                 i.legal_category_code,
-                i.administrative_status AS administrative_status_at_cutoff,
-                i.employee_size_bracket
+                i.administrative_status AS administrative_status_at_cutoff
             FROM base_rows b
             LEFT JOIN company_identity i
               ON i.siren = b.siren
@@ -553,9 +553,6 @@ def _create_feature_tables(con: Any) -> None:
             i.company_name,
             i.activity_code,
             i.legal_category_code,
-            -- V2: no anti-leakage CASE needed. The period-aware join already
-            -- guarantees the bracket was active at the prediction_date.
-            i.employee_size_bracket,
             i.administrative_status_at_cutoff,
             CASE
                 WHEN i.creation_date IS NULL THEN NULL

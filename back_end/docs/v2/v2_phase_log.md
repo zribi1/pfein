@@ -21,7 +21,7 @@ Ce fichier consigne les résultats au fur et à mesure de l'exécution des phase
 
 ### Décisions
 
-_(à remplir)_
+- **2026-05-19 — `employee_size_bracket` abandonnée.** Diagnostic Phase 2 (cellule 2b du notebook d'audit) : la colonne est NULL sur 100 % des 69 M périodes de `clean/company_identity_periodic`. Cause racine : `stock_unite_legale_historique` ne contient pas `tranche_effectifs_unite_legale` — INSEE ne publie ce champ que dans le snapshot courant `stock_unite_legale`. Re-sourcer depuis le snapshot resservirait la fuite de V1. La feature est donc retirée de `CANONICAL_COLUMNS` et du schéma V2 features. V2 réintègre donc **3 des 4** variables INSEE exclues par V1 au lieu de 4.
 
 ### Artefacts produits
 

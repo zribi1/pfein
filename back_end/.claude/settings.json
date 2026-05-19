@@ -8,7 +8,14 @@
       "Bash(python -c \"import json; nb=json.load\\(open\\('collabs/v2/v2_phase_1_identity_periodic.ipynb',encoding='utf-8'\\)\\); [print\\(f'--- Cell {i} \\({c[\\\\\"cell_type\\\\\"]}\\) ---'\\); print\\(''.join\\(c.get\\('source',[]\\)\\)\\) for i,c in enumerate\\(nb['cells'][:8]\\)]\")",
       "Bash(python .tmp_make_phase2_nb.py)",
       "Bash(python -c \"import json; nb=json.load\\(open\\('collabs/v2/v2_phase_2_features_audit.ipynb',encoding='utf-8'\\)\\); print\\('cells:', len\\(nb['cells']\\), 'types:', [c['cell_type'] for c in nb['cells']]\\)\")",
-      "Bash(rm .tmp_make_phase2_nb.py)"
+      "Bash(rm .tmp_make_phase2_nb.py)",
+      "Bash(python .tmp_make_phase3_nb.py)",
+      "Bash(python -c \"import json; nb=json.load\\(open\\('collabs/v2/v2_phase_3_baseline_100k.ipynb',encoding='utf-8'\\)\\); print\\('cells:', len\\(nb['cells']\\)\\); [print\\(f'  {i}: {c[\\\\\"cell_type\\\\\"]}', ''.join\\(c['source']\\)[:80].replace\\(chr\\(10\\),'\\\\\\\\\\\\\\\\n'\\)[:80]\\) for i,c in enumerate\\(nb['cells']\\)]\")",
+      "Bash(rm .tmp_make_phase3_nb.py)",
+      "Bash(python -c \"import json; nb = json.load\\(open\\(r'c:\\\\Users\\\\omar charfi\\\\Desktop\\\\pfe_ml\\\\pfein\\\\back_end\\\\collabs\\\\v2\\\\v2_phase_2_features_audit.ipynb', encoding='utf-8'\\)\\); [print\\(i, c.get\\('id', 'NO-ID'\\), c['cell_type'], \\(c['source'][0][:60] if c.get\\('source'\\) else ''\\)\\) for i, c in enumerate\\(nb['cells']\\)]\")",
+      "Bash(python -c \"import json,sys; sys.stdout.reconfigure\\(encoding='utf-8'\\); nb = json.load\\(open\\(r'c:\\\\Users\\\\omar charfi\\\\Desktop\\\\pfe_ml\\\\pfein\\\\back_end\\\\collabs\\\\v2\\\\v2_phase_2_features_audit.ipynb', encoding='utf-8'\\)\\); print\\('nbformat:', nb.get\\('nbformat'\\), nb.get\\('nbformat_minor'\\)\\); print\\('cell0 keys:', list\\(nb['cells'][0].keys\\(\\)\\)\\); print\\('cell6 keys:', list\\(nb['cells'][6].keys\\(\\)\\)\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(r'c:\\\\Users\\\\omar charfi\\\\Desktop\\\\pfe_ml\\\\pfein\\\\back_end\\\\collabs\\\\v2\\\\_diagnostic_cell.py', encoding='utf-8'\\).read\\(\\)\\); print\\('OK syntax'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(r'c:\\\\Users\\\\omar charfi\\\\Desktop\\\\pfe_ml\\\\pfein\\\\back_end\\\\app\\\\tools\\\\v2\\\\build_company_identity_periodic.py'\\).read\\(\\)\\); ast.parse\\(open\\(r'c:\\\\Users\\\\omar charfi\\\\Desktop\\\\pfe_ml\\\\pfein\\\\back_end\\\\app\\\\tools\\\\v2\\\\build_company_year_features_v2.py'\\).read\\(\\)\\); print\\('OK both files parse'\\)\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\MSI\\Desktop\\Pfein\\back_end\\app"

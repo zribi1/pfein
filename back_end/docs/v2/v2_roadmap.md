@@ -44,6 +44,8 @@ back_end/
 
 **Pourquoi.** En V1 (Run 3), nous avons exclu les quatre variables d'identité INSEE (`activity_code`, `legal_category_code`, `employee_size_bracket`, `administrative_status_at_cutoff`) parce que `clean/company_identity` était un snapshot non-périodique. Le SHAP (Phase D V1) confirme que ces variables auraient été les plus prédictives. Les réintégrer légitimement est la priorité d'amélioration N°1.
 
+> **Restriction découverte en Phase 2.** Le flux INSEE `stock_unite_legale_historique` ne publie *pas* `tranche_effectifs_unite_legale` en version historique (cette colonne n'existe que dans le snapshot courant `stock_unite_legale`). V2 ne réintègre donc que **trois** des quatre variables : `activity_code`, `legal_category_code`, `administrative_status_at_cutoff`. La quatrième est explicitement abandonnée pour ne pas resservir la fuite de V1.
+
 **Travail.**
 
 1. Lire les fichiers `StockUniteLegaleHistorique_utf8.parquet` sous `data-lake/raw/insee/bulk/stock_unite_legale_historique/`.
