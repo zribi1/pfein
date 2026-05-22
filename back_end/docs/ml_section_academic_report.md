@@ -152,7 +152,7 @@ financial feature years never exceed the prediction year.
 ## Run Log
 
 Each entry below corresponds to one training run. Runs are trained on Google
-Colab (High-RAM CPU) using [collabs/pfe_ml_colab_training_only.ipynb](../collabs/pfe_ml_colab_training_only.ipynb),
+Colab (High-RAM CPU) using [collabs/archive/training_only.ipynb](../collabs/archive/training_only.ipynb),
 which calls `app.tools.train_continuity_model`. The artifacts referenced are
 copied into `docs/ouputs/ml-artifacts/`.
 

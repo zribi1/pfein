@@ -3,14 +3,14 @@
 For a full runnable notebook, open:
 
 ```text
-collabs/pfe_ml_colab_workbook.ipynb
+collabs/pfe_ml_data_pipeline_dev_capped.ipynb
 ```
 
 For model training only, after the data lake and feature tables already exist,
 open:
 
 ```text
-collabs/pfe_ml_colab_training_only.ipynb
+collabs/archive/training_only.ipynb
 ```
 
 For a detailed step-by-step user guide, read:

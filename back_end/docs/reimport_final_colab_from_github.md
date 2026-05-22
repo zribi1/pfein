@@ -8,7 +8,7 @@ dans Google Colab, avec la dernière version du projet.
 Le notebook final se trouve ici dans le dépôt :
 
 ```text
-collabs/pfe_ml_colab_final.ipynb
+collabs/01_pipeline_donnees_execution_complete.ipynb
 ```
 
 Le dépôt GitHub est :
@@ -46,7 +46,7 @@ https://github.com/zribi1/pfein
 5. Si Colab demande le chemin du notebook, choisir :
 
 ```text
-collabs/pfe_ml_colab_final.ipynb
+collabs/01_pipeline_donnees_execution_complete.ipynb
 ```
 
 6. Ouvrir le notebook.

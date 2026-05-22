@@ -57,7 +57,7 @@ suivantes :
 
 | Élément | Situation initiale | Version finale |
 |---|---|---|
-| Notebook Colab | Notebook de travail avec cellules de test | Notebook final dédié : `collabs/pfe_ml_colab_final.ipynb` |
+| Notebook Colab | Notebook de travail avec cellules de test | Notebook final dédié : `collabs/01_pipeline_donnees_execution_complete.ipynb` |
 | Taille d'exécution | Utilisation possible de `--max-files` et `--max-companies` | Exécution finale sans limite de test |
 | Stockage Colab | Écriture directe fréquente sur Google Drive | Travail local dans `/content/pfe_work`, puis synchronisation vers Drive |
 | BODACC historique | Traitement surtout orienté archives par famille | Prise en charge des dossiers annuels et des bundles `.tar` / `.tar.gz` |
