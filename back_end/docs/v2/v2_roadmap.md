@@ -1,6 +1,21 @@
 # V2 — Feuille de route détaillée
 
-Dix phases, exécutées séquentiellement. Chaque phase produit des artefacts vérifiables avant de débloquer la suivante. Le temps cumulé prévu est de 15 à 25 heures de travail effectif, hors temps de calcul des notebooks Colab.
+> **Refonte architecturale du 2026-05-25.** Après les résultats Phase 4 (cf. `v2_phase_log.md`), V2 est passée d'un système monolithique de 5 classifieurs forward 12 mois à une **intelligence de risque à 4 couches** orientée action-taker. Les Phases 1-4 (features V2 + 5 modèles HGB) restent valides : elles fournissent la **Couche 1** du produit. Les Phases 5-10 sont refondues pour livrer les Couches 2, 3 et 4 + l'intégration.
+>
+> Motivation : un score forward seul ne couvre pas le besoin opérationnel (« qu'est-ce qui a changé ? », « pourquoi alerter ? », « comparer à mon portefeuille »). Cf. `docs/v2/v2_design_decisions.md` section 2026-05-25.
+
+## Architecture cible — 4 couches
+
+| Couche | Question répondue | Modèle | Statut |
+|---|---|---|---|
+| **1 — Probabilités forward** | « Probabilité d'événement à 12 mois ? » | 5 HGB supervisés (per-label) | ✅ Phase 4 |
+| **2 — Score d'anomalie** | « Cette entreprise dévie-t-elle de la norme ? » | Isolation Forest non-supervisé | Phase 5 |
+| **3 — Détection de changement** | « Qu'est-ce qui a changé depuis 12 mois ? » | Δ-features + Z-score | Phase 6 |
+| **4 — Explicabilité** | « Pourquoi alerter sur cette entreprise ? » | SHAP par-prédiction (couches 1 et 2) | Phase 8 |
+
+La sortie consolidée pour l'action-taker fusionne les 4 couches : tier composite (amber/red), probabilités par mode de défaillance, score d'anomalie en percentile, liste des changements récents, top-3 drivers SHAP.
+
+Dix phases, exécutées séquentiellement. Chaque phase produit des artefacts vérifiables avant de débloquer la suivante. Le temps cumulé restant (Phases 5-10) est estimé à 5-7 semaines de travail effectif, hors temps de calcul des notebooks Colab. Défense PFE prévue juillet-août 2026.
 
 ## Structure de fichiers à créer
 
@@ -157,134 +172,178 @@ back_end/
 
 ---
 
-## Phase 5 — Tuning des seuils par étiquette
+## Phase 5 — Couche 2 : détection d'anomalie non-supervisée
 
-**Objectif.** Pour chacun des 5 modèles, calculer les courbes seuil → précision/rappel sur le test 2023 et identifier les seuils opérationnels (amber, red).
+**Objectif.** Entraîner un **Isolation Forest** sur les features V2 *sans utiliser les labels*, produire un score d'anomalie par (siren, prediction_date), et le valider en montrant que les rows à fort score d'anomalie au temps T sont sur-représentées dans les événements de risque connus à T+12m.
 
-**Pourquoi.** Sans `class_weight='balanced'`, les probabilités brutes sont déjà bien échelonnées (à valider). Le seuil de décision n'est plus un paramètre théorique à 0,5 mais un paramètre opérationnel choisi sur la base d'une courbe précision/rappel. Si la calibration est déjà correcte, on peut sauter le calibrateur séparé.
+**Pourquoi.** Un classifieur supervisé forward capture les patterns qui *précédent les événements labellisés*. Mais un action-taker veut aussi être alerté sur les patterns *atypiques*, même quand aucun label spécifique ne s'applique encore. L'Isolation Forest isole les rows « différentes » sans avoir besoin de savoir ce qui est « mauvais » : il apprend la structure de la population et flagge les écarts. Méthodologie standard en détection de fraude, en surveillance réseau, et en QC industrielle.
 
 **Travail.**
 
-1. Pour chaque modèle, lancer un balayage de seuils dense (0.001 à 0.99 par pas log).
-2. Identifier :
-   - Le seuil F1-optimum (amber).
-   - Le seuil de précision ≥ 50 % (red).
-3. Vérifier que les probabilités brutes ne sont pas grossièrement décalées (mean predicted ≈ mean observed à ±20 %). Si oui, **pas besoin de calibrateur** (à valider en Phase 8).
+1. **Préprocessing**. Imputation médiane pour numériques, OneHot avec `min_frequency=20` pour catégorielles. Isolation Forest sklearn ne gère pas nativement les NaN ni les catégorielles → préproc explicite.
+2. **Fit** sur train 2017-2022 (hash-deterministic sample 2M rows pour itération rapide ; full V2 191M en re-run validatoire après).
+3. **Score** sur test 2023. Le score sklearn `decision_function` est interprété en percentile sur la distribution train.
+4. **Validation par enrichissement label**. Pour chaque label (continuity_risk, legal_distress_risk, radiation_risk, financial_weakness_risk) :
+   - Prendre les top-K % par score d'anomalie (K ∈ {1, 5, 10}).
+   - Mesurer le taux de positifs label dans ces top-K %.
+   - Comparer à la base rate. Calculer le *lift* : `lift = précision_top_K / base_rate`.
+   - Reporter une « ROC-style » courbe : x = fraction de la population flaggée, y = rappel cumulé du label.
+5. **Comparer au baseline supervisé**. Pour chaque label, montrer la courbe précision-rappel de la couche 2 (isolation forest, *sans avoir vu les labels*) vs la couche 1 (HGB *entraîné sur les labels*). L'anomaly doit perdre en AP pure mais gagner en généralité (capter des patterns hors label).
+6. **Score peer-group** (optionnel, v2.1). Ajuster le score d'anomalie en fonction du secteur NAF de l'entreprise : « est-elle atypique *parmi ses pairs* ? » plutôt que « atypique *globalement* ». Améliore la pertinence sectorielle.
 
-**Notebook Colab.** `collabs/v2/v2_phase_5_threshold_tuning.ipynb`.
+**Code à écrire.** `app/tools/v2/train_anomaly_detector.py` (Isolation Forest pipeline + score persisting).
 
-**Délivrable.** Fichier `ml-artifacts/v2/per_label_thresholds.json` :
-```json
-{
-  "legal_distress_risk": { "amber": 0.X, "red": 0.Y },
-  "radiation_risk":      { "amber": 0.X, "red": 0.Y },
-  "financial_weakness_risk": { "amber": 0.X, "red": 0.Y },
-  "filing_anomaly_risk": { "amber": 0.X, "red": 0.Y },
-  "continuity_risk":     { "amber": 0.X, "red": 0.Y }
-}
-```
+**Notebook Colab.** `collabs/v2/v2_phase_5_anomaly_detection.ipynb` qui :
+- Lance le fit Isolation Forest sur train 2017-2022.
+- Score 2023.
+- Calcule l'enrichissement par label (table top-K vs base rate).
+- Trace la courbe rappel-cumulé par label.
+- Compare au baseline supervisé Phase 4.
 
-**Critère de validation.** Pour chaque label, un seuil amber existe avec F1 ≥ 0.25 et un seuil red existe avec précision ≥ 0.45.
+**Délivrables.**
+- `ml-artifacts/v2/anomaly_detector/model.joblib`
+- `ml-artifacts/v2/anomaly_detector/test_scores.parquet` (siren, prediction_year, anomaly_score, anomaly_percentile)
+- `ml-artifacts/v2/anomaly_detector/run_summary.md` (table enrichissement par label)
 
-**Temps prévu.** 1-2 h.
+**Critère de validation.**
+- Pour chaque label de Phase 4, **lift top-5 % ≥ 3** (un score d'anomalie sur la top-5 % est au moins 3× plus susceptible de présager un événement que la base rate). Si moins, le modèle ne capte rien d'utile.
+- **AP top-5 % anomaly ≥ AP top-5 % aléatoire × 2** (sanity check : il fait mieux que de l'aléatoire).
+
+**Temps prévu.** 1 semaine (design + fit + validation + comparaisons).
 
 ---
 
-## Phase 6 — Bootstrap confidence intervals
+## Phase 6 — Couche 3 : détection de changement (Δ-features)
 
-**Objectif.** Pour chaque modèle et chaque métrique principale (AP, AUC, F1), calculer un intervalle de confiance bootstrap à 95 %.
+**Objectif.** Pour chaque (siren, prediction_year), calculer les écarts (deltas) sur les features clés entre l'année t et l'année t-1 (ou t-2 selon le signal). Flagger les changements abrupts via Z-score. Construire une couche **« qu'est-ce qui a changé ? »** que l'UI affiche à côté du score d'anomalie pour expliquer *quoi* a déclenché l'alerte.
 
-**Pourquoi.** Reporter `AP = 0.30` est moins défendable que `AP = 0.30 [0.28, 0.32]`. Un jury de soutenance peut demander « est-ce significativement supérieur à V1 ? » — la réponse rigoureuse nécessite des CIs.
+**Pourquoi.** Un score d'anomalie en lui-même ne dit rien à l'action-taker. La couche 3 répond à la question évidente suivante : « OK il est anormal, mais en quoi ? ». Pour cela on dérive des features dérivées (deltas, taux de croissance, signaux booléens « a changé de NAF section ») et on Z-score celles qui ont du sens.
 
 **Travail.**
 
-1. Pour chaque modèle, depuis le test set 2023, tirer B = 1000 échantillons bootstrap (avec remise).
-2. Calculer AP, AUC, F1 sur chaque échantillon.
-3. Prendre les quantiles 2,5 % et 97,5 %.
-4. Reporter au format `metric [low, high]`.
+1. Pour chaque feature numérique pertinente, ajouter sa version delta-12m et son Z-score sur la distribution de la population au temps t.
+2. Pour les features catégorielles d'identité (NAF, forme juridique), ajouter un booléen `<feature>_changed_in_12m`.
+3. Inclure ces features dérivées dans le jeu features V2.5 (rebuild incremental, ne casse pas la couche 2).
+4. **Bonus** : ré-entraîner la couche 2 (Isolation Forest) sur ce jeu enrichi → score plus interprétable car les rows flaggées le sont souvent à cause des deltas (donc directement explicables).
+5. Aussi, dans l'API V2, exposer les top-3 features les plus déviantes par rapport au profil historique de l'entreprise (Z-score le plus extrême).
 
-**Code à écrire.** `app/tools/v2/bootstrap_metrics.py` (utilitaire réutilisable).
+**Code à écrire.** `app/tools/v2/build_delta_features.py` (extension du builder Phase 2).
 
-**Notebook Colab.** `collabs/v2/v2_phase_6_bootstrap_ci.ipynb`.
+**Notebook Colab.** `collabs/v2/v2_phase_6_delta_features.ipynb`.
 
-**Délivrable.** Table CIs dans `v2_phase_log.md`. Une comparaison V1 vs V2 avec CIs permettant de trancher si le gain est significatif.
+**Délivrable.**
+- Jeu features V2.5 : `data-lake/features/company_year_features_v2_5/` avec ~+15 colonnes Δ.
+- Couche 2 ré-entraînée sur V2.5, comparée à V2 (gain attendu en lift).
 
-**Critère de validation.** Borne inférieure de l'AP V2 sur `legal_distress_risk` ≥ borne supérieure de l'AP V1 sur la cible composite. Sinon, le gain V2 n'est pas significatif et il faut investiguer.
+**Critère de validation.** Lift top-5 % de la couche 2 sur V2.5 features ≥ lift sur V2 features. Sinon les deltas n'apportent rien, on garde V2.
 
-**Temps prévu.** 1 h.
+**Temps prévu.** 1 semaine.
 
 ---
 
-## Phase 7 — Validation externe
+## Phase 7 — Validation externe (géographique + sectorielle)
 
-**Objectif.** Vérifier que les performances tiennent **hors de la distribution d'entraînement**. Deux holdouts :
+**Objectif.** Vérifier que les performances tiennent **hors de la distribution d'entraînement**, à la fois pour la couche 1 (probabilités forward) et la couche 2 (anomalie). Deux holdouts :
 
-- **Géographique** : entraîner sur Île-de-France + Sud (départements 75, 77, 78, 91, 92, 93, 94, 95, 13, 31, 33, 34, 06, 83 — soit ~40 % de la population SIRENE) et tester sur les départements restants.
-- **Sectoriel** : retirer la section NAF 5 (hébergement-restauration, la plus performante en V1 Phase F) de l'entraînement et tester dessus.
+- **Géographique** : entraîner sur Île-de-France + Sud (départements 75, 77, 78, 91, 92, 93, 94, 95, 13, 31, 33, 34, 06, 83 — ~40 % de la population SIRENE) et tester sur les départements restants.
+- **Sectoriel** : retirer la section NAF la plus performante en V1 Phase F de l'entraînement et tester dessus.
 
-**Pourquoi.** En V1, toute l'évaluation se fait sur un échantillon hash-déterministe de la même population. Aucune garantie que les performances tiennent sur une vraie population non-vue. Un jury peut le demander.
+**Pourquoi.** Aucune garantie que les performances tiennent sur une vraie population non-vue. Un jury peut le demander. C'est aussi un signal de robustesse pour le déploiement : si V2 over-fit sur une géographie, le déployer sur d'autres régions perdrait son utilité.
 
 **Travail.**
 
-1. Dériver le département depuis le SIRET (premier établissement) ou le code postal de la dénomination INSEE. Ajouter une colonne `departement` aux features V2.
-2. Construire les deux découpages, entraîner les 5 modèles sur chaque, mesurer AP / AUC sur le test out-of-distribution.
-3. Comparer aux métriques in-distribution.
+1. Dériver le département depuis le SIRET (premier établissement) ou le code postal. Ajouter une colonne `departement` aux features V2.
+2. Construire les découpages géographique et sectoriel.
+3. **Couche 1** : ré-entraîner les 5 HGB sur chaque découpage, mesurer AP / AUC sur le test out-of-distribution.
+4. **Couche 2** : ré-entraîner l'Isolation Forest sur chaque découpage, mesurer le lift par label sur le test out-of-distribution.
+5. Comparer aux métriques in-distribution.
 
 **Code à écrire.** `app/tools/v2/holdout_splits.py` (fonctions de découpage géographique et sectoriel).
 
 **Notebook Colab.** `collabs/v2/v2_phase_7_external_validation.ipynb`.
 
-**Délivrable.** Tableau dans `v2_phase_log.md` :
+**Critère de validation.** Pour chaque modèle (couche 1) et le détecteur d'anomalie (couche 2), AP / lift out-of-distribution ≥ AP / lift in-distribution − 5 pp / × 0.8. Sinon, le modèle est en sur-apprentissage par segment et il faut documenter cette limite.
 
-| Modèle | AP in-distribution | AP géo-holdout | AP sectoriel-holdout |
-|---|---:|---:|---:|
-| legal_distress | ? | ? | ? |
-| ... |
-
-**Critère de validation.** Pour chaque modèle, AP out-of-distribution ≥ AP in-distribution − 5 pp. Sinon, le modèle est en sur-apprentissage par segment et il faut documenter cette limite.
-
-**Temps prévu.** 3-4 h.
+**Temps prévu.** 1 semaine.
 
 ---
 
-## Phase 8 — Calibration via CalibratedClassifierCV
+## Phase 8 — Couche 4 : explicabilité SHAP
 
-**Objectif.** Si la Phase 5 a montré que les probabilités brutes sont déjà bien calibrées (sans `class_weight='balanced'`), cette phase devient un simple check. Sinon, on applique `CalibratedClassifierCV(method='isotonic', cv=5)` sur chacun des 5 modèles.
+**Objectif.** Pour toute alerte affichée à l'action-taker, fournir le **top-3 des features qui ont contribué le plus à l'alerte**. Couvre les couches 1 (5 HGB) et 2 (Isolation Forest, via TreeSHAP également supporté).
 
-**Pourquoi.** En V1, on a utilisé un découpage trois-temps (train/calib/test) qui a coûté une année d'entraînement. `CalibratedClassifierCV` ne demande pas de hold-out séparé ; il fait la calibration par K-fold sur l'ensemble d'entraînement.
+**Pourquoi.** Sans explicabilité, l'action-taker doit faire confiance aveuglément à un score. Avec SHAP, l'alerte devient justifiée : « risque élevé car (1) résultat net négatif 2 années consécutives, (2) événements légaux ×4 vs an dernier, (3) NAF a changé vers un secteur plus risqué ». C'est ce qui transforme V2 d'un score en un *outil d'aide à la décision*.
 
 **Travail.**
 
-1. Pour chaque modèle, calculer Brier et ECE sur le test 2023.
-2. Si ECE > 0.02, fitter `CalibratedClassifierCV(base_estimator=hgb, method='isotonic', cv=5)` sur l'ensemble d'entraînement et re-mesurer.
-3. Comparer les deux variantes et choisir celle avec le meilleur Brier.
+1. **TreeSHAP pour couche 1**. Pour chacun des 5 HGB, intégrer `shap.TreeExplainer` au moment de l'inférence. Stocker les top-3 features positifs et top-3 négatifs par prédiction.
+2. **TreeSHAP pour couche 2**. Isolation Forest est aussi un ensemble d'arbres → TreeSHAP fonctionne. Donne « quelles features rendent cette entreprise atypique ? ».
+3. **Calibration légère**. En parallèle SHAP : vérifier Brier et ECE des couches 1 sans `class_weight` (cf. décision Phase 4). Si ECE > 0.02 pour un modèle, fitter `CalibratedClassifierCV(method='isotonic', cv=5)`. Phase 8 absorbe l'ancienne « phase calibration » roadmap V2 initial.
 
-**Notebook Colab.** `collabs/v2/v2_phase_8_calibration.ipynb`.
+**Notebook Colab.** `collabs/v2/v2_phase_8_explainability.ipynb`.
 
-**Délivrable.** Pour chaque label, un seul artefact `joblib` (soit le modèle brut, soit le modèle calibré, selon ce qui passe le test).
+**Délivrable.**
+- Fonction `compute_explanation(model, X)` réutilisable côté backend.
+- Persistence : pour chaque prédiction servie, top-3 SHAP values mis en cache.
+- Si re-calibration nécessaire : modèle calibré qui remplace le brut dans `ml-artifacts/v2/per_label/<label>/model.joblib`.
 
-**Critère de validation.** ECE final ≤ 0.02 pour chaque modèle.
+**Critère de validation.**
+- Explication SHAP calculée en < 50 ms par prédiction par modèle (sinon, optimiser ou pré-calculer).
+- ECE ≤ 0.02 pour chaque modèle couche 1 (avec ou sans calibrateur).
 
-**Temps prévu.** 1-2 h.
+**Temps prévu.** 1 semaine.
 
 ---
 
-## Phase 9 — Intégration backend V2
+## Phase 9 — Intégration backend V2 (API + frontend)
 
-**Objectif.** Servir les 5 modèles V2 via une nouvelle API `/api/v2/predictions/{siren}`. V1 reste accessible sur `/api/v1/predictions/{siren}` pendant la transition.
+**Objectif.** Servir le système V2 multi-couches via une nouvelle API `/api/v2/companies/{siren}/risk`. V1 reste accessible sur `/api/v1/predictions/{siren}` pendant la transition.
+
+**Schéma de sortie envisagé.**
+
+```json
+{
+  "siren": "123456789",
+  "as_of_date": "2026-05-25",
+  "composite_tier": "red",
+  "layer_1_forward_probabilities": {
+    "continuity_risk":     { "probability": 0.27, "tier": "amber", "horizon_months": 12 },
+    "legal_distress_risk": { "probability": 0.18, "tier": "amber", "horizon_months": 12 },
+    "radiation_risk":      { "probability": 0.04, "tier": "green", "horizon_months": 12 },
+    "financial_weakness_risk": { "probability": 0.31, "tier": "red", "horizon_months": 12 }
+  },
+  "layer_2_anomaly": {
+    "score":      0.78,
+    "percentile": 95.4,
+    "tier":       "red"
+  },
+  "layer_3_recent_changes": [
+    { "feature": "legal_events_count_12m", "from": 0, "to": 4, "z_score": 3.8, "direction": "increase" },
+    { "feature": "revenue_growth_1y",      "from": 0.05, "to": -0.42, "z_score": -2.9, "direction": "decrease" },
+    { "feature": "activity_code",          "from": "47.24Z", "to": "56.30Z", "z_score": null, "direction": "changed" }
+  ],
+  "layer_4_top_drivers": [
+    { "feature": "legal_distress_events_count_12m", "shap_value": 0.082, "impact": "positive" },
+    { "feature": "has_negative_result_history",     "shap_value": 0.053, "impact": "positive" },
+    { "feature": "legal_category_code",             "shap_value": -0.012, "impact": "negative" }
+  ],
+  "dormancy_flag": false
+}
+```
 
 **Travail.**
 
-1. Créer `app/ml/v2/loader_v2.py` (singleton `MLRegistryV2`) qui charge les 5 modèles + leurs seuils.
-2. Créer `app/schemas/company_prediction_v2.py` avec un schéma incluant `risk_per_label: dict[str, {prob: float, tier: Literal[...]}]`.
-3. Créer `app/api/v2/endpoints/predictions.py` exposant `/api/v2/predictions/{siren}`.
-4. Mettre à jour le frontend Angular pour afficher les 4-5 risques séparés (à coordonner avec le développeur front).
+1. `app/ml/v2/loader_v2.py` : singleton `MLRegistryV2` qui charge les 5 HGB + Isolation Forest + SHAP explainers au startup.
+2. `app/schemas/company_risk_v2.py` : pydantic schemas pour le payload ci-dessus.
+3. `app/services/v2_risk_service.py` : orchestration des 4 couches pour un siren donné (read features V2, run inference, build response).
+4. `app/api/v2/endpoints/risk.py` : `GET /api/v2/companies/{siren}/risk`.
+5. Frontend Angular : nouvel écran « V2 Risk Detail » qui affiche les 4 couches. À coordonner avec le développeur front.
 
-**Notebook Colab.** Optionnel — `v2_phase_9_integration_test.ipynb` simule l'API V2 en local sur des SIRENs réels et vérifie la cohérence des sorties.
+**Notebook Colab.** Optionnel — `v2_phase_9_integration_smoke.ipynb` simule l'API V2 sur des SIRENs réels et vérifie la cohérence des sorties.
 
-**Délivrable.** Service FastAPI V2 fonctionnel + tests automatisés (pytest) sur 5 SIRENs représentatifs.
+**Délivrable.** Service FastAPI V2 fonctionnel + tests pytest sur ≥ 5 SIRENs représentatifs (un dormant, un sain, un en pré-distress, un en distress avéré, un avec changement abrupt récent).
 
-**Temps prévu.** 4-6 h.
+**Temps prévu.** 1-2 semaines.
 
 ---
 
@@ -292,40 +351,51 @@ back_end/
 
 **Objectif.** Rédiger le rapport académique V2, structuré pour pouvoir être lu seul ou en complément du rapport V1.
 
-**Contenu.**
-- Préambule expliquant la décision de refonte.
-- Reprise des sections architecture / sources / features (référencer V1 pour les parties inchangées).
-- Détail des phases 1 à 9 V2.
-- **Tableau de comparaison V1 vs V2** avec bootstrap CIs.
-- Conclusion : V2 est-elle effectivement supérieure ? Sur quels axes ?
-- Annexe : journal des décisions (`v2_design_decisions.md`).
+**Plan envisagé.**
+
+1. **Préambule.** Décision de refonte V1 → V2 : ré-intégration des features INSEE période-aware + décomposition par label + pivot multi-couches.
+2. **Sources de données et features.** Référencer V1 pour ce qui est inchangé. Détailler Phase 1 (identité périodique + broadcast creation_date) et Phase 2 (build features V2, anti-fuite).
+3. **Couche 1 — probabilités forward.** Phase 4 résultats + interprétation (gate `legal_distress` manqué, `filing_anomaly` tautologique).
+4. **Couche 2 — détection d'anomalie.** Phase 5 méthodologie + validation enrichissement.
+5. **Couche 3 — détection de changement.** Phase 6.
+6. **Couche 4 — explicabilité.** Phase 8.
+7. **Robustesse (Phase 7).** Out-of-distribution géographique et sectorielle.
+8. **Intégration produit (Phase 9).** Schéma API + UX action-taker.
+9. **Discussion.** Limites de V2, choix non pris, pistes V2.5.
+10. **Annexe.** Journal des décisions (`v2_design_decisions.md`).
 
 **Délivrable.** `docs/v2/v2_rapport_final_fr.md`.
 
-**Temps prévu.** 6-8 h.
+**Temps prévu.** 1-2 semaines (rédaction + relecture).
 
 ---
 
 ## Récapitulatif des dépendances
 
 ```
-Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5 → Phase 6
+Phase 1 → Phase 2 → Phase 3 → Phase 4 (Couche 1 ✅)
                                        ↓
-                                  Phase 7 (parallel with 5-6)
+                                  Phase 5 (Couche 2)
                                        ↓
-                                  Phase 8 → Phase 9 → Phase 10
+                                  Phase 6 (Couche 3)
+                                       ↓
+                                  Phase 7 (validation OOD, parallèle possible)
+                                       ↓
+                                  Phase 8 (Couche 4 + calibration)
+                                       ↓
+                                  Phase 9 (API + frontend) → Phase 10 (rapport)
 ```
 
-Phases parallélisables : 5 et 7 peuvent tourner en parallèle sur des Colab distincts une fois la Phase 4 terminée.
-
-## Critère global d'acceptation V2
+## Critère global d'acceptation V2 (refondu)
 
 V2 est considérée comme un succès académique et opérationnel si :
 
-1. AP de `legal_distress_risk` ≥ 0.40 sur 2023 test, avec borne inférieure de l'IC bootstrap ≥ 0.35.
-2. ECE de tous les modèles ≤ 0.02 sans calibrateur séparé (ou avec, si nécessaire).
-3. AP out-of-distribution (géo) ≥ AP in-distribution − 3 pp pour le modèle de référence.
-4. Service `/api/v2/predictions/{siren}` opérationnel, smoke-tests passent.
-5. Rapport V2 rédigé et défendable.
+1. **Couche 1** (Phase 4) : AP composite ≥ V1 calibré (≥ 0,299). ✅ atteint (0,306).
+2. **Couche 2** (Phase 5) : pour chaque label de la couche 1, lift top-5 % anomaly ≥ 3 (i.e. le score d'anomalie a une utilité indépendante du label).
+3. **Couche 3** (Phase 6) : l'inclusion des Δ-features augmente le lift de la couche 2 sur au moins 2 labels.
+4. **Couche 4** (Phase 8) : explication SHAP calculée en < 50 ms par prédiction par modèle ; ECE ≤ 0,02 par couche 1.
+5. **Robustesse OOD** (Phase 7) : pour la couche 1 et la couche 2, perte ≤ 5 pp / ×0,8 sur le test géographique.
+6. **Produit** (Phase 9) : API V2 + écran frontend opérationnels, smoke-tests sur 5 SIRENs représentatifs passent.
+7. **Rapport** (Phase 10) : rédigé et défendable, intégrant les choix architecturaux et leurs justifications.
 
 Si l'un de ces critères échoue, le rapport V2 documente l'échec et ses causes — ce qui reste un résultat académique défendable.

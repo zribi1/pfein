@@ -95,30 +95,55 @@ Ce fichier consigne les résultats au fur et à mesure de l'exécution des phase
 
 ---
 
-## Phase 4 — Entraînement par étiquette
+## Phase 4 — Entraînement par étiquette (Layer 1 du produit V2)
 
-**Date d'exécution :** _(à remplir)_
+**Date d'exécution :** 2026-05-25
 **Notebook :** `collabs/v2/v2_phase_4_train_per_label.ipynb`
 **Script :** `app/tools/v2/train_label_specific_model.py`
+**Échantillon par fit :** 2 000 000 rows (hyperparams V1 Phase B tunés à 2M)
+**Hyperparamètres :** `docs/ouputs/ml-artifacts/tuned_params_hgb.json` (V1)
+**Sans `class_weight='balanced'`** (cf. décision V2)
 
 ### Résultats — métriques par étiquette (test 2023)
 
-| Étiquette | Taux positifs | AP | AUC | F1@0.5 | Run folder |
-|---|---:|---:|---:|---:|---|
-| `continuity_risk_12m_label` (référence) | _(à remplir)_ | _(à remplir)_ | _(à remplir)_ | _(à remplir)_ | _(à remplir)_ |
-| `legal_distress_risk_12m_label` | _(à remplir)_ | _(à remplir)_ | _(à remplir)_ | _(à remplir)_ | _(à remplir)_ |
-| `radiation_risk_12m_label` | _(à remplir)_ | _(à remplir)_ | _(à remplir)_ | _(à remplir)_ | _(à remplir)_ |
-| `financial_weakness_risk_12m_label` | _(à remplir)_ | _(à remplir)_ | _(à remplir)_ | _(à remplir)_ | _(à remplir)_ |
-| `filing_anomaly_risk_12m_label` | _(à remplir)_ | _(à remplir)_ | _(à remplir)_ | _(à remplir)_ | _(à remplir)_ |
+| Étiquette | Taux positifs | AP | AUC | F1@0.5 | Précision@0.5 | Rappel@0.5 |
+|---|---:|---:|---:|---:|---:|---:|
+| `continuity_risk_12m_label` (composite) | 4,27 % | **0,306** | 0,877 | 0,072 | 0,717 | 0,038 |
+| `legal_distress_risk_12m_label` | 0,41 % | 0,232 | 0,960 | 0,159 | 0,534 | 0,093 |
+| `radiation_risk_12m_label` | 1,05 % | 0,228 | 0,891 | 0,212 | 0,753 | 0,123 |
+| `financial_weakness_risk_12m_label` | 0,40 % | 0,423 | 0,990 | 0,376 | 0,561 | 0,283 |
+| `filing_anomaly_risk_12m_label` | 1,01 % | **0,937** | 0,999 | 0,893 | 0,894 | 0,893 |
+
+### Lecture des résultats
+
+- **Composite V2 vs V1**. AP 0,306 vs V1 calibré 0,299 (+0,007 pp). Gain modeste à iso-hyperparams et iso-volumétrie. Le gain spectaculaire vu en Phase 3 (+9,4 pp) comparait V2 tuné contre V1 par défaut — apples-to-oranges. À iso-conditions, V2 préserve la performance composite plutôt que de la transformer.
+- **`legal_distress_risk_12m_label`** : AP 0,232, **gate 0,30 manqué**. Mais AUC 0,960 et lift = AP / base_rate = 0,232 / 0,0041 ≈ **57× au-dessus du hasard**. Le gate du roadmap était trop ambitieux en absolu : il assumait qu'un modèle ciblé sur une sous-cible battrait le composite, sans tenir compte de la base rate 10× plus faible (AP est sensible à la base rate, AUC ne l'est pas). Le ranking par AUC est en réalité excellent.
+- **`filing_anomaly_risk_12m_label`** : AP 0,937 — **prédiction tautologique**. Le label est "ne déposera pas de comptes dans les 18 prochains mois" et la feature `days_since_last_account_filing` est essentiellement le label en mesure inverse. Un modèle qui apprend "si 3 ans sans dépôt, prédire 18 mois de plus sans dépôt" obtient 0,94 d'AP sans valeur ajoutée. Ce n'est pas de la fuite (les features sont au temps T, le label est à T+18m) mais c'est de l'autocorrélation triviale.
+- **`financial_weakness`** : AP 0,423, AUC 0,990 — fort signal d'autocorrélation financière (un résultat net négatif l'an dernier prédit fortement un résultat net négatif cette année).
+- **`radiation`** : AP 0,228 — cessations volontaires, les plus difficiles à prédire car liées à une intention humaine.
 
 ### Décisions
 
-_(à remplir)_
+- **2026-05-25 — Pivot architectural vers un système multi-couches.** Les résultats Phase 4 révèlent les limites structurelles d'une prédiction supervisée forward à 12 mois prise isolément : `filing_anomaly` est tautologique, `legal_distress` souffre d'une base rate trop faible pour atteindre une AP élevée même avec un excellent ranking, et le gain composite est marginal. Le besoin métier d'un *action-taker* (alerte précoce, identification du changement récent, explicabilité) n'est pas couvert par un score forward unique. V2 pivote vers une **intelligence de risque à 4 couches** :
+  - **Couche 1 (faite, Phase 4)** : probabilités forward 12 mois (les 5 HGB ci-dessus).
+  - **Couche 2 (à construire, nouvelle Phase 5)** : détection d'anomalie non-supervisée (Isolation Forest sur features V2, validation par enrichissement contre les labels).
+  - **Couche 3 (à construire, nouvelle Phase 6)** : détection de changement (Δ des features entre T et T-12m, Z-score sur écarts).
+  - **Couche 4 (à construire, nouvelle Phase 8)** : SHAP par prédiction pour les couches 1 et 2.
+
+  Cf. roadmap mis à jour (sections Phase 5+ refondues) et `docs/v2/v2_design_decisions.md`.
+
+- **`filing_anomaly_risk_12m_label` rétrogradé en `dormancy_flag`.** Le modèle reste entraîné, son `model.joblib` est conservé, mais le rapport et l'API V2 le présenteront comme un indicateur de *dormance* (l'entreprise est-elle déjà désengagée de ses obligations déclaratives ?), pas comme un score de risque. Cas d'usage : filtrer les alertes des autres modèles pour ne pas crier au loup sur une entreprise déjà inactive depuis 3 ans.
+
+- **`legal_distress` gate manqué — pas de re-tuning.** Décision documentée plutôt que rattrapée. Re-tuner les hyperparams spécifiquement pour `legal_distress` (RandomizedSearchCV dédié) aurait pu gagner 2-4 pp mais n'aurait pas changé le constat structurel (le 12m horizon est mal aligné avec une décision judiciaire). Le système multi-couches résoud ce problème différemment : la couche 2 (anomaly) capte les patterns de pré-distress sans nécessiter de label précis ; la couche 3 (change-point) montre les ruptures abruptes (saut d'événements légaux récents) qui précèdent les procédures.
 
 ### Artefacts produits
 
-- `ml-artifacts/v2/per_label/<label>/model.joblib` × 5
+- `ml-artifacts/v2/per_label/<label>/model.joblib` × 5 (Drive)
+- `ml-artifacts/v2/per_label/<label>/metadata.json` × 5
 - `ml-artifacts/v2/per_label/<label>/run_summary.md` × 5
+- `ml-artifacts/v2/per_label/<label>/test_predictions.parquet` × 5 (pour bootstrap Phase 6, et pour validation de la couche 2)
+
+Train rows par label : 1 672 152. Test rows par label : 327 848.
 
 ---
 

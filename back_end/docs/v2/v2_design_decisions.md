@@ -112,17 +112,57 @@ Agréger les quatre dilue le signal de la procédure collective dans le bruit de
 
 ---
 
+## D8 — Architecture multi-couches (Layer 1-4)
+
+**Décision V1 et V2 initiale.** Un seul scoreur supervisé (V1 : 1 modèle composite ; V2 initiale : 5 modèles par label), produisant une probabilité forward à 12 mois comme unique sortie au consommateur.
+
+**Décision V2 post-Phase 4 (2026-05-25).** Restructurer V2 en une **intelligence de risque à 4 couches** :
+
+| Couche | Question répondue | Modèle |
+|---|---|---|
+| 1 — Probabilités forward | « P(événement à 12 mois) ? » | 5 HGB (Phase 4) |
+| 2 — Score d'anomalie | « Cette entreprise dévie-t-elle de la norme ? » | Isolation Forest non-supervisé (Phase 5) |
+| 3 — Détection de changement | « Qu'est-ce qui a changé depuis 12 mois ? » | Δ-features + Z-score (Phase 6) |
+| 4 — Explicabilité | « Pourquoi alerter sur cette entreprise ? » | SHAP par-prédiction (Phase 8) |
+
+**Justification.** Les résultats Phase 4 ont révélé trois limites structurelles du modèle "supervisé forward seul" :
+
+1. **`filing_anomaly_risk_12m_label` est tautologique** (AP 0.937). La feature `days_since_last_account_filing` est essentiellement le label en mesure inverse : un modèle qui apprend « si 3 ans sans dépôt, prédire 18 mois sans dépôt » obtient une AP excellente sans valeur prédictive ajoutée pour l'action-taker. Le score forward est confiant quand l'intervention est déjà trop tardive.
+
+2. **`legal_distress_risk_12m_label` souffre d'une base rate trop faible.** AP 0.232 sur une base rate 0.41 %, mais AUC 0.960 (excellent ranking). Le critère AP ≥ 0.30 du roadmap initial ne tenait pas compte du fait qu'AP est sensible à la base rate, pas au pouvoir de séparation. L'investissement en re-tuning hyperparams gagnerait 2-4 pp mais ne changerait pas le constat structurel : prédire une *décision judiciaire* à 12 mois avec une AP élevée demande des features qui n'existent pas dans les données ouvertes.
+
+3. **Le composite V2 ne bat V1 que de +0,007 pp** à iso-hyperparams et iso-volumétrie (0,306 vs 0,299). Le « +9,4 pp » vu en Phase 3 était apples-to-oranges (V2 tuné vs V1 par défaut). Vendre V2 sur le gain composite serait peu défendable devant un jury.
+
+**Le besoin métier de l'action-taker n'est pas une probabilité forward seule.** Un analyste crédit, un acheteur B2B, un assureur ne demandent pas « quelle est la probabilité de défaillance à 12 mois ? » mais plutôt « cette entreprise dans mon portefeuille montre-t-elle des signes ? Lesquels ? Sont-ils récents ? À quel point est-ce inhabituel ? ». Aucune de ces questions n'est répondue par un score forward unique.
+
+La couche 2 (anomalie non-supervisée) capte les patterns *atypiques* indépendamment de tout label — elle alertera sur des entreprises dont aucun des 5 modèles forward ne se déclenche, mais dont la « signature » dans l'espace des features est inhabituelle. Méthodologie standard en détection de fraude et de pannes industrielles. Validée par enrichissement : les top-K % par score d'anomalie doivent être sur-représentées dans les événements de risque à T+12m. Les labels deviennent un signal de **validation**, pas d'entraînement.
+
+La couche 3 (changement) répond à la question « en quoi est-elle anormale ? » via des Δ-features explicites (events 12m vs 24m, growth y-vs-y, changements catégoriels). Pas un nouveau modèle, juste de l'ingénierie de features dérivées qui enrichissent à la fois la couche 2 et l'UI action-taker.
+
+La couche 4 (SHAP) transforme un score en *justification*. C'est ce qui rend une alerte actionnable : l'utilisateur sait *pourquoi* alerter et peut juger de la pertinence vs son contexte métier.
+
+**Risques.**
+- Évaluer un modèle non-supervisé est plus délicat qu'un classifieur (pas de label gold standard). On contourne via le protocole d'enrichissement par labels existants : si V2 anomaly ne fait pas mieux que random sur le ranking des événements de risque, le modèle est rejeté.
+- L'écosystème SHAP sur Isolation Forest est moins mature que sur les gradient boosters. Backup : si TreeSHAP s'avère trop lent ou instable, on tombe sur une approximation par feature importance × écart à la médiane.
+- Complexité opérationnelle : 4 couches à charger en production. Mitigé par un singleton `MLRegistryV2` qui charge tout au startup et garde les explainers en mémoire.
+
+**`filing_anomaly_risk_12m_label` rétrogradé en `dormancy_flag`.** Le modèle reste entraîné et le `.joblib` est conservé. Il sert d'indicateur de *dormance* (l'entreprise est-elle déjà désengagée ?) pour filtrer les alertes des autres couches : pas de cri-au-loup sur une entreprise déjà dormante depuis 3 ans. Pas de re-vente comme « score de risque ».
+
+---
+
 ## Récapitulatif comparatif
 
-| Axe | V1 | V2 |
+| Axe | V1 | V2 (post-pivot) |
 |---|---|---|
-| Identité INSEE | exclue (anti-fuite) | période-aware (réintégrée) |
+| Identité INSEE | exclue (anti-fuite) | période-aware (réintégrée), creation_date broadcastée snapshot |
 | Class weight | `balanced` | non utilisé |
-| Calibration | calibrateur isotonique séparé | CalibratedClassifierCV interne (si besoin) |
-| Cible | composite (OR de 4 signaux) | 4 modèles spécialisés + 1 composite référence |
-| Itération | direct à 2M | 100K → 2M |
-| Métriques | nombres ponctuels | bootstrap CIs |
+| Calibration | calibrateur isotonique séparé | CalibratedClassifierCV interne si besoin (Phase 8) |
+| Cible | composite (OR de 4 signaux) | 4 modèles spécialisés + 1 composite référence (couche 1) |
+| Itération | direct à 2M | 100K → 2M → full V2 (191M) |
+| Métriques | nombres ponctuels | bootstrap CIs (couche 1) + enrichissement par label (couche 2) |
 | Validation | temporelle (walk-forward) | temporelle + géographique + sectorielle |
-| Artefacts servis | 2 (modèle + calibrateur) | 4-5 (un modèle par label) |
+| **Architecture produit** | **mono-couche (1 score)** | **multi-couches (forward + anomalie + changement + explicabilité)** |
+| Artefacts servis | 2 (modèle + calibrateur) | 5 HGB + 1 Isolation Forest + SHAP explainers + dormancy flag |
+| Réponse à l'action-taker | probabilité 12m | tier composite + probas par mode + percentile anomalie + Δ récents + top-3 drivers SHAP |
 
 V2 n'est ni plus simple ni plus complexe que V1. Elle est **différemment structurée** pour exposer une information plus riche à l'utilisateur final et défendre une méthodologie plus rigoureuse devant un jury.
