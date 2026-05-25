@@ -7,3 +7,5 @@ __pycache__/
 *.csv
 *.zip
 .vscode/
+.claude/settings.local.json
+graphify-out/
