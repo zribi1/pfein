@@ -111,12 +111,23 @@ def build_company_identity_periodic(
     *,
     raw_dir: Path,
     out_dir: Path,
+    snapshot_dir: Path | None = None,
     overwrite: bool = False,
     duckdb_temp_dir: Path | None = None,
 ) -> dict[str, Any]:
-    """Build the period-aware identity table. Returns audit stats."""
+    """Build the period-aware identity table. Returns audit stats.
+
+    ``creation_date`` is intentionally sourced from the current
+    ``stock_unite_legale`` snapshot (``snapshot_dir``) rather than from the
+    historique input — INSEE does not publish ``date_creation_unite_legale``
+    in the periodic file. Creation date is immutable per SIREN, so
+    broadcasting the snapshot value onto every period row is safe (no
+    time-varying leak), and matches what the V1 ``build_clean_core_sources``
+    already did for the same reason.
+    """
     raw_dir = raw_dir.resolve()
     out_dir = out_dir.resolve()
+    snapshot_dir = snapshot_dir.resolve() if snapshot_dir is not None else None
 
     if not any(raw_dir.glob("**/*.parquet")):
         raise FileNotFoundError(
@@ -222,26 +233,119 @@ def build_company_identity_periodic(
         """
     )
 
+    # creation_date broadcast from the current stock_unite_legale snapshot.
+    # The historique file does not carry date_creation_unite_legale (V1 hit
+    # the same wall — see app/tools/build_clean_core_sources.py:100-116).
+    # creation_date is immutable per SIREN, so reading it from the snapshot
+    # and broadcasting onto every period row is leak-free.
+    snapshot_creation_rows = 0
+    snapshot_glob_used: str | None = None
+    if snapshot_dir is not None and any(snapshot_dir.glob("**/*.parquet")):
+        snapshot_glob = str(snapshot_dir / "**/*.parquet").replace("\\", "/")
+        snapshot_glob_used = snapshot_glob
+        snap_cols = (
+            con.execute(
+                f"DESCRIBE SELECT * FROM read_parquet('{snapshot_glob}', union_by_name=true) LIMIT 0"
+            )
+            .df()["column_name"]
+            .tolist()
+        )
+        snap_lower = {c.lower(): c for c in snap_cols}
+        siren_actual = next(
+            (snap_lower[c] for c in ("siren",) if c in snap_lower), None
+        )
+        creation_actual = next(
+            (
+                snap_lower[c]
+                for c in (
+                    "date_creation_unite_legale",
+                    "datecreationunitelegale",
+                    "creation_date",
+                    "date_creation",
+                )
+                if c in snap_lower
+            ),
+            None,
+        )
+        if siren_actual and creation_actual:
+            logger.info(
+                "Loading snapshot creation_date from %s (siren=%s, creation=%s)",
+                snapshot_dir, siren_actual, creation_actual,
+            )
+            con.execute(
+                f"""
+                CREATE TEMP TABLE siren_creation AS
+                SELECT
+                    TRIM(CAST("{siren_actual}" AS VARCHAR)) AS siren,
+                    -- bound to plausible window so 0001-01-01 / 9202-style
+                    -- corruption dates don't survive into the output
+                    CASE
+                        WHEN TRY_CAST("{creation_actual}" AS DATE) BETWEEN {date_lo} AND {date_hi}
+                        THEN TRY_CAST("{creation_actual}" AS DATE)
+                        ELSE NULL
+                    END AS creation_date
+                FROM read_parquet('{snapshot_glob}', union_by_name=true)
+                WHERE "{siren_actual}" IS NOT NULL
+                QUALIFY row_number() OVER (PARTITION BY TRIM(CAST("{siren_actual}" AS VARCHAR))) = 1
+                """
+            )
+            snapshot_creation_rows = con.execute(
+                "SELECT COUNT(*) FROM siren_creation WHERE creation_date IS NOT NULL"
+            ).fetchone()[0]
+            logger.info(
+                "Snapshot creation_date loaded: %s SIRENs with non-null creation_date",
+                snapshot_creation_rows,
+            )
+        else:
+            logger.warning(
+                "Snapshot dir %s present but expected columns missing "
+                "(siren=%s, creation=%s). creation_date will fall back to "
+                "historique source (likely NULL).",
+                snapshot_dir, siren_actual, creation_actual,
+            )
+            con.execute(
+                "CREATE TEMP TABLE siren_creation AS "
+                "SELECT NULL::VARCHAR AS siren, NULL::DATE AS creation_date WHERE FALSE"
+            )
+    else:
+        if snapshot_dir is not None:
+            logger.warning(
+                "Snapshot dir %s has no parquet — creation_date will be NULL.",
+                snapshot_dir,
+            )
+        else:
+            logger.warning(
+                "No snapshot_dir provided — creation_date will be NULL "
+                "(historique does not publish date_creation_unite_legale)."
+            )
+        con.execute(
+            "CREATE TEMP TABLE siren_creation AS "
+            "SELECT NULL::VARCHAR AS siren, NULL::DATE AS creation_date WHERE FALSE"
+        )
+
     out_path = (out_dir / "company_identity_periodic.parquet").as_posix()
     logger.info("Writing periodic identity to %s", out_path)
     con.execute(
         f"""
         COPY (
             SELECT
-                siren,
-                period_start,
+                s.siren,
+                s.period_start,
                 COALESCE(
-                    LEAD(period_start) OVER w,
+                    LEAD(s.period_start) OVER w,
                     DATE '9999-12-31'
                 ) AS period_end,
-                denomination,
-                activity_code,
-                legal_category_code,
-                administrative_status,
-                creation_date,
-                LEAD(period_start) OVER w IS NULL AS is_latest_period
-            FROM source
-            WINDOW w AS (PARTITION BY siren ORDER BY period_start)
+                s.denomination,
+                s.activity_code,
+                s.legal_category_code,
+                s.administrative_status,
+                -- snapshot wins (historique is known-NULL for this column);
+                -- COALESCE keeps the door open if INSEE ever populates it.
+                COALESCE(sc.creation_date, s.creation_date) AS creation_date,
+                LEAD(s.period_start) OVER w IS NULL AS is_latest_period
+            FROM source s
+            LEFT JOIN siren_creation sc USING (siren)
+            WINDOW w AS (PARTITION BY s.siren ORDER BY s.period_start)
         )
         TO '{out_path}'
         (FORMAT PARQUET, COMPRESSION ZSTD, ROW_GROUP_SIZE 256000)
@@ -298,6 +402,19 @@ def build_company_identity_periodic(
     contiguous = int(audit[8])
     non_first_rows = total_rows - unique_sirens  # rows that have a predecessor
 
+    # Post-write coverage audit for creation_date (the broadcast attribute).
+    creation_audit = con.execute(
+        f"""
+        SELECT
+            COUNT(*) AS rows,
+            COUNT(creation_date) AS rows_with_creation_date,
+            COUNT(DISTINCT CASE WHEN creation_date IS NOT NULL THEN siren END) AS sirens_with_creation_date
+        FROM read_parquet('{out_path}')
+        """
+    ).fetchone()
+    rows_with_cd = int(creation_audit[1])
+    sirens_with_cd = int(creation_audit[2])
+
     stats: dict[str, Any] = {
         "total_rows": total_rows,
         "unique_sirens": unique_sirens,
@@ -322,6 +439,12 @@ def build_company_identity_periodic(
         "audit_basis": "input_parquet_source_period_end_inclusive",
         "input_columns_resolved": cols,
         "raw_dir": str(raw_dir),
+        "snapshot_dir": str(snapshot_dir) if snapshot_dir else None,
+        "snapshot_glob_used": snapshot_glob_used,
+        "snapshot_sirens_with_creation_date": int(snapshot_creation_rows),
+        "out_rows_with_creation_date": rows_with_cd,
+        "out_sirens_with_creation_date": sirens_with_cd,
+        "out_creation_date_coverage": round(rows_with_cd / max(total_rows, 1), 6),
         "out_path": out_path,
         "built_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -349,6 +472,19 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=Path,
         default=Path("/data-lake/raw/insee/bulk/stock_unite_legale_historique"),
         help="Directory containing the INSEE historique parquet files.",
+    )
+    parser.add_argument(
+        "--snapshot-dir",
+        type=Path,
+        default=None,
+        help=(
+            "Directory containing the current INSEE stock_unite_legale "
+            "snapshot. Used to broadcast date_creation_unite_legale "
+            "(immutable per SIREN) onto every period row, since the "
+            "historique file does not publish that column. Recommended: "
+            "data-lake/raw/insee/bulk/stock_unite_legale. If omitted, "
+            "creation_date will be NULL in the output."
+        ),
     )
     parser.add_argument(
         "--out-dir",
@@ -384,6 +520,7 @@ def main(argv: list[str] | None = None) -> int:
     stats = build_company_identity_periodic(
         raw_dir=args.raw_dir,
         out_dir=args.out_dir,
+        snapshot_dir=args.snapshot_dir,
         overwrite=args.overwrite,
         duckdb_temp_dir=args.duckdb_temp_dir,
     )
