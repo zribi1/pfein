@@ -1285,6 +1285,7 @@ def _write_shap_artifacts(
     run_artifacts_dir.mkdir(parents=True, exist_ok=True)
     try:
         import shap
+        import pandas as pd
         import matplotlib
 
         matplotlib.use("Agg")
@@ -1310,10 +1311,22 @@ def _write_shap_artifacts(
         # through the transformer step and explain the bare classifier.
         transformer = model.named_steps["prepare_categoricals"]
         classifier = model.named_steps["classifier"]
-        X_sample = transformer.transform(X_sample_raw)
+        X_sample = transformer.transform(X_sample_raw).copy()
+
+        # TreeExplainer needs numeric input. The model was trained on pandas
+        # Categorical columns (HGB/LightGBM/XGBoost) or strings (CatBoost), so
+        # map every non-numeric column to its integer category codes -- the same
+        # encoding the trees split on. Without this, shap raises
+        # "could not convert string to float".
+        for column in X_sample.columns:
+            if not pd.api.types.is_numeric_dtype(X_sample[column]):
+                X_sample[column] = X_sample[column].astype("category").cat.codes
 
         explainer = shap.TreeExplainer(classifier)
-        shap_values = explainer(X_sample)
+        try:
+            shap_values = explainer(X_sample, check_additivity=False)
+        except TypeError:
+            shap_values = explainer(X_sample)
 
         plt.figure()
         shap.plots.bar(shap_values, max_display=20, show=False)
