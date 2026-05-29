@@ -244,6 +244,10 @@ class _CatBoostSklearnClassifier(ClassifierMixin, BaseEstimator):
 
 MODEL_FAMILIES = ("hgb", "lightgbm", "catboost", "xgboost")
 
+# Bumped when the set of per-run outputs changes. Lets you tell new-style runs
+# (credit-risk metrics + calibration + SHAP + OUTPUTS.md) apart from older ones.
+OUTPUT_SCHEMA_VERSION = "2.0-metrics-calibration-shap"
+
 
 def _build_model_pipeline(
     *,
@@ -442,6 +446,10 @@ def main() -> None:
         model_family=args.model_family,
         model_params=model_params,
         gpu=args.gpu,
+        calibrate=args.calibrate,
+        calibration_fraction=args.calibration_fraction,
+        shap_enabled=args.shap,
+        shap_sample=args.shap_sample,
     )
 
 
@@ -458,6 +466,10 @@ def train_model(
     model_family: str = "hgb",
     model_params: dict[str, Any] | None = None,
     gpu: bool = False,
+    calibrate: bool = True,
+    calibration_fraction: float = 0.15,
+    shap_enabled: bool = True,
+    shap_sample: int = 10000,
 ) -> None:
     if model_family not in MODEL_FAMILIES:
         raise ValueError(
@@ -615,7 +627,32 @@ def train_model(
     train_missing_values = int(X_train.isna().sum().sum())
     test_missing_values = int(X_test.isna().sum().sum())
 
-    model.fit(X_train, y_train)
+    # Calibration: fit the model on (1 - calibration_fraction) of the training
+    # rows and fit an isotonic calibrator on the held-out slice. The slice is
+    # NOT used to train the model, so the calibrator stays honest, and the test
+    # year is left fully untouched. The saved model is the one trained on the
+    # 85% slice, so model and calibrator are mutually consistent.
+    calibrator = None
+    calibration_fit_rows = None
+    if calibrate and y_train.nunique() == 2:
+        from sklearn.isotonic import IsotonicRegression
+
+        X_fit, X_calib, y_fit, y_calib = train_test_split(
+            X_train,
+            y_train,
+            test_size=calibration_fraction,
+            random_state=42,
+            stratify=y_train if y_train.value_counts().min() >= 2 else None,
+        )
+        model.fit(X_fit, y_fit)
+        calib_raw = model.predict_proba(X_calib)[:, 1]
+        calibrator = IsotonicRegression(out_of_bounds="clip")
+        calibrator.fit(calib_raw, y_calib.to_numpy().astype(float))
+        calibration_fit_rows = int(len(X_fit))
+    else:
+        calibrate = False
+        model.fit(X_train, y_train)
+
     probabilities = model.predict_proba(X_test)[:, 1]
     predictions = (probabilities >= 0.5).astype(int)
     tn, fp, fn, tp = [
@@ -647,6 +684,21 @@ def train_model(
     metrics["calibration_table"] = calibration_table
     metrics["decile_table"] = _decile_table(y_test, probabilities)
 
+    # Calibrated probability metrics (ranking metrics are unchanged by the
+    # monotonic isotonic map, so only the probability-quality ones are added).
+    if calibrator is not None:
+        from sklearn.metrics import brier_score_loss, log_loss
+
+        calibrated = calibrator.predict(probabilities)
+        calibrated_table, calibrated_ece = _calibration_table(y_test, calibrated)
+        metrics["calibrated_brier_score"] = _safe_metric(brier_score_loss, y_test, calibrated)
+        try:
+            metrics["calibrated_log_loss"] = float(log_loss(y_test, calibrated, labels=[0, 1]))
+        except Exception:
+            metrics["calibrated_log_loss"] = None
+        metrics["calibrated_expected_calibration_error"] = calibrated_ece
+        metrics["calibrated_calibration_table"] = calibrated_table
+
     trained_at = datetime.now(tz=timezone.utc)
     model_version = trained_at.strftime("continuity-risk-%Y%m%d-%H%M%S")
     run_name = _run_artifacts_folder_name(
@@ -667,6 +719,7 @@ def train_model(
         "categorical_columns": categorical_columns,
         "trained_at": trained_at.isoformat(),
         "horizon_months": 12,
+        "calibrator": calibrator,
     }
 
     artifacts_dir.mkdir(parents=True, exist_ok=True)
@@ -679,6 +732,12 @@ def train_model(
     run_artifacts_dir.mkdir(parents=True, exist_ok=True)
     archived_model_path = run_artifacts_dir / model_file
     joblib.dump(bundle, archived_model_path)
+
+    # Standalone calibrator next to both the live and archived model, matching
+    # the path the interrogation notebook already probes (isotonic_calibrator.joblib).
+    if calibrator is not None:
+        joblib.dump(calibrator, artifacts_dir / "isotonic_calibrator.joblib")
+        joblib.dump(calibrator, run_artifacts_dir / "isotonic_calibrator.joblib")
     metadata = {
         "model_version": model_version,
         "run_name": run_name,
@@ -688,6 +747,10 @@ def train_model(
         "gpu": bool(gpu),
         "target": target,
         "horizon_months": 12,
+        "output_schema_version": OUTPUT_SCHEMA_VERSION,
+        "calibrated": bool(calibrator is not None),
+        "calibration_fraction": calibration_fraction if calibrator is not None else None,
+        "calibration_fit_rows": calibration_fit_rows,
         "eligible_rows": int(total_rows),
         "rows": int(len(df)),
         "dataset_column_count": int(len(all_source_columns)),
@@ -736,6 +799,16 @@ def train_model(
             y_test=y_test,
         )
     )
+    if shap_enabled:
+        metadata["evaluation_artifacts"].update(
+            _write_shap_artifacts(
+                run_artifacts_dir=run_artifacts_dir,
+                model=model,
+                X_test=X_test,
+                scores=probabilities,
+                sample_size=shap_sample,
+            )
+        )
     run_summary_path = run_artifacts_dir / "run_summary.md"
     _write_run_summary(run_summary_path, metadata)
     metadata["evaluation_artifacts"]["run_summary_md"] = str(run_summary_path)
@@ -1193,6 +1266,96 @@ def _write_top_importances_plot(path: Path, rows: list[dict[str, Any]]) -> None:
     plt.close(fig)
 
 
+def _write_shap_artifacts(
+    *,
+    run_artifacts_dir: Path,
+    model: Any,
+    X_test: Any,
+    scores: Any,
+    sample_size: int = 10000,
+) -> dict[str, str]:
+    """Global SHAP explanations (bar, beeswarm, signed-importance CSV) for the
+    trained model. Fail-soft: any error is captured to shap_error.txt so it can
+    never abort a finished training run. Explains the exact model just trained,
+    which is what the standalone Phase D notebook could not guarantee.
+    """
+    import numpy as np
+
+    artifacts: dict[str, str] = {}
+    run_artifacts_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        import shap
+        import matplotlib
+
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+
+        # Sample = half highest-risk + half random, covering the operational
+        # decision zone as well as the typical company.
+        score_arr = np.asarray(scores, dtype=float)
+        n = min(int(sample_size), len(X_test))
+        order = np.argsort(-score_arr)
+        half = n // 2
+        high_idx = order[:half]
+        remaining = order[half:]
+        rng = np.random.default_rng(42)
+        if len(remaining) and n - half > 0:
+            random_idx = rng.choice(remaining, size=min(n - half, len(remaining)), replace=False)
+        else:
+            random_idx = np.array([], dtype=int)
+        selected = np.concatenate([high_idx, random_idx]).astype(int)
+        X_sample_raw = X_test.iloc[selected]
+
+        # SHAP can't see through the sklearn Pipeline wrapper, so push the sample
+        # through the transformer step and explain the bare classifier.
+        transformer = model.named_steps["prepare_categoricals"]
+        classifier = model.named_steps["classifier"]
+        X_sample = transformer.transform(X_sample_raw)
+
+        explainer = shap.TreeExplainer(classifier)
+        shap_values = explainer(X_sample)
+
+        plt.figure()
+        shap.plots.bar(shap_values, max_display=20, show=False)
+        plt.title("SHAP mean |value| by feature (top 20)")
+        bar_path = run_artifacts_dir / "shap_summary_bar.png"
+        plt.savefig(bar_path, dpi=160, bbox_inches="tight")
+        plt.close()
+        artifacts["shap_summary_bar_png"] = str(bar_path)
+
+        plt.figure()
+        shap.plots.beeswarm(shap_values, max_display=20, show=False)
+        beeswarm_path = run_artifacts_dir / "shap_summary_beeswarm.png"
+        plt.savefig(beeswarm_path, dpi=160, bbox_inches="tight")
+        plt.close()
+        artifacts["shap_summary_beeswarm_png"] = str(beeswarm_path)
+
+        values = np.asarray(shap_values.values)
+        if values.ndim == 3:
+            values = values[:, :, -1]
+        feature_names = list(getattr(X_sample, "columns", [])) or [f"f{i}" for i in range(values.shape[1])]
+        mean_shap = values.mean(axis=0)
+        mean_abs = np.abs(values).mean(axis=0)
+        rows = [
+            {
+                "feature": str(feature_names[i]),
+                "mean_shap": float(mean_shap[i]),
+                "mean_abs_shap": float(mean_abs[i]),
+                "dominant_push": "toward_risk" if mean_shap[i] >= 0 else "away_from_risk",
+            }
+            for i in range(len(feature_names))
+        ]
+        rows.sort(key=lambda row: row["mean_abs_shap"], reverse=True)
+        signs_path = run_artifacts_dir / "shap_top_feature_signs.csv"
+        _write_csv(signs_path, rows)
+        artifacts["shap_top_feature_signs_csv"] = str(signs_path)
+    except Exception as exc:
+        error_path = run_artifacts_dir / "shap_error.txt"
+        error_path.write_text(f"{type(exc).__name__}: {exc}", encoding="utf-8")
+        artifacts["shap_error"] = str(error_path)
+    return artifacts
+
+
 def _flat_metric_row(metadata: dict[str, Any]) -> dict[str, Any]:
     metrics = metadata.get("metrics", {})
     class_counts = metadata.get("class_counts", {})
@@ -1357,6 +1520,8 @@ def _write_run_summary(path: Path, metadata: dict[str, Any]) -> None:
         "|---|---|",
         f"| Run folder | `{metadata.get('run_name')}` |",
         f"| Model version | `{metadata.get('model_version')}` |",
+        f"| Output schema | `{metadata.get('output_schema_version')}` |",
+        f"| Calibrated | {metadata.get('calibrated')} (holdout fraction {metadata.get('calibration_fraction')}) |",
         f"| Target | `{metadata.get('target')}` |",
         f"| Horizon | {metadata.get('horizon_months')} months |",
         f"| Sampling strategy | `{metadata.get('sample_strategy')}` |",
@@ -1378,6 +1543,8 @@ def _write_run_summary(path: Path, metadata: dict[str, Any]) -> None:
         f"| Brier score | {_fmt_float(metrics.get('brier_score'))} |",
         f"| Log loss | {_fmt_float(metrics.get('log_loss'))} |",
         f"| Expected calibration error | {_fmt_float(metrics.get('expected_calibration_error'))} |",
+        f"| Brier (calibrated) | {_fmt_float(metrics.get('calibrated_brier_score'))} |",
+        f"| ECE (calibrated) | {_fmt_float(metrics.get('calibrated_expected_calibration_error'))} |",
         f"| MCC | {_fmt_float(metrics.get('mcc'))} |",
         f"| Balanced accuracy | {_fmt_float(metrics.get('balanced_accuracy'))} |",
         f"| Specificity at 0.5 | {_fmt_float(metrics.get('specificity_at_0_5'))} |",
@@ -1453,6 +1620,8 @@ def _write_run_summary(path: Path, metadata: dict[str, Any]) -> None:
         "headline_metrics_png",
         "class_counts_by_year_png",
         "top_feature_importances_png",
+        "shap_summary_bar_png",
+        "shap_summary_beeswarm_png",
     ):
         if key in artifacts:
             lines.append(f"| {key} | `{Path(str(artifacts[key])).name}` |")
@@ -1476,7 +1645,12 @@ def _write_run_summary(path: Path, metadata: dict[str, Any]) -> None:
 # Descriptions for the per-run OUTPUTS.md manifest. Keyed by filename so the
 # manifest reflects whatever files actually landed in the run folder.
 _RUN_OUTPUT_DESCRIPTIONS = {
-    "model.joblib": "Archived model bundle (pipeline + feature columns + metadata) for this run.",
+    "model.joblib": "Archived model bundle (pipeline + feature columns + calibrator + metadata) for this run.",
+    "isotonic_calibrator.joblib": "Fitted isotonic calibrator for this run's model (apply to raw scores for honest probabilities).",
+    "shap_summary_bar.png": "SHAP global importance: mean |SHAP value| per feature.",
+    "shap_summary_beeswarm.png": "SHAP signed per-company contributions per feature (direction + spread).",
+    "shap_top_feature_signs.csv": "Per feature: mean SHAP, mean |SHAP|, and dominant push (toward/away from risk).",
+    "shap_error.txt": "SHAP stage failed for this run (see contents); training itself still succeeded.",
     "metadata.json": "Full run metadata: config, dataset stats, and every metric (incl. tables).",
     "run_summary.md": "Human-readable summary of the run and its headline metrics.",
     "metrics_summary.csv": "One-row flat table of all scalar metrics (spreadsheet-friendly).",
@@ -1706,8 +1880,18 @@ def _write_evaluation_plots(
         ax.plot(
             [row["mean_predicted"] for row in calibration_rows],
             [row["actual_rate"] for row in calibration_rows],
-            marker="o", linewidth=2, label="Model",
+            marker="o", linewidth=2, label="Raw",
         )
+        calibrated_rows = [
+            row for row in metadata["metrics"].get("calibrated_calibration_table", [])
+            if row.get("mean_predicted") is not None
+        ]
+        if calibrated_rows:
+            ax.plot(
+                [row["mean_predicted"] for row in calibrated_rows],
+                [row["actual_rate"] for row in calibrated_rows],
+                marker="s", linewidth=2, label="Calibrated",
+            )
         ax.set_title("Calibration (Reliability) Curve")
         ax.set_xlabel("Mean predicted probability")
         ax.set_ylabel("Observed frequency")
@@ -2028,6 +2212,31 @@ def _parse_args() -> argparse.Namespace:
         "--gpu",
         action="store_true",
         help="Enable GPU training for CatBoost (task_type=GPU) and XGBoost (device=cuda). HGB and LightGBM ignore this flag.",
+    )
+    parser.add_argument(
+        "--calibrate",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Fit an isotonic calibrator on a held-out slice of train (--no-calibrate to skip). "
+             "When on, the model trains on (1 - calibration_fraction) of the training rows.",
+    )
+    parser.add_argument(
+        "--calibration-fraction",
+        type=float,
+        default=0.15,
+        help="Fraction of the training rows held out (not trained on) to fit the calibrator.",
+    )
+    parser.add_argument(
+        "--shap",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Compute SHAP global explanations on the trained model (--no-shap to skip). Fail-soft.",
+    )
+    parser.add_argument(
+        "--shap-sample",
+        type=int,
+        default=10000,
+        help="Rows scored for SHAP (half highest-risk + half random from the test set).",
     )
     parser.add_argument("--log-level", default="INFO")
     return parser.parse_args()
