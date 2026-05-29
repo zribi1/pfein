@@ -245,8 +245,9 @@ class _CatBoostSklearnClassifier(ClassifierMixin, BaseEstimator):
 MODEL_FAMILIES = ("hgb", "lightgbm", "catboost", "xgboost")
 
 # Bumped when the set of per-run outputs changes. Lets you tell new-style runs
-# (credit-risk metrics + calibration + SHAP + conformal + OUTPUTS.md) apart from old ones.
-OUTPUT_SCHEMA_VERSION = "2.1-metrics-calibration-shap-conformal"
+# (credit-risk metrics + calibration + SHAP + valid-coverage conformal) apart
+# from older ones. 2.2 fixes the 2.1 conformal under-coverage on drifted years.
+OUTPUT_SCHEMA_VERSION = "2.2-conformal-valid-coverage"
 
 
 class MondrianConformalCalibrator:
@@ -764,17 +765,31 @@ def train_model(
         metrics["calibrated_expected_calibration_error"] = calibrated_ece
         metrics["calibrated_calibration_table"] = calibrated_table
 
-    # Conformal confidence: reuse the calibration holdout (which the model did
-    # NOT train on) to fit a class-conditional conformal predictor on the model's
-    # RAW scores -- independent of the isotonic calibrator, so validity holds.
-    # Fail-soft: a conformal error must never abort a finished training run.
+    # Conformal confidence. The coverage guarantee requires the calibration set
+    # be exchangeable with what we score. Calibrating on the training years
+    # (2017-2023) and scoring the test year (2024) breaks that -- the documented
+    # temporal drift makes conformal UNDER-cover on 2024. So we split the test
+    # year itself 50/50: fit conformal on one half, measure validity on the
+    # disjoint half. The model never trained on any test-year row, so the halves
+    # are exchangeable and coverage holds. The saved calibrator is fit on recent
+    # (test-year) data, which is also the right basis for scoring live companies.
+    # Uses the model's RAW scores (independent of the isotonic map). Fail-soft.
     conformal = None
-    if calibrator is not None:
+    if y_test.nunique() == 2:
         try:
-            conformal = MondrianConformalCalibrator().fit(calib_raw, y_calib.to_numpy().astype(int))
-            cp = conformal.predict(probabilities)
             y_test_arr = y_test.to_numpy().astype(int)
-            pval_true = np.where(y_test_arr == 1, cp["p_value_1"], cp["p_value_0"])
+            cal_idx, eval_idx = train_test_split(
+                np.arange(len(y_test_arr)),
+                test_size=0.5,
+                random_state=42,
+                stratify=y_test_arr,
+            )
+            conformal = MondrianConformalCalibrator().fit(
+                probabilities[cal_idx], y_test_arr[cal_idx]
+            )
+            cp = conformal.predict(probabilities[eval_idx])
+            eval_y = y_test_arr[eval_idx]
+            pval_true = np.where(eval_y == 1, cp["p_value_1"], cp["p_value_0"])
             validity = []
             for eps in (0.01, 0.05, 0.10, 0.20):
                 set_size = (cp["p_value_0"] > eps).astype(int) + (cp["p_value_1"] > eps).astype(int)
@@ -789,6 +804,7 @@ def train_model(
             counts, edges = np.histogram(cp["confidence"], bins=10, range=(0.0, 1.0))
             metrics["conformal_mean_confidence"] = float(cp["confidence"].mean())
             metrics["conformal_mean_credibility"] = float(cp["credibility"].mean())
+            metrics["conformal_calibration_source"] = "test_year_holdout_50pct"
             metrics["conformal_validity"] = validity
             metrics["conformal_confidence_hist"] = [
                 {"bin_lower": float(edges[i]), "bin_upper": float(edges[i + 1]), "count": int(counts[i])}
@@ -1731,6 +1747,8 @@ def _write_run_summary(path: Path, metadata: dict[str, Any]) -> None:
                 "",
                 f"Mean confidence: {_fmt_float(metrics.get('conformal_mean_confidence'))}  |  "
                 f"mean credibility: {_fmt_float(metrics.get('conformal_mean_credibility'))}",
+                "",
+                f"Calibration source: `{metrics.get('conformal_calibration_source', 'n/a')}` (exchangeable with the scored population, so the coverage guarantee holds).",
                 "",
                 "Validity: at each target confidence the empirical error should stay at or below the significance level (1 - confidence).",
                 "",
