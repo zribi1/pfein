@@ -641,6 +641,12 @@ def train_model(
     metrics["threshold_analysis"] = threshold_analysis
     metrics["top_k_analysis"] = top_k_analysis
 
+    metrics.update(_advanced_metrics(y_test, probabilities, predictions))
+    calibration_table, ece = _calibration_table(y_test, probabilities)
+    metrics["expected_calibration_error"] = ece
+    metrics["calibration_table"] = calibration_table
+    metrics["decile_table"] = _decile_table(y_test, probabilities)
+
     trained_at = datetime.now(tz=timezone.utc)
     model_version = trained_at.strftime("continuity-risk-%Y%m%d-%H%M%S")
     run_name = _run_artifacts_folder_name(
@@ -666,6 +672,13 @@ def train_model(
     artifacts_dir.mkdir(parents=True, exist_ok=True)
     model_path = artifacts_dir / model_file
     joblib.dump(bundle, model_path)
+
+    # Archive a per-run copy. The root model_file is overwritten on every run,
+    # so without this the only deployable artifact is always the latest run --
+    # never the best. The interrogation notebook resolves this path when present.
+    run_artifacts_dir.mkdir(parents=True, exist_ok=True)
+    archived_model_path = run_artifacts_dir / model_file
+    joblib.dump(bundle, archived_model_path)
     metadata = {
         "model_version": model_version,
         "run_name": run_name,
@@ -703,6 +716,7 @@ def train_model(
         "categorical_columns": categorical_columns,
         "metrics": metrics,
         "model_file": str(model_path),
+        "archived_model_file": str(archived_model_path),
         "trained_at": trained_at.isoformat(),
         "run_artifacts_dir": str(run_artifacts_dir),
     }
@@ -741,6 +755,7 @@ def train_model(
         json.dumps(metadata, ensure_ascii=False, indent=2, default=_json_default),
         encoding="utf-8",
     )
+    _write_outputs_manifest(run_artifacts_dir, metadata)
     logger.info("trained model=%s rows=%d metrics=%s", model_path, len(df), metrics)
 
 
@@ -832,6 +847,188 @@ def _top_k_analysis(
     return rows
 
 
+def _advanced_metrics(
+    y_true: Any,
+    y_score: Any,
+    predictions: Any,
+    *,
+    bootstrap_iterations: int = 1000,
+    random_state: int = 42,
+) -> dict[str, Any]:
+    """Credit-risk + calibration + balanced-threshold metrics, plus bootstrap CIs.
+
+    Computed alongside the base metrics so every run carries them. None of these
+    change the model -- they describe it more completely than AP/AUC alone.
+    """
+    import numpy as np
+    from sklearn.metrics import (
+        balanced_accuracy_score,
+        brier_score_loss,
+        log_loss,
+        matthews_corrcoef,
+        precision_recall_curve,
+        roc_auc_score,
+        roc_curve,
+    )
+
+    y = np.asarray(y_true, dtype=int)
+    s = np.asarray(y_score, dtype=float)
+    pred = np.asarray(predictions, dtype=int)
+    out: dict[str, Any] = {}
+
+    # Discrimination (rank-based, base-rate independent).
+    auc = _safe_metric(roc_auc_score, y, s)
+    out["gini"] = (2.0 * auc - 1.0) if auc is not None else None
+    try:
+        fpr, tpr, _ = roc_curve(y, s)
+        out["ks_statistic"] = float(np.max(tpr - fpr))
+    except Exception:
+        out["ks_statistic"] = None
+
+    # Probability quality (proper scoring rules -- sensitive to calibration).
+    out["brier_score"] = _safe_metric(brier_score_loss, y, s)
+    try:
+        out["log_loss"] = float(log_loss(y, s, labels=[0, 1]))
+    except Exception:
+        out["log_loss"] = None
+
+    # Balanced metrics at the 0.5 threshold.
+    try:
+        out["mcc"] = float(matthews_corrcoef(y, pred))
+    except Exception:
+        out["mcc"] = None
+    try:
+        out["balanced_accuracy"] = float(balanced_accuracy_score(y, pred))
+    except Exception:
+        out["balanced_accuracy"] = None
+    tn = int(((pred == 0) & (y == 0)).sum())
+    fp = int(((pred == 1) & (y == 0)).sum())
+    out["specificity_at_0_5"] = _safe_divide(tn, tn + fp)
+
+    # Best precision attainable while holding recall >= target (operating-point design).
+    try:
+        precision, recall, _ = precision_recall_curve(y, s)
+        for target in (0.5, 0.7, 0.9):
+            mask = recall >= target
+            out[f"precision_at_recall_{int(target * 100)}"] = (
+                float(np.max(precision[mask])) if mask.any() else None
+            )
+    except Exception:
+        for target in (50, 70, 90):
+            out[f"precision_at_recall_{target}"] = None
+
+    # Bootstrap 95% CIs for AUC and AP (defensibility -- report metric +/- band).
+    auc_ci, ap_ci = _bootstrap_cis(y, s, iterations=bootstrap_iterations, random_state=random_state)
+    out["roc_auc_ci95_low"], out["roc_auc_ci95_high"] = auc_ci
+    out["average_precision_ci95_low"], out["average_precision_ci95_high"] = ap_ci
+    return out
+
+
+def _bootstrap_cis(
+    y_true: Any,
+    y_score: Any,
+    *,
+    iterations: int = 1000,
+    random_state: int = 42,
+) -> tuple[tuple[float | None, float | None], tuple[float | None, float | None]]:
+    import numpy as np
+    from sklearn.metrics import average_precision_score, roc_auc_score
+
+    y = np.asarray(y_true, dtype=int)
+    s = np.asarray(y_score, dtype=float)
+    n = len(y)
+    if n == 0 or y.sum() == 0 or y.sum() == n:
+        return (None, None), (None, None)
+    rng = np.random.default_rng(random_state)
+    aucs: list[float] = []
+    aps: list[float] = []
+    for _ in range(iterations):
+        idx = rng.integers(0, n, n)
+        yb = y[idx]
+        if yb.sum() == 0 or yb.sum() == len(yb):
+            continue
+        sb = s[idx]
+        aucs.append(float(roc_auc_score(yb, sb)))
+        aps.append(float(average_precision_score(yb, sb)))
+    if not aucs:
+        return (None, None), (None, None)
+    auc_ci = (float(np.percentile(aucs, 2.5)), float(np.percentile(aucs, 97.5)))
+    ap_ci = (float(np.percentile(aps, 2.5)), float(np.percentile(aps, 97.5)))
+    return auc_ci, ap_ci
+
+
+def _decile_table(y_true: Any, y_score: Any, *, n_bins: int = 10) -> list[dict[str, Any]]:
+    """Risk deciles ranked highest-first: standard credit-risk validation table."""
+    import numpy as np
+
+    y = np.asarray(y_true, dtype=int)
+    s = np.asarray(y_score, dtype=float)
+    total = len(y)
+    total_pos = int(y.sum())
+    if total == 0:
+        return []
+    order = np.argsort(-s)
+    y_sorted = y[order]
+    s_sorted = s[order]
+    base_rate = _safe_divide(total_pos, total)
+    rows: list[dict[str, Any]] = []
+    cumulative_pos = 0
+    for i, segment in enumerate(np.array_split(np.arange(total), n_bins), start=1):
+        if len(segment) == 0:
+            continue
+        seg_y = y_sorted[segment]
+        seg_pos = int(seg_y.sum())
+        cumulative_pos += seg_pos
+        actual_rate = _safe_divide(seg_pos, len(segment))
+        rows.append(
+            {
+                "decile": i,
+                "rows": int(len(segment)),
+                "mean_predicted": float(s_sorted[segment].mean()),
+                "actual_positives": seg_pos,
+                "actual_rate": actual_rate,
+                "lift": _safe_divide(actual_rate, base_rate),
+                "cumulative_positives": cumulative_pos,
+                "cumulative_recall": _safe_divide(cumulative_pos, total_pos),
+            }
+        )
+    return rows
+
+
+def _calibration_table(
+    y_true: Any,
+    y_score: Any,
+    *,
+    n_bins: int = 10,
+) -> tuple[list[dict[str, Any]], float | None]:
+    """Reliability bins + expected calibration error (weighted mean |predicted - observed|)."""
+    import numpy as np
+
+    y = np.asarray(y_true, dtype=int)
+    s = np.asarray(y_score, dtype=float)
+    total = len(y)
+    if total == 0:
+        return [], None
+    edges = np.linspace(0.0, 1.0, n_bins + 1)
+    rows: list[dict[str, Any]] = []
+    ece = 0.0
+    for i in range(n_bins):
+        lo, hi = float(edges[i]), float(edges[i + 1])
+        mask = (s >= lo) & (s <= hi) if i == n_bins - 1 else (s >= lo) & (s < hi)
+        count = int(mask.sum())
+        if count == 0:
+            rows.append({"bin_lower": lo, "bin_upper": hi, "rows": 0,
+                         "mean_predicted": None, "actual_rate": None, "gap": None})
+            continue
+        mean_pred = float(s[mask].mean())
+        actual = float(y[mask].mean())
+        gap = abs(mean_pred - actual)
+        ece += (count / total) * gap
+        rows.append({"bin_lower": lo, "bin_upper": hi, "rows": count,
+                     "mean_predicted": mean_pred, "actual_rate": actual, "gap": gap})
+    return rows, float(ece)
+
+
 def _safe_divide(numerator: float | int, denominator: float | int) -> float:
     return float(numerator / denominator) if denominator else 0.0
 
@@ -855,6 +1052,14 @@ def _write_evaluation_artifacts(
     top_k_path = run_artifacts_dir / "top_k_analysis.csv"
     _write_csv(top_k_path, metadata["metrics"]["top_k_analysis"])
     artifacts["top_k_analysis_csv"] = str(top_k_path)
+
+    decile_path = run_artifacts_dir / "decile_table.csv"
+    _write_csv(decile_path, metadata["metrics"].get("decile_table", []))
+    artifacts["decile_table_csv"] = str(decile_path)
+
+    calibration_path = run_artifacts_dir / "calibration_table.csv"
+    _write_csv(calibration_path, metadata["metrics"].get("calibration_table", []))
+    artifacts["calibration_table_csv"] = str(calibration_path)
 
     class_counts_path = run_artifacts_dir / "class_counts_by_year.json"
     class_counts_path.write_text(
@@ -1022,6 +1227,21 @@ def _flat_metric_row(metadata: dict[str, Any]) -> dict[str, Any]:
         "precision_at_0_5": metrics.get("precision_at_0_5"),
         "recall_at_0_5": metrics.get("recall_at_0_5"),
         "f1_at_0_5": metrics.get("f1_at_0_5"),
+        "gini": metrics.get("gini"),
+        "ks_statistic": metrics.get("ks_statistic"),
+        "brier_score": metrics.get("brier_score"),
+        "log_loss": metrics.get("log_loss"),
+        "expected_calibration_error": metrics.get("expected_calibration_error"),
+        "mcc": metrics.get("mcc"),
+        "balanced_accuracy": metrics.get("balanced_accuracy"),
+        "specificity_at_0_5": metrics.get("specificity_at_0_5"),
+        "precision_at_recall_50": metrics.get("precision_at_recall_50"),
+        "precision_at_recall_70": metrics.get("precision_at_recall_70"),
+        "precision_at_recall_90": metrics.get("precision_at_recall_90"),
+        "roc_auc_ci95_low": metrics.get("roc_auc_ci95_low"),
+        "roc_auc_ci95_high": metrics.get("roc_auc_ci95_high"),
+        "average_precision_ci95_low": metrics.get("average_precision_ci95_low"),
+        "average_precision_ci95_high": metrics.get("average_precision_ci95_high"),
     }
 
 
@@ -1153,6 +1373,17 @@ def _write_run_summary(path: Path, metadata: dict[str, Any]) -> None:
         f"| Precision at 0.5 | {_fmt_float(metrics.get('precision_at_0_5'))} |",
         f"| Recall at 0.5 | {_fmt_float(metrics.get('recall_at_0_5'))} |",
         f"| F1 at 0.5 | {_fmt_float(metrics.get('f1_at_0_5'))} |",
+        f"| Gini (2*AUC-1) | {_fmt_float(metrics.get('gini'))} |",
+        f"| KS statistic | {_fmt_float(metrics.get('ks_statistic'))} |",
+        f"| Brier score | {_fmt_float(metrics.get('brier_score'))} |",
+        f"| Log loss | {_fmt_float(metrics.get('log_loss'))} |",
+        f"| Expected calibration error | {_fmt_float(metrics.get('expected_calibration_error'))} |",
+        f"| MCC | {_fmt_float(metrics.get('mcc'))} |",
+        f"| Balanced accuracy | {_fmt_float(metrics.get('balanced_accuracy'))} |",
+        f"| Specificity at 0.5 | {_fmt_float(metrics.get('specificity_at_0_5'))} |",
+        f"| Precision @ recall 50/70/90% | {_fmt_float(metrics.get('precision_at_recall_50'))} / {_fmt_float(metrics.get('precision_at_recall_70'))} / {_fmt_float(metrics.get('precision_at_recall_90'))} |",
+        f"| ROC AUC 95% CI | {_fmt_float(metrics.get('roc_auc_ci95_low'))} - {_fmt_float(metrics.get('roc_auc_ci95_high'))} |",
+        f"| Avg precision 95% CI | {_fmt_float(metrics.get('average_precision_ci95_low'))} - {_fmt_float(metrics.get('average_precision_ci95_high'))} |",
         "",
         "## Confusion Matrix At Threshold 0.5",
         "",
@@ -1217,6 +1448,9 @@ def _write_run_summary(path: Path, metadata: dict[str, Any]) -> None:
         "confusion_matrix_at_0_5_png",
         "score_distribution_by_class_png",
         "threshold_tradeoff_png",
+        "calibration_curve_png",
+        "cumulative_gains_curve_png",
+        "headline_metrics_png",
         "class_counts_by_year_png",
         "top_feature_importances_png",
     ):
@@ -1237,6 +1471,58 @@ def _write_run_summary(path: Path, metadata: dict[str, Any]) -> None:
         ]
     )
     path.write_text("\n".join(lines), encoding="utf-8")
+
+
+# Descriptions for the per-run OUTPUTS.md manifest. Keyed by filename so the
+# manifest reflects whatever files actually landed in the run folder.
+_RUN_OUTPUT_DESCRIPTIONS = {
+    "model.joblib": "Archived model bundle (pipeline + feature columns + metadata) for this run.",
+    "metadata.json": "Full run metadata: config, dataset stats, and every metric (incl. tables).",
+    "run_summary.md": "Human-readable summary of the run and its headline metrics.",
+    "metrics_summary.csv": "One-row flat table of all scalar metrics (spreadsheet-friendly).",
+    "threshold_analysis.csv": "Precision/recall/F1/FPR/flagged-rate at thresholds 0.001-0.5.",
+    "top_k_analysis.csv": "Precision/recall/lift at the top 0.1/0.5/1/5/10% by risk score.",
+    "decile_table.csv": "Risk deciles (highest-first): mean predicted vs actual rate, lift, cumulative recall.",
+    "calibration_table.csv": "10-bin reliability table: mean predicted vs observed + gap (feeds ECE).",
+    "class_counts_by_year.json": "Positive/negative row counts per prediction year.",
+    "feature_importances.csv": "Permutation importance (ROC-AUC drop) per feature.",
+    "precision_recall_curve.png": "PR curve with average precision annotated.",
+    "roc_curve.png": "ROC curve with AUC annotated.",
+    "confusion_matrix_at_0_5.png": "Confusion matrix at threshold 0.5.",
+    "score_distribution_by_class.png": "Predicted-score histograms split by true class.",
+    "threshold_tradeoff.png": "Precision/recall/flagged-rate vs decision threshold.",
+    "calibration_curve.png": "Reliability curve (predicted vs observed) with ECE.",
+    "cumulative_gains_curve.png": "Cumulative positives captured vs population fraction (ranked by risk).",
+    "headline_metrics.png": "Single bar chart of AUC, AP, Gini, KS, F1, precision and recall together.",
+    "class_counts_by_year.png": "Stacked class counts per prediction year.",
+    "top_feature_importances.png": "Bar chart of the top permutation importances.",
+}
+
+
+def _write_outputs_manifest(run_artifacts_dir: Path, metadata: dict[str, Any]) -> None:
+    """Self-documenting list of every file this run produced, written as OUTPUTS.md."""
+    lines = [
+        f"# Run Outputs: {metadata.get('run_name') or metadata.get('model_version')}",
+        "",
+        f"Generated {metadata.get('trained_at')}. Every file in this folder:",
+        "",
+        "| File | Description |",
+        "|---|---|",
+    ]
+    for file_path in sorted(run_artifacts_dir.glob("*")):
+        if not file_path.is_file() or file_path.name == "OUTPUTS.md":
+            continue
+        description = _RUN_OUTPUT_DESCRIPTIONS.get(file_path.name)
+        if description is None:
+            if file_path.name.endswith(".png"):
+                description = "Generated plot."
+            elif file_path.name.endswith("error.txt"):
+                description = "Error captured while generating an artifact (see contents)."
+            else:
+                description = "(see metadata.json)"
+        lines.append(f"| `{file_path.name}` | {description} |")
+    lines.append("")
+    (run_artifacts_dir / "OUTPUTS.md").write_text("\n".join(lines), encoding="utf-8")
 
 
 def _fmt_int(value: Any) -> str:
@@ -1409,6 +1695,83 @@ def _write_evaluation_plots(
     plt.close(fig)
     plot_paths["class_counts_by_year_png"] = str(year_path)
 
+    calibration_rows = [
+        row for row in metadata["metrics"].get("calibration_table", [])
+        if row.get("mean_predicted") is not None
+    ]
+    if calibration_rows:
+        calibration_path = run_artifacts_dir / "calibration_curve.png"
+        fig, ax = plt.subplots(figsize=(7, 5))
+        ax.plot([0, 1], [0, 1], linestyle="--", color="gray", linewidth=1, label="Perfect calibration")
+        ax.plot(
+            [row["mean_predicted"] for row in calibration_rows],
+            [row["actual_rate"] for row in calibration_rows],
+            marker="o", linewidth=2, label="Model",
+        )
+        ax.set_title("Calibration (Reliability) Curve")
+        ax.set_xlabel("Mean predicted probability")
+        ax.set_ylabel("Observed frequency")
+        ece = metadata["metrics"].get("expected_calibration_error")
+        if ece is not None:
+            ax.text(0.02, 0.95, f"ECE = {ece:.4f}", transform=ax.transAxes, va="top")
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        fig.tight_layout()
+        fig.savefig(calibration_path, dpi=160)
+        plt.close(fig)
+        plot_paths["calibration_curve_png"] = str(calibration_path)
+
+    order = np.argsort(-y_score_arr)
+    y_ordered = y_true_arr[order]
+    total_positives = int(y_ordered.sum())
+    if total_positives > 0:
+        gains_path = run_artifacts_dir / "cumulative_gains_curve.png"
+        population_fraction = np.arange(1, len(y_ordered) + 1) / len(y_ordered)
+        positives_fraction = np.cumsum(y_ordered) / total_positives
+        fig, ax = plt.subplots(figsize=(7, 5))
+        ax.plot(population_fraction, positives_fraction, linewidth=2, label="Model")
+        ax.plot([0, 1], [0, 1], linestyle="--", color="gray", linewidth=1, label="Random")
+        ax.set_title("Cumulative Gains")
+        ax.set_xlabel("Fraction of population (ranked by risk score)")
+        ax.set_ylabel("Fraction of positives captured")
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        fig.tight_layout()
+        fig.savefig(gains_path, dpi=160)
+        plt.close(fig)
+        plot_paths["cumulative_gains_curve_png"] = str(gains_path)
+
+    headline = [
+        (label, metadata["metrics"].get(key))
+        for label, key in (
+            ("ROC AUC", "roc_auc"),
+            ("Avg precision", "average_precision"),
+            ("Gini", "gini"),
+            ("KS", "ks_statistic"),
+            ("F1 @0.5", "f1_at_0_5"),
+            ("Precision @0.5", "precision_at_0_5"),
+            ("Recall @0.5", "recall_at_0_5"),
+        )
+    ]
+    headline = [(label, float(value)) for label, value in headline if value is not None]
+    if headline:
+        headline_path = run_artifacts_dir / "headline_metrics.png"
+        labels = [label for label, _ in headline]
+        values = [value for _, value in headline]
+        fig, ax = plt.subplots(figsize=(7, 4.5))
+        bars = ax.barh(range(len(labels)), values, color="#0f766e", alpha=0.85)
+        ax.set_yticks(range(len(labels)), labels=labels)
+        ax.invert_yaxis()
+        ax.set_xlim(0, 1)
+        ax.set_title("Headline Metrics")
+        ax.grid(True, axis="x", alpha=0.3)
+        for bar, value in zip(bars, values):
+            ax.text(min(value + 0.01, 0.97), bar.get_y() + bar.get_height() / 2, f"{value:.3f}", va="center")
+        fig.tight_layout()
+        fig.savefig(headline_path, dpi=160)
+        plt.close(fig)
+        plot_paths["headline_metrics_png"] = str(headline_path)
+
     return plot_paths
 
 
@@ -1437,6 +1800,15 @@ def _append_run_index(path: Path, metadata: dict[str, Any]) -> None:
         "precision_at_0_5": metrics.get("precision_at_0_5"),
         "recall_at_0_5": metrics.get("recall_at_0_5"),
         "f1_at_0_5": metrics.get("f1_at_0_5"),
+        "gini": metrics.get("gini"),
+        "ks_statistic": metrics.get("ks_statistic"),
+        "brier_score": metrics.get("brier_score"),
+        "log_loss": metrics.get("log_loss"),
+        "expected_calibration_error": metrics.get("expected_calibration_error"),
+        "roc_auc_ci95_low": metrics.get("roc_auc_ci95_low"),
+        "roc_auc_ci95_high": metrics.get("roc_auc_ci95_high"),
+        "average_precision_ci95_low": metrics.get("average_precision_ci95_low"),
+        "average_precision_ci95_high": metrics.get("average_precision_ci95_high"),
         "run_artifacts_dir": metadata.get("run_artifacts_dir"),
     }
     with path.open("a", encoding="utf-8") as file:
@@ -1505,6 +1877,10 @@ def _comparison_row(row: dict[str, Any]) -> dict[str, Any]:
         "test_positive_rate": _safe_divide(test_positives, test_rows),
         "average_precision": row.get("average_precision"),
         "roc_auc": row.get("roc_auc"),
+        "gini": row.get("gini"),
+        "ks_statistic": row.get("ks_statistic"),
+        "brier_score": row.get("brier_score"),
+        "expected_calibration_error": row.get("expected_calibration_error"),
         "precision_at_0_5": row.get("precision_at_0_5"),
         "recall_at_0_5": row.get("recall_at_0_5"),
         "f1_at_0_5": row.get("f1_at_0_5"),
