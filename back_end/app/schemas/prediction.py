@@ -37,6 +37,9 @@ class CompanyContinuityPredictionResponse(BaseModel):
     model_version: str | None = None
     prediction_year: int | None = None
     probability: float | None = None
+    probability_calibrated: float | None = None
+    confidence: float | None = None
+    credibility: float | None = None
     score_percent: float | None = None
     risk_bucket: str | None = None
     explanation_factors: list[ExplanationFactor] = Field(default_factory=list)

@@ -61,6 +61,9 @@ def publish_predictions(
     model_version = str(bundle["model_version"])
     target = str(bundle.get("target", "continuity_risk_12m_label")).replace("_label", "")
     horizon_months = int(bundle.get("horizon_months", 12))
+    # Optional post-processors (present on schema >= 2.x bundles; None on older ones).
+    calibrator = bundle.get("calibrator")
+    conformal = bundle.get("conformal")
 
     limit_sql = f"LIMIT {int(limit)}" if limit else ""
     con = duckdb.connect()
@@ -81,6 +84,8 @@ def publish_predictions(
         raise RuntimeError(f"company features missing model columns: {missing_columns}")
 
     probabilities = model.predict_proba(df[feature_columns])[:, 1]
+    calibrated = calibrator.predict(probabilities) if calibrator is not None else None
+    conformal_out = conformal.predict(probabilities) if conformal is not None else None
     scored_at = datetime.now(tz=timezone.utc)
 
     client = MongoClient(mongo_uri)
@@ -106,6 +111,9 @@ def publish_predictions(
                 "model_version": model_version,
                 "prediction_year": _json_value(row.get("prediction_year")),
                 "probability": float(probability),
+                "probability_calibrated": float(calibrated[idx]) if calibrated is not None else None,
+                "confidence": float(conformal_out["confidence"][idx]) if conformal_out is not None else None,
+                "credibility": float(conformal_out["credibility"][idx]) if conformal_out is not None else None,
                 "score_percent": round(float(probability) * 100, 2),
                 "risk_bucket": _risk_bucket(float(probability)),
                 "explanation_factors": _explanation_factors(row),
