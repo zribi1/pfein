@@ -245,8 +245,73 @@ class _CatBoostSklearnClassifier(ClassifierMixin, BaseEstimator):
 MODEL_FAMILIES = ("hgb", "lightgbm", "catboost", "xgboost")
 
 # Bumped when the set of per-run outputs changes. Lets you tell new-style runs
-# (credit-risk metrics + calibration + SHAP + OUTPUTS.md) apart from older ones.
-OUTPUT_SCHEMA_VERSION = "2.0-metrics-calibration-shap"
+# (credit-risk metrics + calibration + SHAP + conformal + OUTPUTS.md) apart from old ones.
+OUTPUT_SCHEMA_VERSION = "2.1-metrics-calibration-shap-conformal"
+
+
+class MondrianConformalCalibrator:
+    """Class-conditional (Mondrian) inductive conformal predictor for binary
+    classification.
+
+    Nonconformity score of an example is ``1 - p_hat(its true class)``. Scores
+    are collected on a calibration holdout the underlying model did NOT train
+    on, so per-prediction confidence carries the standard conformal validity
+    guarantee (error rate <= significance level, in expectation).
+
+    Class-conditional ("Mondrian") because the target is heavily imbalanced:
+    pooling the calibration scores would let the ~97% negatives swamp the
+    positive-class p-values and distort confidence on the rare positives.
+
+    For a new example it returns, per company:
+      - predicted_label : class with the largest p-value
+      - confidence      : 1 - second-largest p-value (sureness it is THAT class)
+      - credibility     : largest p-value (how well the example fits training at all)
+
+    Module-level so a fitted instance round-trips through joblib.
+    """
+
+    def __init__(self) -> None:
+        self.cal_scores_: dict[int, Any] = {}
+
+    def fit(self, prob_positive: Any, y_true: Any) -> "MondrianConformalCalibrator":
+        import numpy as np
+
+        p1 = np.asarray(prob_positive, dtype=float)
+        y = np.asarray(y_true, dtype=int)
+        # Nonconformity = 1 - p_hat(true class); store sorted, per class.
+        self.cal_scores_ = {
+            1: np.sort(1.0 - p1[y == 1]),
+            0: np.sort(1.0 - (1.0 - p1[y == 0])),  # = p1 for the true-negative rows
+        }
+        return self
+
+    def predict(self, prob_positive: Any) -> dict[str, Any]:
+        import numpy as np
+
+        p1 = np.asarray(prob_positive, dtype=float)
+        s1 = self.cal_scores_[1]
+        s0 = self.cal_scores_[0]
+        n1, n0 = len(s1), len(s0)
+        if n1 == 0 or n0 == 0:
+            raise ValueError("conformal calibration set is missing one class")
+        # p-value for label l = (#calib scores >= new nonconformity + 1) / (n + 1).
+        ge1 = n1 - np.searchsorted(s1, 1.0 - p1, side="left")
+        pval1 = (ge1 + 1.0) / (n1 + 1.0)
+        ge0 = n0 - np.searchsorted(s0, p1, side="left")
+        pval0 = (ge0 + 1.0) / (n0 + 1.0)
+        return {
+            "predicted_label": (pval1 >= pval0).astype(int),
+            "confidence": 1.0 - np.minimum(pval0, pval1),
+            "credibility": np.maximum(pval0, pval1),
+            "p_value_0": pval0,
+            "p_value_1": pval1,
+        }
+
+    def get_params(self, deep: bool = True) -> dict[str, Any]:
+        return {}
+
+    def set_params(self, **params: Any) -> "MondrianConformalCalibrator":
+        return self
 
 
 def _build_model_pipeline(
@@ -699,6 +764,40 @@ def train_model(
         metrics["calibrated_expected_calibration_error"] = calibrated_ece
         metrics["calibrated_calibration_table"] = calibrated_table
 
+    # Conformal confidence: reuse the calibration holdout (which the model did
+    # NOT train on) to fit a class-conditional conformal predictor on the model's
+    # RAW scores -- independent of the isotonic calibrator, so validity holds.
+    # Fail-soft: a conformal error must never abort a finished training run.
+    conformal = None
+    if calibrator is not None:
+        try:
+            conformal = MondrianConformalCalibrator().fit(calib_raw, y_calib.to_numpy().astype(int))
+            cp = conformal.predict(probabilities)
+            y_test_arr = y_test.to_numpy().astype(int)
+            pval_true = np.where(y_test_arr == 1, cp["p_value_1"], cp["p_value_0"])
+            validity = []
+            for eps in (0.01, 0.05, 0.10, 0.20):
+                set_size = (cp["p_value_0"] > eps).astype(int) + (cp["p_value_1"] > eps).astype(int)
+                validity.append({
+                    "significance": eps,
+                    "target_confidence": round(1.0 - eps, 2),
+                    "empirical_error": float((pval_true <= eps).mean()),
+                    "avg_set_size": float(set_size.mean()),
+                    "singleton_rate": float((set_size == 1).mean()),
+                    "empty_rate": float((set_size == 0).mean()),
+                })
+            counts, edges = np.histogram(cp["confidence"], bins=10, range=(0.0, 1.0))
+            metrics["conformal_mean_confidence"] = float(cp["confidence"].mean())
+            metrics["conformal_mean_credibility"] = float(cp["credibility"].mean())
+            metrics["conformal_validity"] = validity
+            metrics["conformal_confidence_hist"] = [
+                {"bin_lower": float(edges[i]), "bin_upper": float(edges[i + 1]), "count": int(counts[i])}
+                for i in range(len(counts))
+            ]
+        except Exception as exc:
+            conformal = None
+            metrics["conformal_error"] = f"{type(exc).__name__}: {exc}"
+
     trained_at = datetime.now(tz=timezone.utc)
     model_version = trained_at.strftime("continuity-risk-%Y%m%d-%H%M%S")
     run_name = _run_artifacts_folder_name(
@@ -720,6 +819,7 @@ def train_model(
         "trained_at": trained_at.isoformat(),
         "horizon_months": 12,
         "calibrator": calibrator,
+        "conformal": conformal,
     }
 
     artifacts_dir.mkdir(parents=True, exist_ok=True)
@@ -738,6 +838,9 @@ def train_model(
     if calibrator is not None:
         joblib.dump(calibrator, artifacts_dir / "isotonic_calibrator.joblib")
         joblib.dump(calibrator, run_artifacts_dir / "isotonic_calibrator.joblib")
+    if conformal is not None:
+        joblib.dump(conformal, artifacts_dir / "conformal_calibrator.joblib")
+        joblib.dump(conformal, run_artifacts_dir / "conformal_calibrator.joblib")
     metadata = {
         "model_version": model_version,
         "run_name": run_name,
@@ -751,6 +854,7 @@ def train_model(
         "calibrated": bool(calibrator is not None),
         "calibration_fraction": calibration_fraction if calibrator is not None else None,
         "calibration_fit_rows": calibration_fit_rows,
+        "conformal": bool(conformal is not None),
         "eligible_rows": int(total_rows),
         "rows": int(len(df)),
         "dataset_column_count": int(len(all_source_columns)),
@@ -1133,6 +1237,11 @@ def _write_evaluation_artifacts(
     calibration_path = run_artifacts_dir / "calibration_table.csv"
     _write_csv(calibration_path, metadata["metrics"].get("calibration_table", []))
     artifacts["calibration_table_csv"] = str(calibration_path)
+
+    if metadata["metrics"].get("conformal_validity"):
+        conformal_path = run_artifacts_dir / "conformal_validity.csv"
+        _write_csv(conformal_path, metadata["metrics"]["conformal_validity"])
+        artifacts["conformal_validity_csv"] = str(conformal_path)
 
     class_counts_path = run_artifacts_dir / "class_counts_by_year.json"
     class_counts_path.write_text(
@@ -1613,6 +1722,33 @@ def _write_run_summary(path: Path, metadata: dict[str, Any]) -> None:
                 f"{_fmt_float(row.get('lift'))} |"
             )
 
+    conformal_rows = metrics.get("conformal_validity", [])
+    if conformal_rows:
+        lines.extend(
+            [
+                "",
+                "## Conformal Confidence",
+                "",
+                f"Mean confidence: {_fmt_float(metrics.get('conformal_mean_confidence'))}  |  "
+                f"mean credibility: {_fmt_float(metrics.get('conformal_mean_credibility'))}",
+                "",
+                "Validity: at each target confidence the empirical error should stay at or below the significance level (1 - confidence).",
+                "",
+                "| Target confidence | Significance | Empirical error | Avg set size | Singleton rate | Empty rate |",
+                "|---:|---:|---:|---:|---:|---:|",
+            ]
+        )
+        for row in conformal_rows:
+            lines.append(
+                "| "
+                f"{_fmt_pct(row.get('target_confidence'))} | "
+                f"{_fmt_float(row.get('significance'), digits=2)} | "
+                f"{_fmt_float(row.get('empirical_error'))} | "
+                f"{_fmt_float(row.get('avg_set_size'), digits=3)} | "
+                f"{_fmt_pct(row.get('singleton_rate'))} | "
+                f"{_fmt_pct(row.get('empty_rate'))} |"
+            )
+
     lines.extend(
         [
             "",
@@ -1635,6 +1771,7 @@ def _write_run_summary(path: Path, metadata: dict[str, Any]) -> None:
         "top_feature_importances_png",
         "shap_summary_bar_png",
         "shap_summary_beeswarm_png",
+        "conformal_confidence_hist_png",
     ):
         if key in artifacts:
             lines.append(f"| {key} | `{Path(str(artifacts[key])).name}` |")
@@ -1658,8 +1795,11 @@ def _write_run_summary(path: Path, metadata: dict[str, Any]) -> None:
 # Descriptions for the per-run OUTPUTS.md manifest. Keyed by filename so the
 # manifest reflects whatever files actually landed in the run folder.
 _RUN_OUTPUT_DESCRIPTIONS = {
-    "model.joblib": "Archived model bundle (pipeline + feature columns + calibrator + metadata) for this run.",
+    "model.joblib": "Archived model bundle (pipeline + features + calibrator + conformal + metadata) for this run.",
     "isotonic_calibrator.joblib": "Fitted isotonic calibrator for this run's model (apply to raw scores for honest probabilities).",
+    "conformal_calibrator.joblib": "Fitted Mondrian conformal predictor: turns a raw score into a per-company confidence + credibility.",
+    "conformal_validity.csv": "Conformal validity table: empirical error vs target confidence and prediction-set sizes on the test set.",
+    "conformal_confidence_hist.png": "Distribution of per-company conformal confidence on the test set.",
     "shap_summary_bar.png": "SHAP global importance: mean |SHAP value| per feature.",
     "shap_summary_beeswarm.png": "SHAP signed per-company contributions per feature (direction + spread).",
     "shap_top_feature_signs.csv": "Per feature: mean SHAP, mean |SHAP|, and dominant push (toward/away from risk).",
@@ -1968,6 +2108,22 @@ def _write_evaluation_plots(
         fig.savefig(headline_path, dpi=160)
         plt.close(fig)
         plot_paths["headline_metrics_png"] = str(headline_path)
+
+    conf_hist = metadata["metrics"].get("conformal_confidence_hist", [])
+    if conf_hist:
+        conf_path = run_artifacts_dir / "conformal_confidence_hist.png"
+        centers = [(row["bin_lower"] + row["bin_upper"]) / 2 for row in conf_hist]
+        counts = [row["count"] for row in conf_hist]
+        fig, ax = plt.subplots(figsize=(7, 5))
+        ax.bar(centers, counts, width=0.09, color="#0f766e", alpha=0.85)
+        ax.set_title("Conformal Confidence Distribution (test set)")
+        ax.set_xlabel("Per-company confidence")
+        ax.set_ylabel("Companies")
+        ax.grid(True, axis="y", alpha=0.3)
+        fig.tight_layout()
+        fig.savefig(conf_path, dpi=160)
+        plt.close(fig)
+        plot_paths["conformal_confidence_hist_png"] = str(conf_path)
 
     return plot_paths
 
