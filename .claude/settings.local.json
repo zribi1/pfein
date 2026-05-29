@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(git ls-tree -r --name-only data-extraction -- ml_model)",
+      "PowerShell(git ls-tree -r --name-only data-extraction -- back_end/app/tools/v2)",
+      "Bash(python -c ' *)",
+      "Bash(cd \"c:/Users/omar charfi/Desktop/pfe_ml/pfein\" && mkdir -p back_end/collabs/archive && \\\\ *)",
+      "Bash(python -)",
+      "Bash(python _tr_tmp.py)",
+      "Bash(git commit *)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('app/tools/v2/train_label_specific_model.py', encoding='utf-8'\\).read\\(\\)\\); print\\('Syntax OK'\\)\")",
+      "Bash(python -c \"import json; nb = json.load\\(open\\('collabs/v2/v2_phase_4_train_per_label.ipynb', encoding='utf-8'\\)\\); print\\(f'Notebook OK: {len\\(nb[\\\\\"cells\\\\\"]\\)} cells'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('app/tools/v2/train_anomaly_detector.py', encoding='utf-8'\\).read\\(\\)\\); print\\('Syntax OK'\\)\")"
+    ]
+  }
+}
