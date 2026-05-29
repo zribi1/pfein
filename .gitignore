@@ -7,3 +7,6 @@ __pycache__/
 *.csv
 *.zip
 .vscode/
+.claude/
+graphify-out/
+back_end/.tmp/
