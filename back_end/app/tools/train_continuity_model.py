@@ -824,7 +824,12 @@ def train_model(
         max_rows=max_rows,
         rows=len(df),
     )
-    run_artifacts_dir = artifacts_dir / "runs" / run_name
+    # Group runs by family on disk so the layout is self-evident:
+    #   ml-artifacts/runs/hgb/<run_name>/...
+    #   ml-artifacts/runs/catboost/<run_name>/...
+    # Old runs at ml-artifacts/runs/<run_name>/ stay where they are; consumers
+    # of archived runs look in both locations.
+    run_artifacts_dir = artifacts_dir / "runs" / model_family / run_name
     bundle = {
         "pipeline": model,
         "target": target,
