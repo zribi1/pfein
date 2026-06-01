@@ -516,6 +516,7 @@ def main() -> None:
         calibration_fraction=args.calibration_fraction,
         shap_enabled=args.shap,
         shap_sample=args.shap_sample,
+        run_tag=args.run_tag,
     )
 
 
@@ -536,6 +537,7 @@ def train_model(
     calibration_fraction: float = 0.15,
     shap_enabled: bool = True,
     shap_sample: int = 10000,
+    run_tag: str | None = None,
 ) -> None:
     if model_family not in MODEL_FAMILIES:
         raise ValueError(
@@ -816,6 +818,7 @@ def train_model(
 
     trained_at = datetime.now(tz=timezone.utc)
     model_version = trained_at.strftime("continuity-risk-%Y%m%d-%H%M%S")
+    effective_run_tag = run_tag if run_tag else _detect_feature_schema(data_lake_dir)
     run_name = _run_artifacts_folder_name(
         model_version=model_version,
         target=target,
@@ -823,6 +826,7 @@ def train_model(
         split_strategy=split_strategy,
         max_rows=max_rows,
         rows=len(df),
+        run_tag=effective_run_tag,
     )
     # Group runs by family on disk so the layout is self-evident:
     #   ml-artifacts/runs/hgb/<run_name>/...
@@ -876,6 +880,7 @@ def train_model(
         "calibration_fraction": calibration_fraction if calibrator is not None else None,
         "calibration_fit_rows": calibration_fit_rows,
         "conformal": bool(conformal is not None),
+        "run_tag": effective_run_tag,
         "eligible_rows": int(total_rows),
         "rows": int(len(df)),
         "dataset_column_count": int(len(all_source_columns)),
@@ -1559,12 +1564,14 @@ def _run_artifacts_folder_name(
     split_strategy: str,
     max_rows: int | None,
     rows: int,
+    run_tag: str | None = None,
 ) -> str:
     timestamp = model_version.replace("continuity-risk-", "")
     target_slug = _slugify(_strip_suffix(target, "_label"))
     split_slug = _short_split_slug(split_strategy)
     cap_slug = f"cap-{_compact_count(max_rows)}" if max_rows else "full-data"
     rows_slug = f"rows-{_compact_count(rows)}"
+    tag_slug = f"feat-{_slugify(run_tag)}" if run_tag else None
     return "_".join(
         part
         for part in (
@@ -1574,9 +1581,26 @@ def _run_artifacts_folder_name(
             split_slug,
             cap_slug,
             rows_slug,
+            tag_slug,
         )
         if part
     )
+
+
+def _detect_feature_schema(data_lake_dir: Path) -> str | None:
+    """Look up the feature parquet manifest and return its schema version, if any.
+
+    Lets training runs stamp themselves with the feature schema they trained
+    against, so 33-column legacy runs and 52-column trajectory+sector runs sit
+    in distinguishable folders.
+    """
+    manifest_path = data_lake_dir / "features" / "company_year_features" / "_manifest.json"
+    if not manifest_path.exists():
+        return None
+    try:
+        return json.loads(manifest_path.read_text(encoding="utf-8")).get("feature_schema_version")
+    except Exception:
+        return None
 
 
 def _short_split_slug(split_strategy: str) -> str:
@@ -2429,6 +2453,15 @@ def _parse_args() -> argparse.Namespace:
         type=int,
         default=10000,
         help="Rows scored for SHAP (half highest-risk + half random from the test set).",
+    )
+    parser.add_argument(
+        "--run-tag",
+        default=None,
+        help=(
+            "Optional short tag appended to the run folder name so different feature"
+            " sets are visually distinguishable (e.g. 'v3-traj'). If omitted, the trainer"
+            " auto-detects the feature_schema_version from the features parquet manifest."
+        ),
     )
     parser.add_argument("--log-level", default="INFO")
     return parser.parse_args()
