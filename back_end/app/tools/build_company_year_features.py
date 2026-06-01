@@ -143,6 +143,7 @@ def build_company_year_datasets(
             company_year_dir,
             {
                 "dataset": "company_year_features",
+                "feature_schema_version": "3.0-trajectory-sector",
                 "rows": feature_rows,
                 "start_year": start_year,
                 "end_year": end_year,
@@ -380,23 +381,50 @@ def _create_feature_tables(con: Any) -> None:
             GROUP BY b.siren, b.prediction_year, b.prediction_date, b.creation_date
         ),
         legal_features AS (
+            -- Multi-window event trajectories. The 12m and "all" windows existed
+            -- in the original schema; 3m / 6m / 24m / severity-windowed counts and
+            -- per-severity "days since last" are added to give the model a
+            -- temporal profile rather than two-point summaries. These features
+            -- depend only on BODACC and are populated for every company.
             SELECT
                 b.siren,
                 b.prediction_year,
                 count(e.event_date) FILTER (WHERE e.event_date <= b.prediction_date) AS legal_events_count_all,
                 count(e.event_date) FILTER (
+                    WHERE e.event_date > b.prediction_date - INTERVAL 90 DAY
+                      AND e.event_date <= b.prediction_date
+                ) AS legal_events_count_3m,
+                count(e.event_date) FILTER (
+                    WHERE e.event_date > b.prediction_date - INTERVAL 180 DAY
+                      AND e.event_date <= b.prediction_date
+                ) AS legal_events_count_6m,
+                count(e.event_date) FILTER (
                     WHERE e.event_date > b.prediction_date - INTERVAL 365 DAY
                       AND e.event_date <= b.prediction_date
                 ) AS legal_events_count_12m,
+                count(e.event_date) FILTER (
+                    WHERE e.event_date > b.prediction_date - INTERVAL 730 DAY
+                      AND e.event_date <= b.prediction_date
+                ) AS legal_events_count_24m,
                 count(e.event_date) FILTER (
                     WHERE e.event_date <= b.prediction_date
                       AND COALESCE(e.is_risk_event, false)
                 ) AS legal_risk_events_count_all,
                 count(e.event_date) FILTER (
+                    WHERE e.event_date > b.prediction_date - INTERVAL 180 DAY
+                      AND e.event_date <= b.prediction_date
+                      AND COALESCE(e.is_risk_event, false)
+                ) AS legal_risk_events_count_6m,
+                count(e.event_date) FILTER (
                     WHERE e.event_date > b.prediction_date - INTERVAL 365 DAY
                       AND e.event_date <= b.prediction_date
                       AND COALESCE(e.is_risk_event, false)
                 ) AS legal_risk_events_count_12m,
+                count(e.event_date) FILTER (
+                    WHERE e.event_date > b.prediction_date - INTERVAL 730 DAY
+                      AND e.event_date <= b.prediction_date
+                      AND COALESCE(e.is_risk_event, false)
+                ) AS legal_risk_events_count_24m,
                 count(e.event_date) FILTER (
                     WHERE e.event_date <= b.prediction_date
                       AND (
@@ -407,10 +435,33 @@ def _create_feature_tables(con: Any) -> None:
                       )
                 ) AS legal_distress_events_count_all,
                 count(e.event_date) FILTER (
+                    WHERE e.event_date > b.prediction_date - INTERVAL 365 DAY
+                      AND e.event_date <= b.prediction_date
+                      AND (
+                        COALESCE(e.flag_liquidation, false)
+                        OR COALESCE(e.flag_redressement, false)
+                        OR COALESCE(e.flag_sauvegarde, false)
+                        OR COALESCE(e.flag_procedure_collective, false)
+                      )
+                ) AS legal_distress_events_count_12m,
+                count(e.event_date) FILTER (
                     WHERE e.event_date <= b.prediction_date
                       AND COALESCE(e.is_radiation, false)
                 ) AS radiation_events_count_all,
-                date_diff('day', max(e.event_date), b.prediction_date) AS days_since_last_legal_event
+                date_diff('day', max(e.event_date), b.prediction_date) AS days_since_last_legal_event,
+                date_diff('day',
+                    max(e.event_date) FILTER (WHERE COALESCE(e.is_risk_event, false)),
+                    b.prediction_date
+                ) AS days_since_last_risk_event,
+                date_diff('day',
+                    max(e.event_date) FILTER (
+                        WHERE COALESCE(e.flag_liquidation, false)
+                           OR COALESCE(e.flag_redressement, false)
+                           OR COALESCE(e.flag_sauvegarde, false)
+                           OR COALESCE(e.flag_procedure_collective, false)
+                    ),
+                    b.prediction_date
+                ) AS days_since_last_distress_event
             FROM base_rows b
             LEFT JOIN legal_events e ON e.siren = b.siren AND e.event_date <= b.prediction_date
             GROUP BY b.siren, b.prediction_year, b.prediction_date
@@ -420,6 +471,10 @@ def _create_feature_tables(con: Any) -> None:
                 b.siren,
                 b.prediction_year,
                 count(f.event_date) FILTER (WHERE f.event_date <= b.prediction_date) AS formalities_count_all,
+                count(f.event_date) FILTER (
+                    WHERE f.event_date > b.prediction_date - INTERVAL 180 DAY
+                      AND f.event_date <= b.prediction_date
+                ) AS formalities_count_6m,
                 count(f.event_date) FILTER (
                     WHERE f.event_date > b.prediction_date - INTERVAL 365 DAY
                       AND f.event_date <= b.prediction_date
@@ -445,6 +500,14 @@ def _create_feature_tables(con: Any) -> None:
                     WHERE a.filing_date > b.prediction_date - INTERVAL 730 DAY
                       AND a.filing_date <= b.prediction_date
                 ) AS annual_accounts_count_24m,
+                count(a.filing_date) FILTER (
+                    WHERE a.filing_date > b.prediction_date - INTERVAL 1095 DAY
+                      AND a.filing_date <= b.prediction_date
+                ) AS annual_accounts_count_36m,
+                count(a.filing_date) FILTER (
+                    WHERE a.filing_date > b.prediction_date - INTERVAL 1825 DAY
+                      AND a.filing_date <= b.prediction_date
+                ) AS annual_accounts_count_60m,
                 date_diff('day', max(a.filing_date), b.prediction_date) AS days_since_last_account_filing,
                 max(YEAR(a.closing_date)) FILTER (WHERE a.closing_date <= b.prediction_date) AS latest_account_closing_year
             FROM base_rows b
@@ -496,19 +559,56 @@ def _create_feature_tables(con: Any) -> None:
                 ELSE date_diff('year', i.creation_date, i.prediction_date)
             END AS company_age_years,
             COALESCE(l.legal_events_count_all, 0) AS legal_events_count_all,
+            COALESCE(l.legal_events_count_3m, 0) AS legal_events_count_3m,
+            COALESCE(l.legal_events_count_6m, 0) AS legal_events_count_6m,
             COALESCE(l.legal_events_count_12m, 0) AS legal_events_count_12m,
+            COALESCE(l.legal_events_count_24m, 0) AS legal_events_count_24m,
             COALESCE(l.legal_risk_events_count_all, 0) AS legal_risk_events_count_all,
+            COALESCE(l.legal_risk_events_count_6m, 0) AS legal_risk_events_count_6m,
             COALESCE(l.legal_risk_events_count_12m, 0) AS legal_risk_events_count_12m,
+            COALESCE(l.legal_risk_events_count_24m, 0) AS legal_risk_events_count_24m,
             COALESCE(l.legal_distress_events_count_all, 0) AS legal_distress_events_count_all,
+            COALESCE(l.legal_distress_events_count_12m, 0) AS legal_distress_events_count_12m,
             COALESCE(l.radiation_events_count_all, 0) AS radiation_events_count_all,
             l.days_since_last_legal_event,
+            l.days_since_last_risk_event,
+            l.days_since_last_distress_event,
+            -- Event acceleration: count in last 6m minus count in the prior 6m
+            -- window (months 6-12). Positive = activity is intensifying, the
+            -- single most predictive trajectory cue for credit risk.
+            (2 * COALESCE(l.legal_events_count_6m, 0) - COALESCE(l.legal_events_count_12m, 0)) AS legal_events_acceleration_6m,
+            (2 * COALESCE(l.legal_risk_events_count_6m, 0) - COALESCE(l.legal_risk_events_count_12m, 0)) AS legal_risk_events_acceleration_6m,
             COALESCE(f.formalities_count_all, 0) AS formalities_count_all,
+            COALESCE(f.formalities_count_6m, 0) AS formalities_count_6m,
             COALESCE(f.formalities_count_12m, 0) AS formalities_count_12m,
             COALESCE(f.cessation_formalities_count_all, 0) AS cessation_formalities_count_all,
             COALESCE(a.annual_accounts_count_all, 0) AS annual_accounts_count_all,
             COALESCE(a.annual_accounts_count_24m, 0) AS annual_accounts_count_24m,
+            COALESCE(a.annual_accounts_count_36m, 0) AS annual_accounts_count_36m,
+            COALESCE(a.annual_accounts_count_60m, 0) AS annual_accounts_count_60m,
             a.days_since_last_account_filing,
             a.latest_account_closing_year,
+            -- Filing pattern features. Both work for the full population
+            -- (the absence of filings IS the signal for the dropout flag).
+            -- actual_vs_expected_5y_filings caps at min(5, company_age_years)
+            -- so brand-new companies aren't penalised for not having 5 years
+            -- of filings yet.
+            (
+                COALESCE(a.annual_accounts_count_all, 0) > 0
+                AND a.days_since_last_account_filing IS NOT NULL
+                AND a.days_since_last_account_filing > 730
+            )::BOOLEAN AS filing_dropout_flag,
+            CASE
+                WHEN i.creation_date IS NULL THEN NULL
+                ELSE LEAST(
+                    CAST(COALESCE(a.annual_accounts_count_60m, 0) AS DOUBLE)
+                    / GREATEST(
+                        LEAST(5.0, CAST(date_diff('year', i.creation_date, i.prediction_date) AS DOUBLE)),
+                        1.0
+                    ),
+                    1.0
+                )
+            END AS actual_vs_expected_5y_filings,
             fin.latest_revenue,
             fin.latest_net_result,
             fin.latest_equity,
@@ -659,6 +759,72 @@ def _create_feature_tables(con: Any) -> None:
         LEFT JOIN filing_anomaly fa USING (siren, prediction_year)
         """
     )
+    # ------------------------------------------------------------------
+    # Sector context features. Aggregate per-NAF2 and per-legal-form failure
+    # rates from PAST years (strictly < max prediction_year in the batch) so
+    # the test/holdout year never contaminates the aggregate it joins with.
+    # Train years carry a self-contribution to their own sector aggregate, but
+    # each row is ~1/N of the sector so the leak is negligible. HAVING COUNT
+    # >= 50 drops aggregates that would be statistical noise.
+    # ------------------------------------------------------------------
+    con.execute(
+        """
+        CREATE TEMP TABLE sector_aggregates AS
+        WITH max_year AS (
+            SELECT MAX(prediction_year) AS y FROM company_year_feature_rows
+        )
+        SELECT
+            substr(f.activity_code, 1, 2) AS naf2_prefix,
+            COUNT(*) AS naf2_company_count,
+            AVG(CAST(r.continuity_risk_12m_label AS DOUBLE)) AS naf2_continuity_failure_rate,
+            AVG(CAST(r.radiation_risk_12m_label AS DOUBLE))  AS naf2_radiation_failure_rate,
+            AVG(CAST(r.legal_distress_risk_12m_label AS DOUBLE)) AS naf2_distress_failure_rate
+        FROM company_year_feature_rows f
+        JOIN risk_label_rows r USING (siren, prediction_year)
+        WHERE f.prediction_year < (SELECT y FROM max_year)
+          AND f.activity_code IS NOT NULL
+        GROUP BY substr(f.activity_code, 1, 2)
+        HAVING COUNT(*) >= 50
+        """
+    )
+    con.execute(
+        """
+        CREATE TEMP TABLE legal_form_aggregates AS
+        WITH max_year AS (
+            SELECT MAX(prediction_year) AS y FROM company_year_feature_rows
+        )
+        SELECT
+            f.legal_category_code,
+            COUNT(*) AS legal_form_company_count,
+            AVG(CAST(r.continuity_risk_12m_label AS DOUBLE)) AS legal_form_continuity_failure_rate
+        FROM company_year_feature_rows f
+        JOIN risk_label_rows r USING (siren, prediction_year)
+        WHERE f.prediction_year < (SELECT y FROM max_year)
+          AND f.legal_category_code IS NOT NULL
+        GROUP BY f.legal_category_code
+        HAVING COUNT(*) >= 50
+        """
+    )
+    # Swap the feature table for an enriched version with the sector columns.
+    con.execute(
+        """
+        CREATE TEMP TABLE company_year_feature_rows_enriched AS
+        SELECT
+            f.*,
+            s.naf2_company_count,
+            s.naf2_continuity_failure_rate,
+            s.naf2_radiation_failure_rate,
+            s.naf2_distress_failure_rate,
+            lf.legal_form_company_count,
+            lf.legal_form_continuity_failure_rate
+        FROM company_year_feature_rows f
+        LEFT JOIN sector_aggregates s ON s.naf2_prefix = substr(f.activity_code, 1, 2)
+        LEFT JOIN legal_form_aggregates lf ON lf.legal_category_code = f.legal_category_code
+        """
+    )
+    con.execute("DROP TABLE company_year_feature_rows")
+    con.execute("ALTER TABLE company_year_feature_rows_enriched RENAME TO company_year_feature_rows")
+
     con.execute(
         """
         CREATE TEMP TABLE company_feature_rows AS
@@ -697,6 +863,9 @@ def _drop_feature_temp_tables(con: Any) -> None:
         "company_feature_rows",
         "risk_label_rows",
         "company_year_feature_rows",
+        "company_year_feature_rows_enriched",
+        "sector_aggregates",
+        "legal_form_aggregates",
         "base_rows",
         "years",
     ):
